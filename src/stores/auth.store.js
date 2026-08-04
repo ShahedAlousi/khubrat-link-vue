@@ -1,0 +1,171 @@
+import { computed, ref } from 'vue'
+import { defineStore } from 'pinia'
+import { authService } from '@/services/auth.service'
+import { tokenStorage } from '@/services/api'
+
+const USER_KEY = 'khubrat_user'
+const COMPANY_KEY = 'khubrat_company'
+
+function needsPasswordReset(user) {
+  if (!user) return false
+  return Boolean(
+    user.must_change_password ?? user.force_password_change ?? user.is_first_login ?? false
+  )
+}
+
+export const useAuthStore = defineStore('auth', () => {
+  const user = ref(null)
+  const company = ref(null)
+  const token = ref(null)
+  const loading = ref(false)
+  const error = ref(null)
+
+  const isAuthenticated = computed(() => Boolean(token.value))
+  const mustChangePassword = computed(() => needsPasswordReset(user.value))
+
+  // تحديد الأدوار بشكل صريح بناءً على enum الباك اند
+  const userRole = computed(() => user.value?.role ?? null)
+  
+  // السوبر آدمن الخاص بالمنصة
+  const isPlatformAdmin = computed(() => userRole.value === 'super_admin')
+  
+  // موظفي الشركات (مدير عام، مدير الموارد البشرية، مدير قسم، موظف)
+  const isCompanyUser = computed(() => {
+    return ['general_manager', 'hr_manager', 'department_manager', 'employee'].includes(userRole.value)
+  })
+
+  // صلاحيات مخصصة داخل لوحة الشركة بناءً على طلبك
+  const isGeneralManager = computed(() => userRole.value === 'general_manager')
+  const isHrManager = computed(() => userRole.value === 'hr_manager')
+  
+  // كلاهما يستطيع إدارة وضبط السياسات
+  const canManagePolicies = computed(() => {
+    return ['general_manager', 'hr_manager'].includes(userRole.value)
+  })
+
+  // المدير العام يرى الإحصائيات فقط ولا يرى تفاصيل الطلبات
+  const canViewRequestDetails = computed(() => {
+    return userRole.value !== 'general_manager'
+  })
+
+  const companyId = computed(() => company.value?.id ?? null)
+
+  function persistSession() {
+    if (token.value) tokenStorage.set(token.value)
+    if (user.value) localStorage.setItem(USER_KEY, JSON.stringify(user.value))
+    if (company.value) localStorage.setItem(COMPANY_KEY, JSON.stringify(company.value))
+  }
+
+  function clearSession() {
+    user.value = null
+    company.value = null
+    token.value = null
+    tokenStorage.clear()
+    localStorage.removeItem(USER_KEY)
+    localStorage.removeItem(COMPANY_KEY)
+  }
+
+  function restoreSession() {
+    const storedToken = tokenStorage.get()
+    if (!storedToken) return
+
+    token.value = storedToken
+    try {
+      user.value = JSON.parse(localStorage.getItem(USER_KEY) || 'null')
+      company.value = JSON.parse(localStorage.getItem(COMPANY_KEY) || 'null')
+    } catch {
+      user.value = null
+      company.value = null
+    }
+  }
+
+  async function login(credentials) {
+    loading.value = true
+    error.value = null
+    try {
+      const data = await authService.login(credentials)
+      user.value = data.user
+      company.value = data.company
+      token.value = data.token
+      persistSession()
+      return data
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function logout() {
+    clearSession()
+  }
+
+  async function forgotPassword(email) {
+    loading.value = true
+    error.value = null
+    try {
+      return await authService.forgotPassword(email)
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function resetPassword(payload) {
+    loading.value = true
+    error.value = null
+    try {
+      return await authService.resetPassword(payload)
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function completeFirstLogin(payload) {
+    loading.value = true
+    error.value = null
+    try {
+      const result = await authService.completeFirstLogin(payload)
+      if (user.value) {
+        user.value = { ...user.value, must_change_password: false, force_password_change: false, is_first_login: false }
+        persistSession()
+      }
+      return result
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return {
+    user,
+    company,
+    token,
+    loading,
+    error,
+    userRole,
+    isAuthenticated,
+    mustChangePassword,
+    isCompanyUser,
+    isPlatformAdmin,
+    isGeneralManager,
+    isHrManager,
+    canManagePolicies,
+    canViewRequestDetails,
+    companyId,
+    restoreSession,
+    login,
+    logout,
+    forgotPassword,
+    resetPassword,
+    completeFirstLogin
+  }
+})

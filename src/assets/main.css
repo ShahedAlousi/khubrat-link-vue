@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---- Ported 1:1 from the original khubrat_admin_dashboard.html <style> block ---- */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 33, 115, 0.05);
+}
+::-webkit-scrollbar-thumb {
+  background: #835c21;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #fcd88a;
+}
+
+.gradient-brand {
+  background: linear-gradient(135deg, #002173 0%, #001242 100%);
+}
+
+.gold-glow {
+  box-shadow: 0 0 15px rgba(252, 216, 138, 0.35);
+}
+
+/* ---- Shared helpers used across the Vue port ---- */
+
+body {
+  @apply bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100;
+}
+
+/* Blurred hero background used on the auth / onboarding screens */
+.auth-bg {
+  background-size: cover;
+  background-position: center;
+}
+
+.auth-card {
+  @apply bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/30 dark:border-white/10 shadow-2xl;
+}
+
+/* Dark mode compatibility for the OpenStreetMap tiles used by CompanyGeofenceMap.vue */
+.dark .leaflet-tile {
+  filter: brightness(0.6) invert(1) contrast(3) sepia(0.6) hue-rotate(200deg) saturate(0.3);
+}
+.dark .leaflet-container {
+  background: #0f172a;
+}
