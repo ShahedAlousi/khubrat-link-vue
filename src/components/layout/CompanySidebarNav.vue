@@ -18,7 +18,9 @@ const navItems = [
   { name: 'company-requests', label: 'Requests', icon: 'fa-envelope-open-text' },
   { name: 'company-staff-management', label: 'Staff Management', icon: 'fa-users-gear' },
   { name: 'company-evaluations', label: 'Evaluations', icon: 'fa-award' },
-  { name: 'company-attendance', label: 'Attendance', icon: 'fa-clipboard-user'}
+  { name: 'company-attendance', label: 'Attendance', icon: 'fa-clipboard-user'},
+  { name: 'company-payroll', label: 'Payroll', icon: 'fa-money-check-dollar'}
+
 ]
 
 const adminName = computed(() => authStore.user?.name || authStore.user?.contact_name || 'Tenant Admin')

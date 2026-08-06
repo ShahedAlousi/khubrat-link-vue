@@ -142,6 +142,12 @@ const routes = [
         name: 'company-attendance',
         component: () => import('@/views/company/AttendanceTrackerView.vue'),
         meta: { title: 'AattendanceTracker' }
+      },
+      {
+        path: 'payroll',
+        name: 'company-payroll',
+        component: () => import('@/views/company/PayrollManagementView.vue'),
+        meta: { title: 'Payroll Management' }
       }
     
     ]
