@@ -1134,8 +1134,124 @@
 ولبعدين ارا رجعتي غيرتي مدير القسم 
 فالقديم بصير موظف بشكل تلقائي من الباك اند وبيتعين الجديد 
 
+GET
+/api/hr/departments/{department}/employees (http://127.0.0.1:8000/api/documentation#/Employees/9a90f6c3af1ee4c13fcd1886ed22532a)
+عرض موظفي قسم محدد ضمن الشركة الحالية فقط (مع Pagination/Search/Sort/Filter)
+مشان اختار منهن مدير للقسم
 
-  "/api/hr/departments": {
+ "/api/hr/departments/{department}/employees": {
+            "get": {
+                "tags": [
+                    "Employees"
+                ],
+                "summary": "عرض موظفي قسم محدد ضمن الشركة الحالية فقط (مع Pagination/Search/Sort/Filter)",
+                "operationId": "9a90f6c3af1ee4c13fcd1886ed22532a",
+                "parameters": [
+                    {
+                        "name": "department",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "بحث في الاسم والإيميل والمسمى الوظيفي",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "is_active",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "hire_date"
+                        }
+                    },
+                    {
+                        "name": "sort_dir",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "desc"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "قائمة موظفي القسم (نفس شكل استجابة GET /api/hr/employees)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    },
+                    "403": {
+                        "description": "Forbidden (HR Manager or General Manager only)"
+                    },
+                    "404": {
+                        "description": "Department not found / not in your company"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+
+
+ "/api/hr/departments": {
             "get": {
                 "tags": [
                     "Departments"
@@ -1220,6 +1336,7 @@
                                         "example": true
                                     },
                                     "manager_id": {
+                                        "description": "Must be an employee id belonging to the current company and not already the manager of another department. Setting it promotes that employee's account to Department Manager.",
                                         "type": "string",
                                         "format": "uuid",
                                         "nullable": true
@@ -1250,10 +1367,10 @@
                         }
                     },
                     "422": {
-                        "description": "Validation failed"
+                        "description": "Validation failed (including manager_id belonging to another company, or already managing a different department)"
                     },
                     "403": {
-                        "description": "Forbidden (HR Manager only)"
+                        "description": "Forbidden (HR Manager only), or the company is frozen (status=suspended) - message 'Company is frozen.'"
                     }
                 },
                 "security": [
@@ -1327,6 +1444,7 @@
                                         "example": true
                                     },
                                     "manager_id": {
+                                        "description": "Must be an employee who belongs to THIS department and is not already the manager of another department. Setting it promotes that employee's account to Department Manager; the previous manager (if different) is automatically demoted back to Employee (unless they still manage another department).",
                                         "type": "string",
                                         "format": "uuid",
                                         "nullable": true
@@ -1345,7 +1463,10 @@
                         "description": "Not found / not in your company"
                     },
                     "422": {
-                        "description": "Validation failed"
+                        "description": "Validation failed (including manager_id not belonging to this department, or already managing a different department)"
+                    },
+                    "403": {
+                        "description": "Company is frozen (status=suspended)"
                     }
                 },
                 "security": [
@@ -1389,3 +1510,4 @@
                 ]
             }
         },
+

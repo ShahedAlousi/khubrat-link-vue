@@ -1,141 +1,223 @@
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
 import { departmentsService } from '@/services/departments.service'
 
+/**
+ * Normalize a department API row for table/form display.
+ * @param {object} row
+ */
+export function normalizeDepartment(row) {
+  if (!row) return null
+
+  const manager = row.manager ?? row.manager_employee ?? null
+  const managerUser = manager?.user ?? null
+
+  const managerName =
+    managerUser?.full_name ||
+    manager?.full_name ||
+    row.manager_name ||
+    null
+
+  const managerId = row.manager_id ?? manager?.id ?? null
+
+  return {
+    id: row.id,
+    name: row.name ?? '',
+    is_active: row.is_active ?? true,
+    manager_id: managerId,
+    manager_name: managerName,
+    manager,
+    employees_count: row.employees_count ?? row.employees?.length ?? null,
+    created_at: row.created_at ?? null,
+    raw: row
+  }
+}
+
+function employeeLabel(row) {
+  const user = row?.user ?? {}
+  const name = user.full_name ?? row.full_name ?? 'Unknown'
+  const title = row.job_title ? ` — ${row.job_title}` : ''
+  return `${name}${title}`
+}
+
 export const useDepartmentsStore = defineStore('departments', () => {
-  // ==========================================
-  // State (الحالة)
-  // ==========================================
   const departments = ref([])
   const currentDepartment = ref(null)
-  const isLoading = ref(false)
+  const departmentEmployees = ref([])
+
+  const loading = ref(false)
+  const employeesLoading = ref(false)
+  const saving = ref(false)
+  const deleting = ref(false)
   const error = ref(null)
 
-  // ==========================================
-  // Actions (الإجراءات)
-  // ==========================================
+  const sortedDepartments = computed(() =>
+    [...departments.value].sort((a, b) => String(a.name).localeCompare(String(b.name)))
+  )
 
-  /**
-   * جلب قائمة الأقسام
-   */
-  const fetchDepartments = async (params = {}) => {
-    isLoading.value = true
+  const employeeOptions = computed(() =>
+    departmentEmployees.value
+      .filter((row) => row.is_active !== false)
+      .map((row) => ({
+        value: row.id,
+        label: employeeLabel(row)
+      }))
+  )
+
+  async function fetchDepartments(params = {}) {
+    loading.value = true
     error.value = null
     try {
       const data = await departmentsService.list(params)
-      departments.value = data
-      return data
+      departments.value = (Array.isArray(data) ? data : []).map(normalizeDepartment)
+      return departments.value
     } catch (err) {
-      error.value = err.response?.data?.message || 'حدث خطأ أثناء جلب الأقسام'
+      error.value = err.message || 'Failed to load departments.'
       throw err
     } finally {
-      isLoading.value = false
+      loading.value = false
     }
   }
 
-  /**
-   * جلب تفاصيل قسم محدد
-   */
-  const fetchDepartmentById = async (id) => {
-    isLoading.value = true
+  async function fetchDepartmentById(id) {
+    loading.value = true
     error.value = null
     try {
       const data = await departmentsService.get(id)
-      currentDepartment.value = data
-      return data
+      currentDepartment.value = normalizeDepartment(data)
+      return currentDepartment.value
     } catch (err) {
-      error.value = err.response?.data?.message || 'حدث خطأ أثناء جلب تفاصيل القسم'
+      error.value = err.message || 'Failed to load department details.'
       throw err
     } finally {
-      isLoading.value = false
+      loading.value = false
     }
   }
 
   /**
-   * إضافة قسم جديد
+   * Load active employees belonging to a department (for manager picker on edit).
    */
-  const createDepartment = async (payload) => {
-    isLoading.value = true
+  async function fetchDepartmentEmployees(departmentId) {
+    if (!departmentId) {
+      departmentEmployees.value = []
+      return []
+    }
+
+    employeesLoading.value = true
     error.value = null
     try {
-      const newDepartment = await departmentsService.create(payload)
-      // تحديث القائمة محلياً لتجنب طلب جديد من السيرفر (اختياري)
-      departments.value.push(newDepartment)
-      return newDepartment
+      const data = await departmentsService.listEmployees(departmentId, {
+        is_active: true,
+        per_page: 100
+      })
+      departmentEmployees.value = Array.isArray(data) ? data : []
+      return departmentEmployees.value
     } catch (err) {
-      error.value = err.response?.data?.message || 'حدث خطأ أثناء إضافة القسم'
+      error.value = err.message || 'Failed to load department employees.'
+      departmentEmployees.value = []
       throw err
     } finally {
-      isLoading.value = false
+      employeesLoading.value = false
     }
   }
 
-  /**
-   * تعديل قسم موجود
-   */
-  const updateDepartment = async (id, payload) => {
-    isLoading.value = true
+  async function createDepartment(form) {
+    saving.value = true
     error.value = null
     try {
-      const updatedDepartment = await departmentsService.update(id, payload)
-      // تحديث القسم المعدل في القائمة المحلية
-      const index = departments.value.findIndex((dept) => dept.id === id)
-      if (index !== -1) {
-        // دمج البيانات القديمة مع الجديدة
-        departments.value[index] = { ...departments.value[index], ...payload, ...updatedDepartment }
+      const payload = {
+        name: form.name.trim(),
+        is_active: Boolean(form.is_active)
       }
-      if (currentDepartment.value?.id === id) {
-        currentDepartment.value = { ...currentDepartment.value, ...payload, ...updatedDepartment }
-      }
-      return updatedDepartment
+      // Create without manager — assign later after employees exist in the department.
+      const created = await departmentsService.create(payload)
+      await fetchDepartments()
+      return normalizeDepartment(created)
     } catch (err) {
-      error.value = err.response?.data?.message || 'حدث خطأ أثناء تعديل القسم'
+      error.value = err.message || 'Failed to create department.'
       throw err
     } finally {
-      isLoading.value = false
+      saving.value = false
     }
   }
 
-  /**
-   * حذف قسم
-   */
-  const deleteDepartment = async (id) => {
-    isLoading.value = true
+  async function updateDepartment(id, form) {
+    saving.value = true
     error.value = null
     try {
-      await departmentsService.delete(id)
-      // إزالة القسم من القائمة المحلية بعد نجاح الحذف
-      departments.value = departments.value.filter((dept) => dept.id !== id)
-      if (currentDepartment.value?.id === id) {
-        currentDepartment.value = null
+      const payload = {
+        name: form.name.trim(),
+        is_active: Boolean(form.is_active)
       }
-      return true
-    } catch (err) {
-      // معالجة حالة الخطأ 409 (القسم يحتوي على موظفين)
-      if (err.response?.status === 409) {
-        error.value = 'لا يمكن حذف القسم لوجود موظفين مرتبطين به.'
+
+      if (form.manager_id) {
+        payload.manager_id = form.manager_id
       } else {
-        error.value = err.response?.data?.message || 'حدث خطأ أثناء حذف القسم'
+        payload.manager_id = null
       }
+
+      const updated = await departmentsService.update(id, payload)
+      await fetchDepartments()
+      if (currentDepartment.value?.id === id) {
+        currentDepartment.value = normalizeDepartment(updated ?? { ...currentDepartment.value, ...payload })
+      }
+      return normalizeDepartment(updated)
+    } catch (err) {
+      error.value = err.message || 'Failed to update department.'
       throw err
     } finally {
-      isLoading.value = false
+      saving.value = false
     }
   }
 
- 
+  /**
+   * @returns {Promise<{ status: 'deleted'|'blocked', message?: string }>}
+   */
+  async function deleteDepartment(id) {
+    deleting.value = true
+    error.value = null
+    try {
+      await departmentsService.remove(id)
+      departments.value = departments.value.filter((dept) => dept.id !== id)
+      if (currentDepartment.value?.id === id) currentDepartment.value = null
+      return { status: 'deleted' }
+    } catch (err) {
+      if (err.status === 409) {
+        return {
+          status: 'blocked',
+          message:
+            err.message ||
+            'The department must be free of employees before deletion. Reassign employees via Employee Management first.'
+        }
+      }
+      error.value = err.message || 'Failed to delete department.'
+      throw err
+    } finally {
+      deleting.value = false
+    }
+  }
+
+  function clearDepartmentEmployees() {
+    departmentEmployees.value = []
+  }
+
   return {
-    // State
     departments,
+    sortedDepartments,
     currentDepartment,
-    isLoading,
+    departmentEmployees,
+    employeeOptions,
+    loading,
+    employeesLoading,
+    saving,
+    deleting,
     error,
-    
-    // Actions
     fetchDepartments,
     fetchDepartmentById,
+    fetchDepartmentEmployees,
     createDepartment,
     updateDepartment,
-    deleteDepartment
+    deleteDepartment,
+    clearDepartmentEmployees
   }
 })
