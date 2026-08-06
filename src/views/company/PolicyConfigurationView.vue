@@ -1,10 +1,15 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth.store'
 import AttendancePolicyPanel from '@/components/policies/AttendancePolicyPanel.vue'
 import LeaveTypesPanel from '@/components/policies/LeaveTypesPanel.vue'
 import PayrollSettingsPanel from '@/components/policies/PayrollSettingsPanel.vue'
 import AppraisalsPanel from '@/components/policies/AppraisalsPanel.vue'
 import HolidaysPanel from '@/components/policies/HolidaysPanel.vue'
+
+const router = useRouter()
+const authStore = useAuthStore()
 
 const tabs = [
   { id: 'attendance', label: 'Attendance', icon: 'fa-business-time' },
@@ -15,10 +20,16 @@ const tabs = [
 ]
 
 const activeTab = ref('attendance')
+
+onMounted(() => {
+  if (!authStore.canManagePolicies) {
+    router.replace({ name: 'company-dashboard' })
+  }
+})
 </script>
 
 <template>
-  <div class="space-y-6 max-w-7xl mx-auto">
+  <div v-if="authStore.canManagePolicies" class="space-y-6 max-w-7xl mx-auto">
     <!-- Explanatory banner -->
     <div class="bg-gradient-to-r from-khubrat-blue to-blue-900 text-white p-6 rounded-2xl shadow-md border-b-4 border-khubrat-goldLight">
       <div class="space-y-1 max-w-3xl">

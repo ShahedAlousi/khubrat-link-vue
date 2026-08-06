@@ -37,5 +37,13 @@ export const authService = {
    */
   completeFirstLogin(payload) {
     return api.post('/auth/complete-first-login', payload).then((res) => res.data)
+  },
+
+  /**
+   * POST /api/auth/logout (requires an authenticated session)
+   * Invalidates the current bearer token on the server.
+   */
+  logout() {
+    return api.post('/auth/logout').then((res) => res.data)
   }
 }

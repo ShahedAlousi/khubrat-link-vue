@@ -1,27 +1,32 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import AppLogo from '@/components/common/AppLogo.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { initials } from '@/utils/format'
 
-const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
 // حالة انكماش القائمة
 const isCollapsed = ref(false)
 
-const navItems = [
-  { name: 'company-dashboard', label: 'Dashboard', icon: 'fa-chart-pie' },
-  { name: 'company-policies', label: 'Policy Configuration', icon: 'fa-sliders' },
-  { name: 'company-requests', label: 'Requests', icon: 'fa-envelope-open-text' },
-  { name: 'company-staff-management', label: 'Staff Management', icon: 'fa-users-gear' },
-  { name: 'company-evaluations', label: 'Evaluations', icon: 'fa-award' },
-  { name: 'company-attendance', label: 'Attendance', icon: 'fa-clipboard-user'},
-  { name: 'company-payroll', label: 'Payroll', icon: 'fa-money-check-dollar'}
+const navItems = computed(() => {
+  const items = [
+    { name: 'company-dashboard', label: 'Dashboard', icon: 'fa-chart-pie' },
+    { name: 'company-policies', label: 'Policy Configuration', icon: 'fa-sliders' },
+    { name: 'company-requests', label: 'Requests', icon: 'fa-envelope-open-text' },
+    { name: 'company-staff-management', label: 'Staff Management', icon: 'fa-users-gear' },
+    { name: 'company-evaluations', label: 'Evaluations', icon: 'fa-award' },
+    { name: 'company-attendance', label: 'Attendance', icon: 'fa-clipboard-user' },
+    { name: 'company-payroll', label: 'Payroll', icon: 'fa-money-check-dollar' }
+  ]
 
-]
+  return items.filter((item) => {
+    if (item.name === 'company-policies') return authStore.canManagePolicies
+    return true
+  })
+})
 
 const adminName = computed(() => authStore.user?.name || authStore.user?.contact_name || 'Tenant Admin')
 const adminEmail = computed(() => authStore.user?.email || authStore.company?.email || '—')
@@ -31,9 +36,8 @@ function toggleSidebar() {
   isCollapsed.value = !isCollapsed.value
 }
 
-function handleLogout() {
-  authStore.logout()
-  router.push({ name: 'login' })
+async function handleLogout() {
+  await authStore.logout()
 }
 </script>
 
@@ -95,19 +99,25 @@ function handleLogout() {
             <p class="text-sm font-bold text-khubrat-goldLight truncate">{{ adminName }}</p>
             <p class="text-[11px] text-white/50 truncate">{{ adminEmail }}</p>
           </div>
-          <button class="ml-auto text-white/40 hover:text-red-400 p-1" title="Log out" @click="handleLogout">
-            <i class="fa-solid fa-right-from-bracket"></i>
+          <button
+            class="ml-auto text-white/40 hover:text-red-400 p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Log out"
+            :disabled="authStore.loggingOut"
+            @click="handleLogout"
+          >
+            <i class="fa-solid" :class="authStore.loggingOut ? 'fa-spinner fa-spin' : 'fa-right-from-bracket'"></i>
           </button>
         </template>
         
         <!-- زر تسجيل الخروج العائم البديل عند الانكماش -->
-        <button 
-          v-else 
-          class="absolute bottom-16 text-white/40 hover:text-red-400 p-2 bg-black/40 rounded-lg" 
-          title="Log out" 
+        <button
+          v-else
+          class="absolute bottom-16 text-white/40 hover:text-red-400 p-2 bg-black/40 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Log out"
+          :disabled="authStore.loggingOut"
           @click="handleLogout"
         >
-          <i class="fa-solid fa-right-from-bracket"></i>
+          <i class="fa-solid" :class="authStore.loggingOut ? 'fa-spinner fa-spin' : 'fa-right-from-bracket'"></i>
         </button>
       </div>
     </div>

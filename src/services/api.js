@@ -53,4 +53,8 @@ api.interceptors.response.use(
   }
 )
 
+export function clearApiAuth() {
+  delete api.defaults.headers.common.Authorization
+}
+
 export default api

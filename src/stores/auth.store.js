@@ -1,10 +1,12 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { authService } from '@/services/auth.service'
-import { tokenStorage } from '@/services/api'
+import { tokenStorage, clearApiAuth } from '@/services/api'
+import router from '@/router'
 
 const USER_KEY = 'khubrat_user'
 const COMPANY_KEY = 'khubrat_company'
+const TOKEN_KEY = 'khubrat_token'
 
 function needsPasswordReset(user) {
   if (!user) return false
@@ -18,6 +20,7 @@ export const useAuthStore = defineStore('auth', () => {
   const company = ref(null)
   const token = ref(null)
   const loading = ref(false)
+  const loggingOut = ref(false)
   const error = ref(null)
 
   const isAuthenticated = computed(() => Boolean(token.value))
@@ -37,11 +40,15 @@ export const useAuthStore = defineStore('auth', () => {
   // صلاحيات مخصصة داخل لوحة الشركة بناءً على طلبك
   const isGeneralManager = computed(() => userRole.value === 'general_manager')
   const isHrManager = computed(() => userRole.value === 'hr_manager')
-  
-  // كلاهما يستطيع إدارة وضبط السياسات
-  const canManagePolicies = computed(() => {
-    return ['general_manager', 'hr_manager'].includes(userRole.value)
-  })
+  // Alias for hr_manager role checks across the UI
+  const isHr = isHrManager
+
+  function hasRole(role) {
+    return userRole.value === role
+  }
+
+  // Policy configuration is restricted to the general manager only
+  const canManagePolicies = computed(() => userRole.value === 'general_manager')
 
   // المدير العام يرى الإحصائيات فقط ولا يرى تفاصيل الطلبات
   const canViewRequestDetails = computed(() => {
@@ -63,6 +70,10 @@ export const useAuthStore = defineStore('auth', () => {
     tokenStorage.clear()
     localStorage.removeItem(USER_KEY)
     localStorage.removeItem(COMPANY_KEY)
+    sessionStorage.removeItem(USER_KEY)
+    sessionStorage.removeItem(COMPANY_KEY)
+    sessionStorage.removeItem(TOKEN_KEY)
+    clearApiAuth()
   }
 
   function restoreSession() {
@@ -97,8 +108,19 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function logout() {
-    clearSession()
+  async function logout() {
+    if (loggingOut.value) return
+
+    loggingOut.value = true
+    try {
+      await authService.logout()
+    } catch {
+      // Always clear local session even when the API call fails (e.g. expired token).
+    } finally {
+      clearSession()
+      loggingOut.value = false
+      router.push({ name: 'login' })
+    }
   }
 
   async function forgotPassword(email) {
@@ -150,6 +172,7 @@ export const useAuthStore = defineStore('auth', () => {
     company,
     token,
     loading,
+    loggingOut,
     error,
     userRole,
     isAuthenticated,
@@ -158,6 +181,8 @@ export const useAuthStore = defineStore('auth', () => {
     isPlatformAdmin,
     isGeneralManager,
     isHrManager,
+    isHr,
+    hasRole,
     canManagePolicies,
     canViewRequestDetails,
     companyId,

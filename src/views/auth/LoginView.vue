@@ -41,7 +41,11 @@ async function handleSubmit() {
     }
 
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
-    const home = authStore.isCompanyUser ? { name: 'company-policies' } : { name: 'dashboard-overview' }
+    const home = authStore.isCompanyUser
+      ? authStore.canManagePolicies
+        ? { name: 'company-policies' }
+        : { name: 'company-dashboard' }
+      : { name: 'dashboard-overview' }
     router.push(redirect || home)
   } catch (err) {
     submitError.value = err.message

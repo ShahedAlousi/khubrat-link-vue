@@ -1,0 +1,186 @@
+<script setup>
+import { computed, ref } from 'vue'
+import { useStaffStore } from '@/stores/staff.store'
+import BaseButton from '@/components/common/BaseButton.vue'
+import BaseAlert from '@/components/common/BaseAlert.vue'
+
+const staffStore = useStaffStore()
+
+const fileInputRef = ref(null)
+const selectedFile = ref(null)
+
+const acceptedExtensions = ['.xlsx', '.xls', '.csv']
+const acceptAttr = '.xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv'
+
+const importedCount = computed(() => {
+  const payload = staffStore.importSuccess
+  if (!payload) return null
+  return payload.count ?? payload.data?.count ?? null
+})
+
+const rowErrorEntries = computed(() => {
+  const errors = staffStore.importRowErrors
+  if (!errors || typeof errors !== 'object') return []
+
+  return Object.entries(errors).flatMap(([key, value]) => {
+    const messages = Array.isArray(value) ? value : [String(value)]
+    return messages.map((message) => ({ key, message }))
+  })
+})
+
+function triggerFilePicker() {
+  fileInputRef.value?.click()
+}
+
+function handleFileChange(event) {
+  const file = event.target.files?.[0] ?? null
+  selectedFile.value = file
+  staffStore.clearImportFeedback()
+}
+
+function clearSelectedFile() {
+  selectedFile.value = null
+  if (fileInputRef.value) fileInputRef.value.value = ''
+}
+
+async function handleDownloadTemplate() {
+  try {
+    await staffStore.downloadImportTemplate()
+  } catch {
+    // surfaced via store.importError
+  }
+}
+
+async function handleUpload() {
+  if (!selectedFile.value) return
+  try {
+    await staffStore.importEmployees(selectedFile.value)
+    clearSelectedFile()
+  } catch {
+    // surfaced via store.importError / importRowErrors
+  }
+}
+</script>
+
+<template>
+  <div class="space-y-6 max-w-3xl">
+    <div>
+      <h3 class="text-lg font-bold text-khubrat-blue dark:text-white">Bulk Employee Import</h3>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+        Import multiple employees at once using the official Excel template.
+      </p>
+    </div>
+
+    <BaseAlert variant="info">
+      <div class="space-y-2 text-sm leading-relaxed">
+        <p>
+          Download the template, fill in employee rows, then upload the completed file. Required columns
+          match the single-employee form (name, email, department, job title, base salary, hire date).
+        </p>
+        <p>
+          Optional columns are also supported: phone, education, employment type, gender, marital status,
+          nationality, and residence. Profile photos and identity documents are not imported from Excel.
+        </p>
+        <p class="font-semibold">
+          This is an all-or-nothing import — if any row fails validation, no employees will be created.
+        </p>
+      </div>
+    </BaseAlert>
+
+    <BaseAlert v-if="staffStore.importSuccess" variant="success">
+      Import completed successfully.
+      <span v-if="importedCount !== null">
+        {{ importedCount }} employee{{ importedCount === 1 ? '' : 's' }} were added.
+      </span>
+      <button class="ml-2 underline text-xs" @click="staffStore.clearImportFeedback()">Dismiss</button>
+    </BaseAlert>
+
+    <BaseAlert v-if="staffStore.importError" variant="error">
+      {{ staffStore.importError }}
+      <button class="ml-2 underline text-xs" @click="staffStore.clearImportFeedback()">Dismiss</button>
+    </BaseAlert>
+
+    <div
+      v-if="rowErrorEntries.length"
+      class="rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/20 p-4 space-y-2"
+    >
+      <p class="text-sm font-bold text-rose-700 dark:text-rose-300">Row validation errors</p>
+      <ul class="text-xs text-rose-700 dark:text-rose-300 space-y-1 max-h-48 overflow-y-auto">
+        <li v-for="(entry, index) in rowErrorEntries" :key="`${entry.key}-${index}`">
+          <span class="font-semibold">{{ entry.key }}:</span> {{ entry.message }}
+        </li>
+      </ul>
+    </div>
+
+    <div
+      class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm space-y-6"
+    >
+      <div class="space-y-3">
+        <div>
+          <p class="text-sm font-bold text-khubrat-blue dark:text-white">Step 1 — Download Template</p>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Use the official template to ensure column names and formats match the backend contract.
+          </p>
+        </div>
+        <BaseButton variant="blue" :loading="staffStore.templateLoading" @click="handleDownloadTemplate">
+          <i class="fa-solid fa-file-arrow-down"></i>
+          Download Excel Template
+        </BaseButton>
+      </div>
+
+      <div class="border-t border-slate-200 dark:border-slate-700 pt-6 space-y-4">
+        <div>
+          <p class="text-sm font-bold text-khubrat-blue dark:text-white">Step 2 — Upload Completed File</p>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Accepted formats: {{ acceptedExtensions.join(', ') }}
+          </p>
+        </div>
+
+        <input
+          ref="fileInputRef"
+          type="file"
+          class="hidden"
+          :accept="acceptAttr"
+          @change="handleFileChange"
+        />
+
+        <div
+          class="rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-600 p-6 text-center space-y-3"
+        >
+          <div class="text-3xl text-slate-300 dark:text-slate-600">
+            <i class="fa-solid fa-file-excel"></i>
+          </div>
+
+          <template v-if="selectedFile">
+            <p class="text-sm font-semibold text-khubrat-blue dark:text-white">{{ selectedFile.name }}</p>
+            <p class="text-xs text-slate-400">
+              {{ (selectedFile.size / 1024).toFixed(1) }} KB
+            </p>
+            <div class="flex flex-wrap justify-center gap-2">
+              <BaseButton variant="ghost" @click="triggerFilePicker">Choose Different File</BaseButton>
+              <BaseButton variant="ghost" @click="clearSelectedFile">Remove</BaseButton>
+            </div>
+          </template>
+
+          <template v-else>
+            <p class="text-sm text-slate-500">No file selected yet.</p>
+            <BaseButton variant="ghost" @click="triggerFilePicker">
+              <i class="fa-solid fa-folder-open"></i>
+              Choose File
+            </BaseButton>
+          </template>
+        </div>
+
+        <BaseButton
+          variant="gold"
+          :disabled="!selectedFile"
+          :loading="staffStore.importing"
+          @click="handleUpload"
+        >
+          <i class="fa-solid fa-file-arrow-up"></i>
+          Upload and Import
+        </BaseButton>
+      </div>
+    </div>
+  </div>
+</template>

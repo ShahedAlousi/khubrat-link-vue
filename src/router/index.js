@@ -4,12 +4,20 @@ import { useAuthStore } from '@/stores/auth.store'
 const AdminLayout = () => import('@/components/layout/AdminLayout.vue')
 const CompanyLayout = () => import('@/components/layout/CompanyLayout.vue')
 
+/** Default landing route for authenticated company (tenant) users. */
+function companyHomeRoute(authStore) {
+  return authStore.canManagePolicies
+    ? { name: 'company-policies' }
+    : { name: 'company-dashboard' }
+}
+
 const routes = [
   {
     path: '/',
     redirect: () => {
       const authStore = useAuthStore()
-      return authStore.isCompanyUser ? { name: 'company-policies' } : { name: 'dashboard-overview' }
+      if (authStore.isCompanyUser) return companyHomeRoute(authStore)
+      return { name: 'dashboard-overview' }
     }
   },
 
@@ -106,7 +114,7 @@ const routes = [
     children: [
       {
         path: '',
-        redirect: { name: 'company-policies' }
+        redirect: () => companyHomeRoute(useAuthStore())
       },
       {
         path: 'dashboard',
@@ -172,7 +180,7 @@ router.beforeEach((to) => {
 
   // 2. Redirect guests that are already authenticated
   if (to.meta.guestOnly && authStore.isAuthenticated) {
-    return authStore.isCompanyUser ? { name: 'company-policies' } : { name: 'dashboard-overview' }
+    return authStore.isCompanyUser ? companyHomeRoute(authStore) : { name: 'dashboard-overview' }
   }
 
   // 3. Force password reset on initial login cycles
@@ -186,7 +194,7 @@ router.beforeEach((to) => {
 
   // 4. Platform Superadmin vs Tenant console split protection
   if (to.meta.persona === 'platform-admin' && !authStore.isPlatformAdmin) {
-    return { name: 'company-policies' }
+    return companyHomeRoute(authStore)
   }
   if (to.meta.persona === 'company-user' && !authStore.isCompanyUser) {
     return { name: 'dashboard-overview' }

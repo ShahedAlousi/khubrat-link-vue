@@ -1,4 +1,8 @@
-<script setup></script>
+<script setup>
+import { useAuthStore } from '@/stores/auth.store'
+
+const authStore = useAuthStore()
+</script>
 
 <template>
   <section class="h-full flex items-center justify-center">
@@ -8,9 +12,13 @@
       </div>
       <h3 class="text-lg font-bold text-khubrat-blue dark:text-white mb-2">Requests</h3>
       <p class="text-sm text-slate-500 dark:text-slate-400">
-        This is not part of the current build — only the
-        <router-link :to="{ name: 'company-policies' }" class="font-bold underline">Policy Configuration</router-link>
-        console was in scope for this pass.
+        This is not part of the current build
+        <template v-if="authStore.canManagePolicies">
+          — only the
+          <router-link :to="{ name: 'company-policies' }" class="font-bold underline">Policy Configuration</router-link>
+          console was in scope for this pass.
+        </template>
+        <template v-else>.</template>
       </p>
     </div>
   </section>
