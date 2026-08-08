@@ -1,88 +1,91 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import companyProfileService from '@/services/companyProfileService'
 
+const emptyProfile = () => ({
+  id: null,
+  name: '',
+  logo_url: null,
+  tagline: '',
+  about: '',
+  phone: '',
+  email: '',
+  address: ''
+})
+
 export const useCompanyProfileStore = defineStore('companyProfile', () => {
-  // النسخة المحفوظة فعلياً من السيرفر (وضع العرض يعتمد عليها)
-  const profile = ref({
-    id: null,
-    name: '',
-    logo_url: null,
-    tagline: '',
-    about: '',
-    phone: '',
-    email: ''
-  })
+  const profile = ref(emptyProfile())
+  const draftProfile = ref(emptyProfile())
 
-  // نسخة مؤقتة تُربط بحقول الإدخال أثناء وضع التعديل، حتى لا نعدّل profile مباشرة قبل الحفظ
-  const draftProfile = ref({ ...profile.value })
-
-  const isEditing = ref(false) // وضع العرض أو التعديل
-  const isLoading = ref(false) // أثناء جلب البيانات لأول مرة
-  const isSaving = ref(false) // أثناء عملية الحفظ
+  const isEditing = ref(false)
+  const isLoading = ref(false)
+  const isSaving = ref(false)
   const error = ref(null)
-  const hasFetchedProfile = ref(false) // لمعرفة هل تم تحميل البيانات من قبل (لتفادي إعادة الجلب كل فتح)
+  const hasFetchedProfile = ref(false)
 
-  // جلب بيانات بروفايل الشركة من السيرفر وتعبئتها في profile و draftProfile
+  const isProfileComplete = computed(() =>
+    Boolean(profile.value.name?.trim() && profile.value.email?.trim())
+  )
+
+  function applyProfileData(data) {
+    const normalized = { ...emptyProfile(), ...data }
+    profile.value = normalized
+    draftProfile.value = { ...normalized }
+  }
+
   async function fetchProfile() {
     isLoading.value = true
     error.value = null
     try {
       const response = await companyProfileService.getProfile()
-      profile.value = { ...response.data }
-      draftProfile.value = { ...response.data }
+      applyProfileData(response.data)
       hasFetchedProfile.value = true
+
+      if (!isProfileComplete.value) {
+        isEditing.value = true
+      }
+
+      return profile.value
     } catch (err) {
-      error.value = err
+      error.value = err.message || 'Failed to load company profile.'
+      throw err
     } finally {
       isLoading.value = false
     }
   }
 
-  // تفعيل وضع التعديل: ننسخ البيانات الحالية إلى draftProfile ليعدّل المستخدم عليها
   function enableEditMode() {
     draftProfile.value = { ...profile.value }
     isEditing.value = true
   }
 
-  // إلغاء التعديل والرجوع لوضع العرض دون حفظ أي تغييرات
   function cancelEdit() {
+    if (!isProfileComplete.value) return false
     draftProfile.value = { ...profile.value }
     isEditing.value = false
+    return true
   }
 
-  // حفظ التعديلات: إرسال draftProfile للسيرفر، وعند النجاح تحديث profile والرجوع لوضع العرض
-  // logoFile: تمرير كائن File إن اختار المستخدم شعار جديد، وإلا null
   async function saveProfile(logoFile = null) {
     isSaving.value = true
     error.value = null
     try {
       const payload = { ...draftProfile.value, logo: logoFile }
       const response = await companyProfileService.updateProfile(payload)
-      profile.value = { ...response.data }
-      draftProfile.value = { ...response.data }
+      applyProfileData(response.data)
       isEditing.value = false
       return true
     } catch (err) {
-      error.value = err
-      return false
+      error.value = err.message || 'Failed to save company profile.'
+      throw err
     } finally {
       isSaving.value = false
     }
   }
 
-  // إعادة تصفير الستور بالكامل (مفيد مثلاً عند تسجيل الخروج)
   function reset() {
-    profile.value = {
-      id: null,
-      name: '',
-      logo_url: null,
-      tagline: '',
-      about: '',
-      phone: '',
-      email: ''
-    }
-    draftProfile.value = { ...profile.value }
+    profile.value = emptyProfile()
+    draftProfile.value = emptyProfile()
     isEditing.value = false
     isLoading.value = false
     isSaving.value = false
@@ -98,6 +101,7 @@ export const useCompanyProfileStore = defineStore('companyProfile', () => {
     isSaving,
     error,
     hasFetchedProfile,
+    isProfileComplete,
     fetchProfile,
     enableEditMode,
     cancelEdit,

@@ -30,7 +30,7 @@ const resolvedType = computed(() => {
     <label
       v-if="label"
       :for="inputId"
-      class="text-xs font-bold text-[#061c3f]"
+      class="text-xs font-bold text-[#061c3f] dark:text-white"
     >
       {{ label }}<span v-if="required" class="text-rose-900"> *</span>
     </label>
@@ -44,10 +44,10 @@ const resolvedType = computed(() => {
         :autocomplete="autocomplete"
         class="w-full rounded-xl border px-4 py-2.5 text-sm transition-all duration-150 outline-none"
         :class="[
-          // تعديل: الحقول خلفيتها بيضاء ناصعة ومحددة بإطار رمادي خفيف تماماً كالصورة المحدثة
           props.error
-            ? 'bg-white border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-            : 'bg-white border-slate-200 text-slate-800 hover:border-[#bd8a39] hover:ring-4 hover:ring-[#bd8a39]/20 focus:border-[#bd8a39] focus:ring-4 focus:ring-[#bd8a39]/30'        ]"
+            ? 'bg-white dark:bg-slate-800 border-rose-500 dark:border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 text-slate-800 dark:text-slate-200'
+            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:border-[#bd8a39] dark:hover:border-khubrat-goldLight hover:ring-4 hover:ring-[#bd8a39]/20 dark:hover:ring-khubrat-goldLight/20 focus:border-[#bd8a39] dark:focus:border-khubrat-goldLight focus:ring-4 focus:ring-[#bd8a39]/30 dark:focus:ring-khubrat-goldLight/30'
+        ]"
         @input="$emit('update:modelValue', $event.target.value)"
       />
 
@@ -55,7 +55,7 @@ const resolvedType = computed(() => {
         v-if="isPassword"
         type="button"
         tabindex="-1"
-        class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+        class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-300 dark:hover:text-slate-100"
         @click="showPassword = !showPassword"
       >
         <i class="fa-solid" :class="showPassword ? 'fa-eye-slash' : 'fa-eye'"></i>

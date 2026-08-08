@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khubrat HR Platform - Enterprise Manager Portal</title>
+    <!-- Google Fonts - Open Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        khubrat: {
+                            blue: '#002173', // RGB(0, 33, 115)
+                            goldLight: '#FCD88A', // RGB(252, 216, 138)
+                            goldDark: '#835C21', // RGB(131, 92, 33)
+                            darkBg: '#0f172a',
+                            darkCard: '#1e293b'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Open Sans"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar matching identity */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 33, 115, 0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #835C21;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #FCD88A;
+        }
+        .gradient-brand {
+            background: linear-gradient(135deg, #002173 0%, #001242 100%);
+        }
+        .gold-glow {
+            box-shadow: 0 0 15px rgba(252, 216, 138, 0.25);
+        }
+        .transition-sidebar {
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* Custom Tooltip Styling */
+        .tooltip-box {
+            position: relative;
+        }
+        .tooltip-box .tooltip-text {
+            visibility: hidden;
+            width: 220px;
+            background-color: #0f172a;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 8px 12px;
+            position: absolute;
+            z-index: 50;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -110px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 11px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(252, 216, 138, 0.2);
+            line-height: 1.4;
+        }
+        .tooltip-box:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        /* Classic Clock CSS variables & layout helper */
+        .clock-num {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            font-size: 11px;
+            cursor: pointer;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.15s;
+        }
+        .clock-num:hover {
+            background-color: rgba(252, 216, 138, 0.3);
+        }
+        .clock-num.selected {
+            background-color: #002173;
+            color: #FCD88A !important;
+        }
+        .dark .clock-num.selected {
+            background-color: #FCD88A;
+            color: #002173 !important;
+        }
+
+        /* Subtle row highlight for tables/directories on hover */
+        .interactive-row:hover {
+            background-color: rgba(0, 33, 115, 0.04) !important;
+            transition: background-color 0.15s ease-in-out;
+        }
+        .dark .interactive-row:hover {
+            background-color: rgba(252, 216, 138, 0.05) !important;
+        }
+
+        /* Golden/Brown outline glow on input fields hover */
+        input:hover, select:hover, textarea:hover {
+            border-color: #835C21 !important;
+            box-shadow: 0 0 6px rgba(131, 92, 33, 0.25);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col">
+
+    <!-- App Wrapper -->
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- SIDEBAR -->
+        <aside id="main-sidebar" class="w-72 gradient-brand text-white flex flex-col flex-shrink-0 border-r border-khubrat-goldDark/20 z-20 transition-sidebar relative">
+            <!-- Sidebar Header with Logo -->
+            <div class="p-6 border-b border-white/10 flex items-center justify-between gap-3 overflow-hidden">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 flex-shrink-0 bg-[#002173] rounded-lg p-1 border border-khubrat-goldLight/50 gold-glow flex items-center justify-center">
+                        <svg viewBox="0 0 100 100" class="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="15" y="15" width="70" height="70" rx="18" stroke="#FCD88A" stroke-width="8" />
+                            <path d="M 33 60 L 53 40 M 53 40 L 73 25 M 33 33 L 73 73" stroke="#FCD88A" stroke-width="8" stroke-linecap="round" />
+                            <circle cx="65" cy="72" r="14" stroke="#FCD88A" stroke-width="8" fill="#002173" />
+                            <path d="M 72 79 L 83 90" stroke="#FCD88A" stroke-width="8" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <div class="sidebar-text">
+                        <h1 class="text-lg font-extrabold tracking-wider text-khubrat-goldLight">KHUBRAT</h1>
+                        <span class="text-[10px] text-white/60 tracking-widest font-semibold block">HR PLATFORM</span>
+                    </div>
+                </div>
+                <!-- Toggle Sidebar collapse button -->
+                <button onclick="toggleSidebar()" class="text-white/60 hover:text-khubrat-goldLight p-1 rounded">
+                    <i id="sidebar-toggle-icon" class="fa-solid fa-chevron-left text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+                <button onclick="showToast('Overview Dashboard is not active in this demo.', 'info')" class="tab-btn w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 text-left text-white/70 hover:bg-white/5 hover:text-white">
+                    <i class="fa-solid fa-chart-pie text-lg w-6 text-center"></i>
+                    <span class="sidebar-text font-semibold text-sm">Dashboard</span>
+                </button>
+
+                <!-- COMPANY PROFILE NAVIGATION LINK -->
+                <button id="sidebar-btn-company-profile" onclick="switchMainPage('company-profile')" class="sidebar-nav-btn w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 text-left text-white/70 hover:bg-white/5 hover:text-white">
+                    <i class="fa-solid fa-building text-lg w-6 text-center"></i>
+                    <span class="sidebar-text font-semibold text-sm">Company Profile</span>
+                </button>
+
+                <button id="sidebar-btn-policy" onclick="switchMainPage('policy')" class="sidebar-nav-btn w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 text-left text-white/70 hover:bg-white/5 hover:text-white">
+                    <i class="fa-solid fa-sliders text-lg w-6 text-center"></i>
+                    <span class="sidebar-text font-semibold text-sm">Policy Configuration</span>
+                </button>
+
+                <button id="sidebar-btn-requests" onclick="switchMainPage('requests')" class="sidebar-nav-btn w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 text-left text-white/70 hover:bg-white/5 hover:text-white">
+                    <i class="fa-solid fa-envelope-open-text text-lg w-6 text-center"></i>
+                    <span class="sidebar-text font-semibold text-sm">Requests</span>
+                </button>
+
+                <button id="sidebar-btn-attendance-tracker" onclick="switchMainPage('attendance-tracker')" class="sidebar-nav-btn w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 text-left text-white/70 hover:bg-white/5 hover:text-white">
+                    <i class="fa-solid fa-clipboard-user text-lg w-6 text-center"></i>
+                    <span class="sidebar-text font-semibold text-sm">Attendance Tracker</span>
+                </button>
+            </nav>
+
+            <!-- Bottom Brand Info -->
+            <div class="p-4 border-t border-white/10 bg-black/20 overflow-hidden">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-khubrat-goldDark flex items-center justify-center text-white font-bold text-sm">
+                        GM
+                    </div>
+                    <div class="sidebar-text">
+                        <p class="text-xs font-bold text-khubrat-goldLight">General Manager</p>
+                        <p class="text-[10px] text-white/50" id="sidebar-user-email">info@khibrat.example</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
+            
+            <!-- HEADER -->
+            <header class="h-20 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-8 flex items-center justify-between z-10">
+                <div class="flex items-center gap-4">
+                    <h2 id="page-title" class="text-xl font-bold text-khubrat-blue dark:text-khubrat-goldLight">Company Profile</h2>
+                </div>
+                
+                <!-- Quick Controls -->
+                <div class="flex items-center gap-4">
+                    <!-- Quick First-Time Entry / Clear Demo Toggle -->
+                    <button onclick="toggleCompanyDataState()" class="px-3 py-1.5 rounded-xl border border-khubrat-goldDark/30 text-[11px] font-bold text-khubrat-goldDark dark:text-khubrat-goldLight hover:bg-khubrat-goldLight/10 transition-all">
+                        <i class="fa-solid fa-arrows-rotate mr-1"></i> <span id="toggle-state-btn-text">Simulate First-Time Entry</span>
+                    </button>
+
+                    <!-- Theme Toggle Shortcut -->
+                    <button onclick="toggleTheme()" class="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 transition-all duration-150" title="Toggle Theme Mode">
+                        <i id="theme-icon" class="fa-solid fa-moon"></i>
+                    </button>
+
+                    <!-- Language Badge -->
+                    <div class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-200">
+                        <i class="fa-solid fa-globe"></i>
+                        <span>EN</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- VIEW CONTAINER -->
+            <div class="flex-1 overflow-y-auto p-8" id="view-container">
+
+                <!-- ================= PAGE 0: COMPANY PROFILE ================= -->
+                <div id="main-panel-company-profile" class="main-workspace-panel space-y-6 max-w-6xl mx-auto">
+                    
+                    <!-- VIEW MODE DISPLAY PANEL -->
+                    <div id="company-profile-view-mode" class="space-y-6">
+                        <!-- Hero Banner Card -->
+                        <div class="relative rounded-3xl gradient-brand p-8 text-white shadow-xl overflow-hidden border border-khubrat-goldDark/30">
+                            <!-- Background Accent Glow -->
+                            <div class="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-khubrat-goldLight/10 blur-3xl pointer-events-none"></div>
+
+                            <div class="relative z-10 flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
+                                <div class="flex flex-col md:flex-row items-center md:items-center gap-6 text-center md:text-left">
+                                    <!-- Company Logo Box -->
+                                    <div class="w-28 h-28 rounded-2xl bg-white dark:bg-slate-800 p-2 border-2 border-khubrat-goldLight shadow-lg flex items-center justify-center shrink-0 overflow-hidden">
+                                        <img id="view-company-logo" src="http://localhost/storage/company_logos/a1b2c3d4-e5f6-7890-abcd-ef1234567890/logo.png" onerror="this.onerror=null; this.src='https://api.dicebear.com/7.x/shapes/svg?seed=Khibrat';" alt="Company Logo" class="max-w-full max-h-full object-contain rounded-xl">
+                                    </div>
+                                    <div class="space-y-1.5">
+                                        <div class="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                                            <h3 id="view-company-name" class="text-2xl font-black text-khubrat-goldLight">Khibrat HR</h3>
+                                            <span class="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1.5">
+                                                <i class="fa-solid fa-circle-check"></i> Verified Tenant
+                                            </span>
+                                        </div>
+                                        <p id="view-company-tagline" class="text-xs text-slate-200 font-semibold italic">شريك التمكين الرقمي المعتمد</p>
+                                        <p class="text-[11px] text-white/50 flex items-center justify-center md:justify-start gap-2 pt-1">
+                                            <i class="fa-solid fa-fingerprint text-khubrat-goldLight"></i> 
+                                            <span>Tenant ID: <span id="view-company-id" class="font-mono text-slate-300">a1b2c3d4-e5f6-7890-abcd-ef1234567890</span></span>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Action Button: Edit Profile -->
+                                <button onclick="enterCompanyEditMode()" class="px-6 py-3 bg-khubrat-goldLight hover:bg-white text-khubrat-blue font-extrabold text-xs rounded-2xl flex items-center gap-2.5 shadow-md transition-all hover:scale-105 active:scale-95 shrink-0">
+                                    <i class="fa-solid fa-pen-to-square text-sm"></i>
+                                    <span>Edit Profile Information</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Info Cards Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <!-- Email Card -->
+                            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start gap-4">
+                                <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl shrink-0">
+                                    <i class="fa-solid fa-envelope"></i>
+                                </div>
+                                <div class="space-y-1 min-w-0">
+                                    <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Official Email</span>
+                                    <h5 id="view-company-email" class="text-xs font-bold text-slate-800 dark:text-white truncate">info@khibrat.example</h5>
+                                    <p class="text-[10px] text-slate-400">Primary corporate contact email</p>
+                                </div>
+                            </div>
+
+                            <!-- Phone Card -->
+                            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start gap-4">
+                                <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl shrink-0">
+                                    <i class="fa-solid fa-phone"></i>
+                                </div>
+                                <div class="space-y-1 min-w-0">
+                                    <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Phone Number</span>
+                                    <h5 id="view-company-phone" class="text-xs font-bold text-slate-800 dark:text-white truncate">+963111222333</h5>
+                                    <p class="text-[10px] text-slate-400">Direct support hotline</p>
+                                </div>
+                            </div>
+
+                            <!-- Address Card -->
+                            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start gap-4">
+                                <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xl shrink-0">
+                                    <i class="fa-solid fa-location-dot"></i>
+                                </div>
+                                <div class="space-y-1 min-w-0">
+                                    <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Headquarters Address</span>
+                                    <h5 id="view-company-address" class="text-xs font-bold text-slate-800 dark:text-white truncate">دمشق، منطقة الروضة</h5>
+                                    <p class="text-[10px] text-slate-400">Physical registered location</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- About Section Card -->
+                        <div class="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                            <div class="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-700">
+                                <i class="fa-solid fa-building-user text-khubrat-blue dark:text-khubrat-goldLight text-lg"></i>
+                                <h4 class="text-sm font-black text-khubrat-blue dark:text-khubrat-goldLight uppercase tracking-wider">About The Company</h4>
+                            </div>
+                            <p id="view-company-about" class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+                                نبذة بسيطة عن الشركة ومجال عملها.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- EDIT MODE / FIRST TIME FORM PANEL -->
+                    <div id="company-profile-edit-mode" class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-lg p-8 space-y-8 hidden animate-in fade-in duration-200">
+                        <!-- Form Header Banner -->
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-slate-200 dark:border-slate-700">
+                            <div>
+                                <h3 id="edit-form-heading" class="text-lg font-black text-khubrat-blue dark:text-khubrat-goldLight flex items-center gap-2">
+                                    <i class="fa-solid fa-sliders"></i> <span>Edit Corporate Profile Information</span>
+                                </h3>
+                                <p class="text-xs text-slate-400 mt-1">General Manager authorization required. Changes take effect immediately across all system modules.</p>
+                            </div>
+                            <span class="px-3 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-xl text-xs font-bold flex items-center gap-1.5">
+                                <i class="fa-solid fa-user-shield"></i> GM Restricted Access
+                            </span>
+                        </div>
+
+                        <!-- FORM FIELDS -->
+                        <form id="company-profile-form" onsubmit="handleCompanyProfileSubmit(event)" class="space-y-6">
+                            
+                            <!-- Logo Upload Dropzone Section -->
+                            <div class="space-y-2">
+                                <label class="text-xs font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                    <span>Company Logo</span>
+                                    <span class="text-[10px] text-slate-400 font-normal">(jpg, png, webp - Max 4MB)</span>
+                                </label>
+                                <div class="flex flex-col sm:flex-row items-center gap-6 p-6 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50 hover:border-khubrat-goldDark transition-all">
+                                    <!-- Logo Preview Container -->
+                                    <div class="w-24 h-24 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 flex items-center justify-center shrink-0 shadow-xs relative group overflow-hidden">
+                                        <img id="edit-logo-preview" src="http://localhost/storage/company_logos/a1b2c3d4-e5f6-7890-abcd-ef1234567890/logo.png" onerror="this.onerror=null; this.src='https://api.dicebear.com/7.x/shapes/svg?seed=Khibrat';" alt="Logo Preview" class="max-w-full max-h-full object-contain rounded-lg">
+                                    </div>
+
+                                    <div class="flex-1 space-y-2 text-center sm:text-left">
+                                        <div class="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                                            <label for="input-logo-file" class="px-4 py-2 bg-khubrat-blue dark:bg-khubrat-goldLight text-white dark:text-khubrat-blue rounded-xl text-xs font-bold cursor-pointer hover:opacity-90 transition-all flex items-center gap-2">
+                                                <i class="fa-solid fa-cloud-arrow-up"></i> Upload New Logo
+                                            </label>
+                                            <button type="button" onclick="clearLogoSelection()" class="px-3 py-2 text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition-all">
+                                                Remove Selection
+                                            </button>
+                                        </div>
+                                        <input type="file" id="input-logo-file" accept="image/png, image/jpeg, image/webp" onchange="previewSelectedLogo(event)" class="hidden">
+                                        <p id="logo-filename-display" class="text-[11px] text-slate-400">Omit file to keep current saved corporate logo.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Name & Tagline Row -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Company Name (Required) -->
+                                <div class="space-y-1.5">
+                                    <label for="input-company-name" class="text-xs font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                        <span>Company Name</span>
+                                        <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input type="text" id="input-company-name" required maxlength="255" placeholder="e.g. Khibrat HR Solutions" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-xs font-bold dark:text-white focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight transition-all">
+                                </div>
+
+                                <!-- Tagline (Optional) -->
+                                <div class="space-y-1.5">
+                                    <label for="input-company-tagline" class="text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                                        Company Tagline / Slogan
+                                    </label>
+                                    <input type="text" id="input-company-tagline" maxlength="255" placeholder="e.g. Your Certified Digital Empowerment Partner" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-xs font-bold dark:text-white focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight transition-all">
+                                </div>
+                            </div>
+
+                            <!-- Email & Phone Row -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Email (Required) -->
+                                <div class="space-y-1.5">
+                                    <label for="input-company-email" class="text-xs font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                        <span>Official Email Address</span>
+                                        <span class="text-rose-500">*</span>
+                                    </label>
+                                    <div class="relative">
+                                        <input type="email" id="input-company-email" required maxlength="255" placeholder="info@company.com" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 text-xs font-bold dark:text-white focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight transition-all">
+                                        <i class="fa-solid fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                                    </div>
+                                </div>
+
+                                <!-- Phone (Required) -->
+                                <div class="space-y-1.5">
+                                    <label for="input-company-phone" class="text-xs font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                        <span>Phone Number</span>
+                                        <span class="text-rose-500">*</span>
+                                    </label>
+                                    <div class="relative">
+                                        <input type="text" id="input-company-phone" required maxlength="30" placeholder="+963111222333" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 text-xs font-bold dark:text-white focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight transition-all">
+                                        <i class="fa-solid fa-phone absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Address (Required) -->
+                            <div class="space-y-1.5">
+                                <label for="input-company-address" class="text-xs font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                    <span>Headquarters Physical Address</span>
+                                    <span class="text-rose-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <input type="text" id="input-company-address" required maxlength="500" placeholder="e.g. Damascus, Al-Rawda District" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 text-xs font-bold dark:text-white focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight transition-all">
+                                    <i class="fa-solid fa-location-dot absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                                </div>
+                            </div>
+
+                            <!-- About Company Textarea (Optional, max 3000) -->
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between items-center">
+                                    <label for="input-company-about" class="text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                                        About The Company / Brief Overview
+                                    </label>
+                                    <span class="text-[10px] text-slate-400 font-bold" id="about-char-counter">0 / 3000 characters</span>
+                                </div>
+                                <textarea id="input-company-about" rows="4" maxlength="3000" oninput="updateAboutCharCounter()" placeholder="Write a summary about your company's sector, mission, and operational domain..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-xs font-semibold dark:text-white focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight transition-all leading-relaxed"></textarea>
+                            </div>
+
+                            <!-- Form Action Buttons -->
+                            <div class="pt-6 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end gap-3">
+                                <button type="button" id="btn-cancel-company-edit" onclick="cancelCompanyEditMode()" class="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
+                                    Cancel
+                                </button>
+                                <button type="submit" class="px-6 py-2.5 bg-khubrat-blue dark:bg-khubrat-goldLight text-white dark:text-khubrat-blue font-extrabold text-xs rounded-xl shadow-md flex items-center gap-2 hover:opacity-95 transition-all hover:scale-105 active:scale-95">
+                                    <i class="fa-solid fa-floppy-disk text-sm"></i>
+                                    <span>Save Profile Changes</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+
+                <!-- ================= PAGE 1: POLICY CONFIGURATION (EMPTY) ================= -->
+                <div id="main-panel-policy" class="main-workspace-panel hidden max-w-7xl mx-auto"></div>
+
+                <!-- ================= PAGE 2: REQUESTS MANAGEMENT (EMPTY) ================= -->
+                <div id="main-panel-requests" class="main-workspace-panel hidden max-w-7xl mx-auto"></div>
+
+                <!-- ================= PAGE 3: ATTENDANCE TRACKER (EMPTY) ================= -->
+                <div id="main-panel-attendance-tracker" class="main-workspace-panel hidden max-w-7xl mx-auto"></div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed bottom-6 left-6 z-50 space-y-3 max-w-sm"></div>
+
+    <!-- SYSTEM SCRIPT CONTROLLER -->
+    <script>
+        // GLOBAL STATE DATABASES
+        let isDarkMode = false;
+        let isSidebarCollapsed = false;
+
+        // COMPANY PROFILE STATE DATABASE (Matched directly to backend OpenAPI schema)
+        let companyProfileData = {
+            id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            name: "Khibrat HR",
+            logo_url: "http://localhost/storage/company_logos/a1b2c3d4-e5f6-7890-abcd-ef1234567890/logo.png",
+            tagline: "شريك التمكين الرقمي المعتمد",
+            about: "نبذة بسيطة عن الشركة ومجال عملها.",
+            phone: "+963111222333",
+            email: "info@khibrat.example",
+            address: "دمشق، منطقة الروضة"
+        };
+
+        // Temporary file upload state indicator
+        let selectedNewLogoFile = null;
+
+        // INITIALIZATION LIFECYCLE
+        window.onload = function() {
+            initSystemTheme();
+            renderCompanyProfileView();
+
+            // Default Page View: Company Profile Page
+            switchMainPage('company-profile');
+        };
+
+        // NAVIGATION SYSTEM BETWEEN PRIMARY PANELS
+        function switchMainPage(pageId) {
+            document.querySelectorAll('.main-workspace-panel').forEach(p => p.classList.add('hidden'));
+            document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
+                btn.className = "sidebar-nav-btn w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 text-left text-white/70 hover:bg-white/5 hover:text-white";
+            });
+
+            const panel = document.getElementById(`main-panel-${pageId}`);
+            if (panel) panel.classList.remove('hidden');
+
+            const btn = document.getElementById(`sidebar-btn-${pageId}`);
+            if (btn) {
+                btn.className = "sidebar-nav-btn w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 text-left bg-khubrat-goldLight/10 text-khubrat-goldLight border-l-4 border-khubrat-goldLight font-bold shadow-inner";
+            }
+
+            const pageTitles = {
+                'company-profile': 'Corporate Company Profile',
+                'policy': 'Company Policy Configuration',
+                'requests': 'Requests Inbox & Decision Ledger',
+                'attendance-tracker': 'Attendance & Activity Tracker'
+            };
+            document.getElementById('page-title').innerText = pageTitles[pageId] || 'Workspace Portal';
+        }
+
+        // ================= COMPANY PROFILE MODULE LOGIC =================
+
+        // Render data from state into the Read-Only View Mode
+        function renderCompanyProfileView() {
+            document.getElementById('view-company-id').innerText = companyProfileData.id || "N/A";
+            document.getElementById('view-company-name').innerText = companyProfileData.name || "Company Name Unset";
+            document.getElementById('view-company-tagline').innerText = companyProfileData.tagline || "No tagline provided";
+            document.getElementById('view-company-email').innerText = companyProfileData.email || "Not specified";
+            document.getElementById('view-company-phone').innerText = companyProfileData.phone || "Not specified";
+            document.getElementById('view-company-address').innerText = companyProfileData.address || "Not specified";
+            document.getElementById('view-company-about').innerText = companyProfileData.about || "No detailed description added yet.";
+
+            // Sidebar email sync
+            const sidebarEmail = document.getElementById('sidebar-user-email');
+            if(sidebarEmail) sidebarEmail.innerText = companyProfileData.email || "info@khibrat.example";
+
+            const logoImg = document.getElementById('view-company-logo');
+            if (companyProfileData.logo_url) {
+                logoImg.src = companyProfileData.logo_url;
+            } else {
+                logoImg.src = `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(companyProfileData.name || 'Khibrat')}`;
+            }
+        }
+
+        // Switch from View Mode into Edit Mode
+        function enterCompanyEditMode() {
+            // Populate form fields with current data
+            document.getElementById('input-company-name').value = companyProfileData.name || '';
+            document.getElementById('input-company-tagline').value = companyProfileData.tagline || '';
+            document.getElementById('input-company-email').value = companyProfileData.email || '';
+            document.getElementById('input-company-phone').value = companyProfileData.phone || '';
+            document.getElementById('input-company-address').value = companyProfileData.address || '';
+            document.getElementById('input-company-about').value = companyProfileData.about || '';
+
+            // Reset logo field selection
+            selectedNewLogoFile = null;
+            document.getElementById('input-logo-file').value = '';
+            document.getElementById('logo-filename-display').innerText = companyProfileData.logo_url ? "Current logo loaded. Choose a file to replace it." : "Omit file to keep current logo.";
+
+            const editLogoPreview = document.getElementById('edit-logo-preview');
+            if (companyProfileData.logo_url) {
+                editLogoPreview.src = companyProfileData.logo_url;
+            } else {
+                editLogoPreview.src = `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(companyProfileData.name || 'Khibrat')}`;
+            }
+
+            updateAboutCharCounter();
+
+            // Toggle view visibility
+            document.getElementById('company-profile-view-mode').classList.add('hidden');
+            document.getElementById('company-profile-edit-mode').classList.remove('hidden');
+
+            // Hide or show cancel button based on whether basic required data exists
+            const hasData = Boolean(companyProfileData.name && companyProfileData.email);
+            const cancelBtn = document.getElementById('btn-cancel-company-edit');
+            if (cancelBtn) {
+                if (!hasData) {
+                    cancelBtn.classList.add('hidden');
+                    document.getElementById('edit-form-heading').innerText = 'Initial Corporate Profile Setup';
+                } else {
+                    cancelBtn.classList.remove('hidden');
+                    document.getElementById('edit-form-heading').innerText = 'Edit Corporate Profile Information';
+                }
+            }
+        }
+
+        // Cancel Edit Mode and return to View Mode
+        function cancelCompanyEditMode() {
+            if (!companyProfileData.name || !companyProfileData.email) {
+                showToast("Please fill in and save the initial profile information.", "warning");
+                return;
+            }
+            document.getElementById('company-profile-edit-mode').classList.add('hidden');
+            document.getElementById('company-profile-view-mode').classList.remove('hidden');
+        }
+
+        // Preview logo when user selects a local file
+        function previewSelectedLogo(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (file.size > 4 * 1024 * 1024) {
+                    showToast("Logo file size exceeds maximum limit of 4MB.", "error");
+                    event.target.value = '';
+                    return;
+                }
+                selectedNewLogoFile = file;
+                document.getElementById('logo-filename-display').innerText = `Selected: ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('edit-logo-preview').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function clearLogoSelection() {
+            selectedNewLogoFile = null;
+            document.getElementById('input-logo-file').value = '';
+            document.getElementById('logo-filename-display').innerText = "Logo file selection cleared.";
+            document.getElementById('edit-logo-preview').src = companyProfileData.logo_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(companyProfileData.name || 'Khibrat')}`;
+        }
+
+        function updateAboutCharCounter() {
+            const val = document.getElementById('input-company-about').value || '';
+            document.getElementById('about-char-counter').innerText = `${val.length} / 3000 characters`;
+        }
+
+        // Handle profile submit (Simulating PUT request)
+        function handleCompanyProfileSubmit(event) {
+            event.preventDefault();
+
+            const name = document.getElementById('input-company-name').value.trim();
+            const phone = document.getElementById('input-company-phone').value.trim();
+            const email = document.getElementById('input-company-email').value.trim();
+            const address = document.getElementById('input-company-address').value.trim();
+            const tagline = document.getElementById('input-company-tagline').value.trim();
+            const about = document.getElementById('input-company-about').value.trim();
+
+            if (!name || !phone || !email || !address) {
+                showToast("Please complete all required fields (*)", "error");
+                return;
+            }
+
+            // Update State
+            companyProfileData.name = name;
+            companyProfileData.phone = phone;
+            companyProfileData.email = email;
+            companyProfileData.address = address;
+            companyProfileData.tagline = tagline || null;
+            companyProfileData.about = about || null;
+
+            if (selectedNewLogoFile) {
+                // Generate data URL for local preview simulation
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    companyProfileData.logo_url = e.target.result;
+                    finishSaveProcess();
+                };
+                reader.readAsDataURL(selectedNewLogoFile);
+            } else {
+                finishSaveProcess();
+            }
+        }
+
+        function finishSaveProcess() {
+            renderCompanyProfileView();
+            document.getElementById('company-profile-edit-mode').classList.add('hidden');
+            document.getElementById('company-profile-view-mode').classList.remove('hidden');
+            showToast("Company profile updated successfully.", "success");
+        }
+
+        // Demo Toggle Helper: Switch between filled profile vs empty first-time state
+        function toggleCompanyDataState() {
+            const toggleBtnText = document.getElementById('toggle-state-btn-text');
+            
+            if (companyProfileData.name !== "") {
+                // Clear state to simulate empty first-time entry
+                companyProfileData = {
+                    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                    name: "",
+                    logo_url: null,
+                    tagline: "",
+                    about: "",
+                    phone: "",
+                    email: "",
+                    address: ""
+                };
+                toggleBtnText.innerText = "Simulate Saved State";
+                switchMainPage('company-profile');
+                enterCompanyEditMode();
+                showToast("Simulating first-time entry with empty fields.", "info");
+            } else {
+                // Restore default populated data
+                companyProfileData = {
+                    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                    name: "Khibrat HR",
+                    logo_url: "http://localhost/storage/company_logos/a1b2c3d4-e5f6-7890-abcd-ef1234567890/logo.png",
+                    tagline: "شريك التمكين الرقمي المعتمد",
+                    about: "نبذة بسيطة عن الشركة ومجال عملها.",
+                    phone: "+963111222333",
+                    email: "info@khibrat.example",
+                    address: "دمشق، منطقة الروضة"
+                };
+                toggleBtnText.innerText = "Simulate First-Time Entry";
+                renderCompanyProfileView();
+                document.getElementById('company-profile-edit-mode').classList.add('hidden');
+                document.getElementById('company-profile-view-mode').classList.remove('hidden');
+                switchMainPage('company-profile');
+                showToast("Restored saved company profile data.", "success");
+            }
+        }
+
+        // THEME CONTROLLERS
+        function initSystemTheme() {
+            if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                setTheme('dark');
+            } else {
+                setTheme('light');
+            }
+        }
+
+        function toggleTheme() {
+            setTheme(isDarkMode ? 'light' : 'dark');
+        }
+
+        function setTheme(mode) {
+            const themeIcon = document.getElementById('theme-icon');
+            if (mode === 'dark') {
+                document.body.classList.add('dark');
+                isDarkMode = true;
+                localStorage.setItem('theme', 'dark');
+                if (themeIcon) themeIcon.className = 'fa-solid fa-sun text-khubrat-goldLight';
+            } else {
+                document.body.classList.remove('dark');
+                isDarkMode = false;
+                localStorage.setItem('theme', 'light');
+                if (themeIcon) themeIcon.className = 'fa-solid fa-moon text-khubrat-blue';
+            }
+        }
+
+        // SIDEBAR COLLAPSE CONTROL
+        function toggleSidebar() {
+            const sidebar = document.getElementById('main-sidebar');
+            const toggleIcon = document.getElementById('sidebar-toggle-icon');
+            const texts = document.querySelectorAll('.sidebar-text');
+
+            if (isSidebarCollapsed) {
+                sidebar.classList.remove('w-20');
+                sidebar.classList.add('w-72');
+                toggleIcon.className = 'fa-solid fa-chevron-left text-sm';
+                texts.forEach(t => t.classList.remove('hidden'));
+                isSidebarCollapsed = false;
+            } else {
+                sidebar.classList.remove('w-72');
+                sidebar.classList.add('w-20');
+                toggleIcon.className = 'fa-solid fa-chevron-right text-sm';
+                texts.forEach(t => t.classList.add('hidden'));
+                isSidebarCollapsed = true;
+            }
+        }
+
+        // TOAST NOTIFICATION UTILITY
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            const bgColors = {
+                success: 'bg-emerald-600 text-white',
+                error: 'bg-rose-600 text-white',
+                warning: 'bg-amber-500 text-white',
+                info: 'bg-khubrat-blue text-white'
+            };
+            const icons = {
+                success: 'fa-circle-check',
+                error: 'fa-circle-xmark',
+                warning: 'fa-triangle-exclamation',
+                info: 'fa-circle-info'
+            };
+            toast.className = `${bgColors[type] || bgColors.info} px-4 py-3 rounded-xl shadow-lg font-bold text-xs flex items-center gap-2 transition-all duration-300 transform translate-y-2 opacity-0`;
+            toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
+```
+
+تم الشفط الكامل للواجهات غير المطلوبة (الحضور والطلبات والسياسات) وتحويلها إلى عناصر فارغة، مع الحفاظ الكامل والدقيق على واجهة **Company Profile** وجميع خصائصها وتفاعلياتها والوضعين الفاتح والداكن.

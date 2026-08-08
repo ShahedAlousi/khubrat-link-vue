@@ -245,7 +245,9 @@ function roleBadgeClass(staffType) {
             <tr
               v-for="row in filteredStaff"
               :key="`${row.staffType}-${row.id}`"
-              class="border-t border-slate-100 dark:border-slate-700 hover:bg-slate-50/80 dark:hover:bg-slate-900/40 cursor-pointer transition-colors"
+              class="border-t border-slate-100 dark:border-slate-700
+               hover:bg-slate-200/70 dark:hover:bg-slate-900/40 
+               cursor-pointer transition-colors"
               @click="openProfile(row)"
             >
               <td class="px-4 py-3">
@@ -271,8 +273,8 @@ function roleBadgeClass(staffType) {
                   class="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold"
                   :class="
                     row.is_active
-                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                      : 'bg-slate-100 text-slate-500'
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-800/40 dark:text-emerald-300'
+                      : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
                   "
                 >
                   {{ row.is_active ? 'Active' : 'Inactive' }}

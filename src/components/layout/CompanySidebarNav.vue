@@ -14,6 +14,7 @@ const isCollapsed = ref(false)
 const navItems = computed(() => {
   const items = [
     { name: 'company-dashboard', label: 'Dashboard', icon: 'fa-chart-pie' },
+    { name: 'company-profile', label: 'Company Profile', icon: 'fa-building' },
     { name: 'company-policies', label: 'Policy Configuration', icon: 'fa-sliders' },
     { name: 'company-requests', label: 'Requests', icon: 'fa-envelope-open-text' },
     { name: 'company-staff-management', label: 'Staff Management', icon: 'fa-users-gear' },
@@ -24,7 +25,10 @@ const navItems = computed(() => {
 
   return items.filter((item) => {
     if (item.name === 'company-policies') return authStore.canManagePolicies
+    if (item.name === 'company-profile') return authStore.isGeneralManager
+    if (item.name === 'company-evaluations') return authStore.isHR
     return true
+
   })
 })
 

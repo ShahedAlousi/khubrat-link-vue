@@ -123,6 +123,12 @@ const routes = [
         meta: { title: 'Dashboard' }
       },
       {
+        path: 'profile',
+        name: 'company-profile',
+        component: () => import('@/views/company/CompanyProfileView.vue'),
+        meta: { title: 'Company Profile', requiresGeneralManager: true }
+      },
+      {
         path: 'policies',
         name: 'company-policies',
         component: () => import('@/views/company/PolicyConfigurationView.vue'),
@@ -206,6 +212,10 @@ router.beforeEach((to) => {
   }
 
   if (to.meta.requiresRequestViewer && !authStore.canViewRequestDetails) {
+    return { name: 'company-dashboard' }
+  }
+
+  if (to.meta.requiresGeneralManager && !authStore.isGeneralManager) {
     return { name: 'company-dashboard' }
   }
 
