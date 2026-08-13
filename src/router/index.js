@@ -119,7 +119,7 @@ const routes = [
       {
         path: 'dashboard',
         name: 'company-dashboard',
-        component: () => import('@/views/company/CompanyDashboardPlaceholderView.vue'),
+        component: () => import('@/views/company/CompanyDashboardView.vue'),
         meta: { title: 'Dashboard' }
       },
       {
@@ -137,7 +137,7 @@ const routes = [
       {
         path: 'requests',
         name: 'company-requests',
-        component: () => import('@/views/company/CompanyRequestsPlaceholderView.vue'),
+        component: () => import('@/views/company/RequestsManagementView.vue'),
         meta: { title: 'Requests', requiresRequestViewer: true }
       },
       { path: 'staff',

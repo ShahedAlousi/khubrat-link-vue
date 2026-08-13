@@ -27,6 +27,7 @@ const navItems = computed(() => {
     if (item.name === 'company-policies') return authStore.canManagePolicies
     if (item.name === 'company-profile') return authStore.isGeneralManager
     if (item.name === 'company-evaluations') return authStore.isHR
+    if (item.name === 'company-requests') return authStore.canViewRequestDetails
     return true
 
   })

@@ -1,0 +1,459 @@
+ "/api/management/advances": {
+            "get": {
+                "tags": [
+                    "Management Advances"
+                ],
+                "summary": "List salary advance requests for managers and HR",
+                "operationId": "adb35fdd21822a622170726fa2b39929",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pending",
+                                "pending_department_manager",
+                                "pending_hr",
+                                "approved",
+                                "rejected_by_manager",
+                                "rejected_by_hr",
+                                "paid_off"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated advance requests"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/management/advances/{id}": {
+            "get": {
+                "tags": [
+                    "Management Advances"
+                ],
+                "summary": "Get detailed information about a salary advance request",
+                "operationId": "94a0851ff0442948300ee3845de5062c",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Advance request details"
+                    },
+                    "403": {
+                        "description": "Access denied"
+                    },
+                    "404": {
+                        "description": "Not found"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/management/advances/{id}/action": {
+            "post": {
+                "tags": [
+                    "Management Advances"
+                ],
+                "summary": "Execute a workflow action on a salary advance request",
+                "operationId": "c1378f6cc84dce5847a20c3bfb3e4b49",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "action",
+                                    "role_context"
+                                ],
+                                "properties": {
+                                    "action": {
+                                        "type": "string",
+                                        "enum": [
+                                            "approve",
+                                            "reject"
+                                        ]
+                                    },
+                                    "role_context": {
+                                        "type": "string",
+                                        "enum": [
+                                            "manager",
+                                            "hr"
+                                        ]
+                                    },
+                                    "rejection_reason": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Action executed successfully"
+                    },
+                    "403": {
+                        "description": "Unauthorized role or company mismatch"
+                    },
+                    "404": {
+                        "description": "Salary advance request not found"
+                    },
+                    "422": {
+                        "description": "Invalid workflow state"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/management/advances/{id}/installments/{installmentId}/pay": {
+            "post": {
+                "tags": [
+                    "Management Advances"
+                ],
+                "summary": "Mark a salary advance installment as paid",
+                "operationId": "c37a4157f90e97e88839ce9db353efec",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "installmentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Installment marked as paid"
+                    },
+                    "403": {
+                        "description": "HR only"
+                    },
+                    "422": {
+                        "description": "Invalid installment state"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+              "/api/management/leaves/inbox": {
+            "get": {
+                "tags": [
+                    "Management Leaves"
+                ],
+                "summary": "Inbox of leave requests awaiting the current reviewer's decision",
+                "operationId": "2a47b0ce1da92ef181e81b52024e36e0",
+                "responses": {
+                    "200": {
+                        "description": "Pending leave requests for the authenticated manager or HR",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "employee_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "department_name": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "leave_type_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "start_date": {
+                                                        "type": "string",
+                                                        "format": "date"
+                                                    },
+                                                    "end_date": {
+                                                        "type": "string",
+                                                        "format": "date"
+                                                    },
+                                                    "duration_days": {
+                                                        "type": "integer"
+                                                    },
+                                                    "reason": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    },
+                                                    "status": {
+                                                        "type": "string"
+                                                    },
+                                                    "remaining_balance_days": {
+                                                        "type": "integer"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/management/leaves/{id}/action": {
+            "post": {
+                "tags": [
+                    "Management Leaves"
+                ],
+                "summary": "Execute a workflow action on a leave request",
+                "operationId": "3f51fcf7b35f902d3dba4a4bd080845f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "action",
+                                    "role_context"
+                                ],
+                                "properties": {
+                                    "action": {
+                                        "type": "string",
+                                        "enum": [
+                                            "approve",
+                                            "reject"
+                                        ]
+                                    },
+                                    "role_context": {
+                                        "type": "string",
+                                        "enum": [
+                                            "manager",
+                                            "hr"
+                                        ]
+                                    },
+                                    "rejection_reason": {
+                                        "type": "string",
+                                        "example": "Insufficient coverage",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Action executed successfully"
+                    },
+                    "403": {
+                        "description": "Unauthorized role or company mismatch"
+                    },
+                    "422": {
+                        "description": "Invalid workflow state"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/management/overtime": {
+            "get": {
+                "tags": [
+                    "Management Overtime"
+                ],
+                "summary": "List overtime requests awaiting review (manager/HR inbox)",
+                "operationId": "2c28fd5d63c303d054794ae61b492433",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated overtime requests"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/management/overtime/{id}": {
+            "get": {
+                "tags": [
+                    "Management Overtime"
+                ],
+                "summary": "Get overtime request details",
+                "operationId": "d6d548d381b5e553627d69b96bf7058e",
+                "responses": {
+                    "200": {
+                        "description": "Overtime request details"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/management/overtime/{id}/action": {
+            "post": {
+                "tags": [
+                    "Management Overtime"
+                ],
+                "summary": "Approve or reject an overtime request",
+                "operationId": "60e33fc934e01fef57326f6ef15d37fa",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "action",
+                                    "role_context"
+                                ],
+                                "properties": {
+                                    "action": {
+                                        "type": "string",
+                                        "enum": [
+                                            "approve",
+                                            "reject"
+                                        ]
+                                    },
+                                    "role_context": {
+                                        "type": "string",
+                                        "enum": [
+                                            "manager",
+                                            "hr"
+                                        ]
+                                    },
+                                    "hours_approved": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "rejection_reason": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "review_notes": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Action executed successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },

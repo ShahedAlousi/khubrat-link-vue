@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khubrat HR Platform - Requests Management Portal</title>
+    <!-- Google Fonts - Open Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        khubrat: {
+                            blue: '#002173', // RGB(0, 33, 115)
+                            goldLight: '#FCD88A', // RGB(252, 216, 138)
+                            goldDark: '#835C21', // RGB(131, 92, 33)
+                            darkBg: '#0f172a',
+                            darkCard: '#1e293b'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Open Sans"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar matching identity */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 33, 115, 0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #835C21;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #FCD88A;
+        }
+        .gradient-brand {
+            background: linear-gradient(135deg, #002173 0%, #001242 100%);
+        }
+        .gold-glow {
+            box-shadow: 0 0 15px rgba(252, 216, 138, 0.25);
+        }
+        .transition-sidebar {
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* Hover outline glow on form elements */
+        input:hover, select:hover, textarea:hover {
+            border-color: #835C21 !important;
+            box-shadow: 0 0 6px rgba(131, 92, 33, 0.25);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col">
+
+    <!-- App Wrapper -->
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- SIDEBAR -->
+        <aside id="main-sidebar" class="w-72 gradient-brand text-white flex flex-col flex-shrink-0 border-r border-khubrat-goldDark/20 z-20 transition-sidebar relative">
+            <!-- Sidebar Header with Logo -->
+            <div class="p-6 border-b border-white/10 flex items-center justify-between gap-3 overflow-hidden">
+                <div class="flex items-center gap-3">
+                    <!-- SVG Logo matching branding -->
+                    <div class="w-10 h-10 flex-shrink-0 bg-[#002173] rounded-lg p-1 border border-khubrat-goldLight/50 gold-glow flex items-center justify-center">
+                        <svg viewBox="0 0 100 100" class="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="15" y="15" width="70" height="70" rx="18" stroke="#FCD88A" stroke-width="8" />
+                            <path d="M 33 60 L 53 40 M 53 40 L 73 25 M 33 33 L 73 73" stroke="#FCD88A" stroke-width="8" stroke-linecap="round" />
+                            <circle cx="65" cy="72" r="14" stroke="#FCD88A" stroke-width="8" fill="#002173" />
+                            <path d="M 72 79 L 83 90" stroke="#FCD88A" stroke-width="8" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <div class="sidebar-text">
+                        <h1 class="text-lg font-extrabold tracking-wider text-khubrat-goldLight">KHUBRAT</h1>
+                        <span class="text-[10px] text-white/60 tracking-widest font-semibold block">HR PLATFORM</span>
+                    </div>
+                </div>
+                <!-- Toggle Sidebar collapse button -->
+                <button onclick="toggleSidebar()" class="text-white/60 hover:text-khubrat-goldLight p-1 rounded">
+                    <i id="sidebar-toggle-icon" class="fa-solid fa-chevron-left text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+                <button onclick="showToast('Dashboard overview screen', 'info')" class="w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 text-left text-white/70 hover:bg-white/5 hover:text-white">
+                    <i class="fa-solid fa-chart-pie text-lg w-6 text-center"></i>
+                    <span class="sidebar-text font-semibold text-sm">Dashboard</span>
+                </button>
+
+                <button id="sidebar-btn-requests" class="sidebar-nav-btn w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 text-left bg-khubrat-goldLight/10 text-khubrat-goldLight border-l-4 border-khubrat-goldLight">
+                    <i class="fa-solid fa-envelope-open-text text-lg w-6 text-center"></i>
+                    <span class="sidebar-text font-semibold text-sm">Requests Management</span>
+                </button>
+            </nav>
+
+            <!-- Bottom Brand Info -->
+            <div class="p-4 border-t border-white/10 bg-black/20 overflow-hidden">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-khubrat-goldDark flex items-center justify-center text-white font-bold text-sm">
+                        AD
+                    </div>
+                    <div class="sidebar-text">
+                        <p class="text-xs font-bold text-khubrat-goldLight">Tenant Admin</p>
+                        <p class="text-[10px] text-white/50">hr@syriacompany.com</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
+            
+            <!-- HEADER -->
+            <header class="h-20 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-8 flex items-center justify-between z-10">
+                <div class="flex items-center gap-4">
+                    <h2 id="page-title" class="text-xl font-bold text-khubrat-blue dark:text-khubrat-goldLight">Requests Inbox & Decision Ledger</h2>
+                </div>
+                
+                <!-- Quick Controls -->
+                <div class="flex items-center gap-4">
+                    <!-- Theme Toggle Shortcut -->
+                    <button onclick="toggleTheme()" class="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 transition-all duration-150" title="Toggle Theme Mode">
+                        <i id="theme-icon" class="fa-solid fa-moon"></i>
+                    </button>
+
+                    <!-- Language Badge -->
+                    <div class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-200">
+                        <i class="fa-solid fa-globe"></i>
+                        <span>EN</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- VIEW CONTAINER -->
+            <div class="flex-1 overflow-y-auto p-8" id="view-container">
+
+                <!-- REQUESTS MANAGEMENT PANEL -->
+                <div id="main-panel-requests" class="main-workspace-panel space-y-6 max-w-7xl mx-auto">
+                    
+                    <!-- HIGH-LEVEL STATS ROW -->
+                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        <!-- Stat 1: Pending Inbox -->
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
+                            <div class="space-y-1">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Awaiting Decision</p>
+                                <h3 id="stats-pending-count" class="text-2xl font-black text-amber-500">4</h3>
+                                <p class="text-[10px] text-slate-500 font-semibold">Action required immediately</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400 text-xl">
+                                <i class="fa-solid fa-hourglass-half"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Stat 2: Resolved Today -->
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
+                            <div class="space-y-1">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Resolved Requests</p>
+                                <h3 id="stats-resolved-count" class="text-2xl font-black text-emerald-500">0</h3>
+                                <p class="text-[10px] text-slate-500 font-semibold">Processed in active log</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 text-xl">
+                                <i class="fa-solid fa-square-check"></i>
+                            </div>
+                        </div>
+
+                        <!-- Stat 3 & 4: Weekly Acceptance Chart Representation -->
+                        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm lg:col-span-2 flex flex-col justify-between">
+                            <div class="flex justify-between items-center mb-1">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Weekly Decision Ratio</p>
+                                <span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded">75% Acceptance rate</span>
+                            </div>
+                            <!-- Clean SVG representation of Acceptance vs Rejection weekly chart -->
+                            <div class="h-10 w-full flex items-end gap-1.5 pt-1">
+                                <div class="flex-1 bg-slate-100 dark:bg-slate-700 h-full rounded-md relative group overflow-hidden flex flex-col justify-end">
+                                    <div class="bg-emerald-500 h-[80%] w-full" title="Mon: 80% Accept"></div>
+                                    <div class="bg-rose-500 h-[20%] w-full" title="Mon: 20% Reject"></div>
+                                </div>
+                                <div class="flex-1 bg-slate-100 dark:bg-slate-700 h-full rounded-md relative group overflow-hidden flex flex-col justify-end">
+                                    <div class="bg-emerald-500 h-[65%] w-full" title="Tue: 65% Accept"></div>
+                                    <div class="bg-rose-500 h-[35%] w-full" title="Tue: 35% Reject"></div>
+                                </div>
+                                <div class="flex-1 bg-slate-100 dark:bg-slate-700 h-full rounded-md relative group overflow-hidden flex flex-col justify-end">
+                                    <div class="bg-emerald-500 h-[90%] w-full" title="Wed: 90% Accept"></div>
+                                    <div class="bg-rose-500 h-[10%] w-full" title="Wed: 10% Reject"></div>
+                                </div>
+                                <div class="flex-1 bg-slate-100 dark:bg-slate-700 h-full rounded-md relative group overflow-hidden flex flex-col justify-end">
+                                    <div class="bg-emerald-500 h-[70%] w-full" title="Thu: 70% Accept"></div>
+                                    <div class="bg-rose-500 h-[30%] w-full" title="Thu: 30% Reject"></div>
+                                </div>
+                                <div class="flex-1 bg-slate-100 dark:bg-slate-700 h-full rounded-md relative group overflow-hidden flex flex-col justify-end">
+                                    <div class="bg-emerald-500 h-[75%] w-full" title="Fri: 75% Accept"></div>
+                                    <div class="bg-rose-500 h-[25%] w-full" title="Fri: 25% Reject"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- WORKSPACE FILTER & CONTROLS -->
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row gap-4 items-center justify-between shadow-sm">
+                        
+                        <!-- Tabs inside Requests Page: Pending vs Archived History -->
+                        <div class="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <button onclick="switchRequestSubTab('pending')" id="req-subtab-btn-pending" class="px-4 py-2 text-xs font-bold rounded-lg bg-khubrat-blue text-white dark:bg-khubrat-goldLight dark:text-khubrat-blue transition-all">Pending Box</button>
+                            <button onclick="switchRequestSubTab('history')" id="req-subtab-btn-history" class="px-4 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 rounded-lg transition-all">Decision Log History</button>
+                        </div>
+
+                        <!-- Type Filters and Display view swapper -->
+                        <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end">
+                            <select id="req-type-filter" onchange="filterAndRenderRequests()" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none transition-all cursor-pointer dark:text-white">
+                                <option value="all">All Request Types</option>
+                                <option value="advance">Advances (السلف)</option>
+                                <option value="leave">Leaves (الإجازات)</option>
+                                <option value="permission">Permissions (الأذونات)</option>
+                                <option value="overtime">Overtime (العمل الإضافي)</option>
+                            </select>
+
+                            <!-- View Swapper: List vs Grid Icons -->
+                            <div class="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700 gap-1">
+                                <button onclick="setRequestsViewStyle('list')" id="req-view-btn-list" class="p-2 text-xs rounded-lg transition-all bg-white dark:bg-slate-800 shadow-sm text-khubrat-blue dark:text-khubrat-goldLight"><i class="fa-solid fa-list-ul"></i></button>
+                                <button onclick="setRequestsViewStyle('grid')" id="req-view-btn-grid" class="p-2 text-xs rounded-lg transition-all text-slate-400"><i class="fa-solid fa-grip-vertical"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DYNAMIC REQUESTS LISTING (GRID / LIST CONTAINER) -->
+                    <div id="requests-listing-container" class="grid grid-cols-1 gap-4 transition-all duration-300">
+                        <!-- Loaded dynamically via javascript -->
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MODALS & DRAWERS SECTION -->
+
+    <!-- SLIDE-OVER DRAWER FOR DETAILED REQUEST INFO -->
+    <div id="request-drawer" class="hidden fixed inset-0 z-50 overflow-hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+        <div class="absolute inset-0 overflow-hidden">
+            <!-- Background overlay -->
+            <div class="absolute inset-0 bg-black/55 backdrop-blur-xs transition-opacity duration-300" onclick="closeRequestDrawer()"></div>
+            
+            <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+                <div class="pointer-events-auto w-screen max-w-md transform transition-transform duration-300 ease-in-out translate-x-0 bg-white dark:bg-slate-800 shadow-2xl flex flex-col">
+                    
+                    <!-- Drawer Header -->
+                    <div class="bg-khubrat-blue text-white p-6 border-b border-khubrat-goldLight/20">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-md font-extrabold text-khubrat-goldLight uppercase tracking-wider">Request Details File</h2>
+                            <button onclick="closeRequestDrawer()" class="text-white/60 hover:text-white transition-all"><i class="fa-solid fa-xmark text-lg"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Drawer Content Body -->
+                    <div class="flex-1 overflow-y-auto p-6 space-y-6 text-sm" id="drawer-body-container">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+
+                    <!-- Drawer Footer Decisions Actions -->
+                    <div class="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex gap-3" id="drawer-footer-actions">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROMPT/MODAL FOR SUBMITTING REJECTION EXPLANATION REASON -->
+    <div id="rejection-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in duration-150">
+            <div class="bg-khubrat-blue text-white p-6 flex justify-between items-center">
+                <div>
+                    <h3 class="text-md font-extrabold text-khubrat-goldLight">State Reason for Rejection</h3>
+                    <p class="text-[10px] text-white/60">Provide transparency feedback explaining decision bounds.</p>
+                </div>
+                <button onclick="closeRejectionModal()" class="text-white/60 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="rejection-target-id">
+                
+                <!-- Quick Rejection Response Snippets -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-400">Quick Response Snippets</label>
+                    <div class="flex flex-wrap gap-2 pt-1">
+                        <button onclick="applyRejectionSnippet('بسبب ضغط العمل المتزايد في هذه الفترة الحالية.')" class="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-khubrat-goldDark dark:hover:border-khubrat-goldLight rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 transition-all">High Workload</button>
+                        <button onclick="applyRejectionSnippet('تجاوز الحد الأقصى المسموح به للسلف المالية المتاحة.')" class="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-khubrat-goldDark dark:hover:border-khubrat-goldLight rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 transition-all">Advance Overlimit</button>
+                        <button onclick="applyRejectionSnippet('يرجى إرفاق الوثيقة الرسمية أو مستند الإثبات لتأكيد الحالة.')" class="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-khubrat-goldDark dark:hover:border-khubrat-goldLight rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 transition-all">Proof Required</button>
+                        <button onclick="applyRejectionSnippet('تداخل توقيت الخروج مع مهام أو تسليمات عاجلة للقسم.')" class="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-khubrat-goldDark dark:hover:border-khubrat-goldLight rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 transition-all">Schedule Conflict</button>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-400">Custom Explanation Notes</label>
+                    <textarea id="rejection-text-input" rows="3" required placeholder="Write custom rejection details here..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight dark:text-white transition-all"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-3">
+                    <button onclick="closeRejectionModal()" class="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-300">Cancel</button>
+                    <button onclick="submitRejectionAction()" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all">Submit Rejection</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION BANNER -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- SCRIPT PROGRAM LOGIC -->
+    <script>
+        // STATE STORAGE DATA STRUCTURES
+        let isDarkMode = false;
+        let isSidebarCollapsed = false;
+
+        // REQUESTS STATE DATABASES
+        let activeRequestsTab = 'pending'; // 'pending' vs 'history'
+        let requestsViewStyle = 'list'; // 'list' vs 'grid'
+
+        let requests = [
+            {
+                id: "req-1",
+                employeeName: "Samer Al-Khaled",
+                employeeAvatar: "https://api.dicebear.com/7.x/initials/svg?seed=Samer&backgroundColor=002173",
+                type: "advance",
+                status: "pending",
+                baseMonthlySalary: 1200,
+                requestedAmount: 600,
+                submissionDate: "2026-06-25",
+                rejectionReason: ""
+            },
+            {
+                id: "req-2",
+                employeeName: "Lina Masri",
+                employeeAvatar: "https://api.dicebear.com/7.x/initials/svg?seed=Lina&backgroundColor=835C21",
+                type: "leave",
+                status: "pending",
+                leaveType: "Sick Leave (المرض)",
+                startDate: "2026-07-02",
+                endDate: "2026-07-05",
+                daysCount: 3,
+                reason: "Scheduled dental surgery requiring rest.",
+                attachment: "medical_cert_linamasri.pdf",
+                freePaidLeavesRemaining: 11,
+                unpaidFreeLeavesTaken: 2,
+                submissionDate: "2026-06-26",
+                rejectionReason: ""
+            },
+            {
+                id: "req-3",
+                employeeName: "Youssef Harb",
+                employeeAvatar: "https://api.dicebear.com/7.x/initials/svg?seed=Youssef&backgroundColor=0f172a",
+                type: "permission",
+                status: "pending",
+                date: "2026-06-30",
+                hours: 2,
+                checkoutTime: "11:30 AM",
+                reason: "Emergency appointment at the local passport branch.",
+                submissionDate: "2026-06-27",
+                rejectionReason: ""
+            },
+            {
+                id: "req-4",
+                employeeName: "Mona Ghandour",
+                employeeAvatar: "https://api.dicebear.com/7.x/initials/svg?seed=Mona&backgroundColor=FCD88A",
+                type: "overtime",
+                status: "pending",
+                date: "2026-07-01",
+                hours: 4,
+                startTime: "05:00 PM",
+                reason: "Finalizing payroll audit tables for the end-of-quarter target.",
+                submissionDate: "2026-06-28",
+                rejectionReason: ""
+            }
+        ];
+
+        window.onload = function() {
+            initSystemTheme();
+            filterAndRenderRequests();
+            recalculateRequestsStats();
+        };
+
+        // Theme controllers
+        function initSystemTheme() {
+            if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                setTheme('dark');
+            } else {
+                setTheme('light');
+            }
+        }
+
+        function toggleTheme() {
+            setTheme(isDarkMode ? 'light' : 'dark');
+        }
+
+        function setTheme(mode) {
+            const themeIcon = document.getElementById('theme-icon');
+            if (mode === 'dark') {
+                document.body.classList.add('dark');
+                isDarkMode = true;
+                localStorage.setItem('theme', 'dark');
+                if (themeIcon) themeIcon.className = 'fa-solid fa-sun text-khubrat-goldLight';
+            } else {
+                document.body.classList.remove('dark');
+                isDarkMode = false;
+                localStorage.setItem('theme', 'light');
+                if (themeIcon) themeIcon.className = 'fa-solid fa-moon text-khubrat-blue';
+            }
+        }
+
+        // Sidebar collapse control
+        function toggleSidebar() {
+            const sidebar = document.getElementById('main-sidebar');
+            const toggleIcon = document.getElementById('sidebar-toggle-icon');
+            const texts = document.querySelectorAll('.sidebar-text');
+
+            if (isSidebarCollapsed) {
+                sidebar.classList.remove('w-20');
+                sidebar.classList.add('w-72');
+                toggleIcon.className = 'fa-solid fa-chevron-left text-sm';
+                texts.forEach(t => t.classList.remove('hidden'));
+                isSidebarCollapsed = false;
+            } else {
+                sidebar.classList.remove('w-72');
+                sidebar.classList.add('w-20');
+                toggleIcon.className = 'fa-solid fa-chevron-right text-sm';
+                texts.forEach(t => t.classList.add('hidden'));
+                isSidebarCollapsed = true;
+            }
+        }
+
+        // SUBTAB CONTROLLERS FOR REQUESTS (PENDING VS LOG HISTORY)
+        function switchRequestSubTab(tab) {
+            activeRequestsTab = tab;
+            
+            const pendingBtn = document.getElementById('req-subtab-btn-pending');
+            const historyBtn = document.getElementById('req-subtab-btn-history');
+
+            if (tab === 'pending') {
+                pendingBtn.className = "px-4 py-2 text-xs font-bold rounded-lg bg-khubrat-blue text-white dark:bg-khubrat-goldLight dark:text-khubrat-blue transition-all shadow-sm";
+                historyBtn.className = "px-4 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 rounded-lg transition-all";
+            } else {
+                historyBtn.className = "px-4 py-2 text-xs font-bold rounded-lg bg-khubrat-blue text-white dark:bg-khubrat-goldLight dark:text-khubrat-blue transition-all shadow-sm";
+                pendingBtn.className = "px-4 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 rounded-lg transition-all";
+            }
+
+            filterAndRenderRequests();
+        }
+
+        // VIEW STYLE SWITCHER (GRID VS LIST)
+        function setRequestsViewStyle(style) {
+            requestsViewStyle = style;
+            const container = document.getElementById('requests-listing-container');
+            const listBtn = document.getElementById('req-view-btn-list');
+            const gridBtn = document.getElementById('req-view-btn-grid');
+
+            if (style === 'grid') {
+                container.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 transition-all duration-300";
+                gridBtn.className = "p-2 text-xs rounded-lg transition-all bg-white dark:bg-slate-800 shadow-sm text-khubrat-blue dark:text-khubrat-goldLight";
+                listBtn.className = "p-2 text-xs rounded-lg transition-all text-slate-400";
+            } else {
+                container.className = "grid grid-cols-1 gap-4 transition-all duration-300";
+                listBtn.className = "p-2 text-xs rounded-lg transition-all bg-white dark:bg-slate-800 shadow-sm text-khubrat-blue dark:text-khubrat-goldLight";
+                gridBtn.className = "p-2 text-xs rounded-lg transition-all text-slate-400";
+            }
+
+            filterAndRenderRequests();
+        }
+
+        // FILTER AND RENDER REQUESTS
+        function filterAndRenderRequests() {
+            const container = document.getElementById('requests-listing-container');
+            const selectedType = document.getElementById('req-type-filter').value;
+
+            const filtered = requests.filter(req => {
+                const matchesTab = activeRequestsTab === 'pending' ? req.status === 'pending' : req.status !== 'pending';
+                const matchesType = selectedType === 'all' || req.type === selectedType;
+                return matchesTab && matchesType;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white dark:bg-slate-800 p-12 rounded-2xl border border-slate-200 dark:border-slate-700 text-center space-y-3">
+                        <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center mx-auto text-slate-400 text-2xl">
+                            <i class="fa-solid fa-folder-open"></i>
+                        </div>
+                        <h4 class="text-sm font-bold text-slate-700 dark:text-slate-200">No requests match this view</h4>
+                        <p class="text-xs text-slate-400 max-w-sm mx-auto">There are currently no ${activeRequestsTab === 'pending' ? 'pending' : 'resolved'} requests for the chosen filter criteria.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(req => renderRequestItem(req)).join('');
+        }
+
+        function renderRequestItem(req) {
+            const typeBadges = {
+                'advance': '<span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-hand-holding-dollar mr-1"></i> Salary Advance</span>',
+                'leave': '<span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"><i class="fa-solid fa-plane-departure mr-1"></i> Leave Request</span>',
+                'permission': '<span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"><i class="fa-solid fa-door-open mr-1"></i> Exit Permission</span>',
+                'overtime': '<span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"><i class="fa-solid fa-clock mr-1"></i> Overtime Request</span>'
+            };
+
+            const statusBadges = {
+                'pending': '<span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20"><i class="fa-solid fa-spinner animate-spin mr-1"></i> Pending</span>',
+                'approved': '<span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"><i class="fa-solid fa-check mr-1"></i> Approved</span>',
+                'rejected': '<span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20"><i class="fa-solid fa-xmark mr-1"></i> Rejected</span>'
+            };
+
+            let keyDetailHtml = '';
+            if (req.type === 'advance') {
+                keyDetailHtml = `<span class="text-xs font-black text-slate-800 dark:text-slate-100">$${req.requestedAmount} USD <span class="text-[10px] font-normal text-slate-400">(Base: $${req.baseMonthlySalary})</span></span>`;
+            } else if (req.type === 'leave') {
+                keyDetailHtml = `<span class="text-xs font-black text-slate-800 dark:text-slate-100">${req.daysCount} Days <span class="text-[10px] font-normal text-slate-400">(${req.leaveType})</span></span>`;
+            } else if (req.type === 'permission') {
+                keyDetailHtml = `<span class="text-xs font-black text-slate-800 dark:text-slate-100">${req.hours} Hours <span class="text-[10px] font-normal text-slate-400">(Check-out: ${req.checkoutTime})</span></span>`;
+            } else if (req.type === 'overtime') {
+                keyDetailHtml = `<span class="text-xs font-black text-slate-800 dark:text-slate-100">${req.hours} Hours <span class="text-[10px] font-normal text-slate-400">(Start: ${req.startTime})</span></span>`;
+            }
+
+            if (requestsViewStyle === 'grid') {
+                return `
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <img src="${req.employeeAvatar}" alt="${req.employeeName}" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700">
+                                <div>
+                                    <h4 class="text-sm font-bold text-slate-800 dark:text-slate-100">${req.employeeName}</h4>
+                                    <p class="text-[10px] text-slate-400">Submitted: ${req.submissionDate}</p>
+                                </div>
+                            </div>
+                            ${typeBadges[req.type]}
+                        </div>
+
+                        <div class="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Summary</p>
+                            ${keyDetailHtml}
+                        </div>
+
+                        <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700/60">
+                            ${statusBadges[req.status]}
+                            
+                            <div class="flex items-center gap-2">
+                                <button onclick="openRequestDrawer('${req.id}')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-all">
+                                    Details
+                                </button>
+                                ${req.status === 'pending' ? `
+                                    <button onclick="approveRequest('${req.id}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all">
+                                        Approve
+                                    </button>
+                                    <button onclick="openRejectionModal('${req.id}')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-all">
+                                        Reject
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Default List Row Layout
+            return `
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <img src="${req.employeeAvatar}" alt="${req.employeeName}" class="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-700">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h4 class="text-sm font-bold text-slate-800 dark:text-slate-100">${req.employeeName}</h4>
+                                ${typeBadges[req.type]}
+                            </div>
+                            <div class="mt-1 flex items-center gap-3">
+                                ${keyDetailHtml}
+                                <span class="text-[10px] text-slate-400">• ${req.submissionDate}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 w-full md:w-auto justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 dark:border-slate-700">
+                        ${statusBadges[req.status]}
+
+                        <button onclick="openRequestDrawer('${req.id}')" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all">
+                            View File
+                        </button>
+
+                        ${req.status === 'pending' ? `
+                            <button onclick="approveRequest('${req.id}')" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all">
+                                Approve
+                            </button>
+                            <button onclick="openRejectionModal('${req.id}')" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all">
+                                Reject
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // DRAWER MANAGEMENT
+        function openRequestDrawer(id) {
+            const req = requests.find(r => r.id === id);
+            if (!req) return;
+
+            const drawer = document.getElementById('request-drawer');
+            const body = document.getElementById('drawer-body-container');
+            const footer = document.getElementById('drawer-footer-actions');
+
+            let detailsFields = '';
+            if (req.type === 'advance') {
+                detailsFields = `
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <p class="text-[10px] font-bold text-slate-400">Monthly Base Salary</p>
+                            <p class="text-sm font-black text-slate-800 dark:text-slate-100">$${req.baseMonthlySalary} USD</p>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <p class="text-[10px] font-bold text-slate-400">Requested Advance</p>
+                            <p class="text-sm font-black text-emerald-600 dark:text-emerald-400">$${req.requestedAmount} USD</p>
+                        </div>
+                    </div>
+                `;
+            } else if (req.type === 'leave') {
+                detailsFields = `
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                                <p class="text-[10px] font-bold text-slate-400">Category</p>
+                                <p class="text-xs font-bold text-slate-800 dark:text-slate-100">${req.leaveType}</p>
+                            </div>
+                            <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                                <p class="text-[10px] font-bold text-slate-400">Duration</p>
+                                <p class="text-xs font-bold text-slate-800 dark:text-slate-100">${req.daysCount} Days (${req.startDate} to ${req.endDate})</p>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1">
+                            <p class="text-[10px] font-bold text-slate-400">Reason Note</p>
+                            <p class="text-xs text-slate-600 dark:text-slate-300">${req.reason}</p>
+                        </div>
+                        ${req.attachment ? `
+                            <div class="flex items-center justify-between p-3 bg-blue-50/50 dark:bg-slate-900/50 rounded-xl border border-blue-100 dark:border-slate-700 text-xs">
+                                <span class="font-bold text-khubrat-blue dark:text-khubrat-goldLight"><i class="fa-solid fa-paperclip mr-2"></i> ${req.attachment}</span>
+                                <button onclick="showToast('Downloading document file', 'info')" class="text-khubrat-blue dark:text-khubrat-goldLight hover:underline font-bold">Download</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else if (req.type === 'permission') {
+                detailsFields = `
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                                <p class="text-[10px] font-bold text-slate-400">Permission Date</p>
+                                <p class="text-xs font-bold text-slate-800 dark:text-slate-100">${req.date}</p>
+                            </div>
+                            <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                                <p class="text-[10px] font-bold text-slate-400">Hours & Time</p>
+                                <p class="text-xs font-bold text-slate-800 dark:text-slate-100">${req.hours} Hrs (${req.checkoutTime})</p>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1">
+                            <p class="text-[10px] font-bold text-slate-400">Reason</p>
+                            <p class="text-xs text-slate-600 dark:text-slate-300">${req.reason}</p>
+                        </div>
+                    </div>
+                `;
+            } else if (req.type === 'overtime') {
+                detailsFields = `
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                                <p class="text-[10px] font-bold text-slate-400">Overtime Date</p>
+                                <p class="text-xs font-bold text-slate-800 dark:text-slate-100">${req.date}</p>
+                            </div>
+                            <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                                <p class="text-[10px] font-bold text-slate-400">Hours & Start Time</p>
+                                <p class="text-xs font-bold text-slate-800 dark:text-slate-100">${req.hours} Hrs (${req.startTime})</p>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1">
+                            <p class="text-[10px] font-bold text-slate-400">Task Details</p>
+                            <p class="text-xs text-slate-600 dark:text-slate-300">${req.reason}</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            body.innerHTML = `
+                <div class="flex items-center gap-4 pb-4 border-b border-slate-100 dark:border-slate-700">
+                    <img src="${req.employeeAvatar}" alt="${req.employeeName}" class="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-700">
+                    <div>
+                        <h3 class="text-base font-extrabold text-slate-800 dark:text-slate-100">${req.employeeName}</h3>
+                        <p class="text-xs text-slate-400">Submitted on ${req.submissionDate}</p>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <p class="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Request Parameters</p>
+                    ${detailsFields}
+                </div>
+
+                ${req.rejectionReason ? `
+                    <div class="p-4 bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-2xl space-y-1">
+                        <p class="text-xs font-bold text-rose-600 dark:text-rose-400"><i class="fa-solid fa-circle-xmark mr-1"></i> Rejection Explanation Note</p>
+                        <p class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">${req.rejectionReason}</p>
+                    </div>
+                ` : ''}
+            `;
+
+            if (req.status === 'pending') {
+                footer.innerHTML = `
+                    <button onclick="approveRequest('${req.id}')" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm">
+                        Approve Request
+                    </button>
+                    <button onclick="openRejectionModal('${req.id}')" class="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm">
+                        Reject Request
+                    </button>
+                `;
+            } else {
+                footer.innerHTML = `
+                    <button onclick="closeRequestDrawer()" class="w-full py-2.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-800 dark:text-slate-100 rounded-xl text-xs font-bold transition-all">
+                        Close Details File
+                    </button>
+                `;
+            }
+
+            drawer.classList.remove('hidden');
+        }
+
+        function closeRequestDrawer() {
+            document.getElementById('request-drawer').classList.add('hidden');
+        }
+
+        // DECISION ACTIONS LOGIC
+        function approveRequest(id) {
+            const req = requests.find(r => r.id === id);
+            if (!req) return;
+
+            req.status = 'approved';
+            closeRequestDrawer();
+            filterAndRenderRequests();
+            recalculateRequestsStats();
+            showToast(`Request for ${req.employeeName} has been approved successfully!`, 'success');
+        }
+
+        function openRejectionModal(id) {
+            document.getElementById('rejection-target-id').value = id;
+            document.getElementById('rejection-text-input').value = '';
+            document.getElementById('rejection-modal').classList.remove('hidden');
+        }
+
+        function closeRejectionModal() {
+            document.getElementById('rejection-modal').classList.add('hidden');
+        }
+
+        function applyRejectionSnippet(text) {
+            document.getElementById('rejection-text-input').value = text;
+        }
+
+        function submitRejectionAction() {
+            const id = document.getElementById('rejection-target-id').value;
+            const reason = document.getElementById('rejection-text-input').value.trim();
+
+            if (!reason) {
+                showToast('Please provide or choose a reason for rejection.', 'error');
+                return;
+            }
+
+            const req = requests.find(r => r.id === id);
+            if (!req) return;
+
+            req.status = 'rejected';
+            req.rejectionReason = reason;
+
+            closeRejectionModal();
+            closeRequestDrawer();
+            filterAndRenderRequests();
+            recalculateRequestsStats();
+            showToast(`Request for ${req.employeeName} has been rejected.`, 'error');
+        }
+
+        function recalculateRequestsStats() {
+            const pendingCount = requests.filter(r => r.status === 'pending').length;
+            const resolvedCount = requests.filter(r => r.status !== 'pending').length;
+
+            document.getElementById('stats-pending-count').innerText = pendingCount;
+            document.getElementById('stats-resolved-count').innerText = resolvedCount;
+        }
+
+        // TOAST NOTIFICATIONS HELPER
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            let bgStyle = 'bg-slate-800 text-white';
+            if (type === 'success') bgStyle = 'bg-emerald-600 text-white';
+            if (type === 'error') bgStyle = 'bg-rose-600 text-white';
+
+            toast.className = `px-4 py-3 rounded-xl shadow-xl font-bold text-xs flex items-center gap-2 transition-all transform translate-y-2 animate-in fade-in ${bgStyle}`;
+            toast.innerHTML = `<span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
