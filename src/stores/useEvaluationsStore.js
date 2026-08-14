@@ -17,7 +17,8 @@ export const useEvaluationsStore = defineStore('evaluations', () => {
   const currentTemplate = ref(null)
 
   const scorableEmployees = ref([])
-  const scoringDetails = ref(null)
+  // GET /scoring يعيد مصفوفة مراجعات (reviews) وليس كائناً واحداً
+  const scoringDetails = ref([])
   const finalResults = ref([])
 
   // حالات التحميل (تم فصلها لتجنب تداخل الـ DOM)
@@ -354,6 +355,21 @@ export const useEvaluationsStore = defineStore('evaluations', () => {
   // توابع الدرجات والتقييم (Scoring Actions)
   // ==========================================================================
 
+  /** Normalize list payloads from { success, data: [...] } or nested envelopes. */
+  function unwrapList(payload) {
+    const raw = payload?.data?.data ?? payload?.data ?? payload
+    return Array.isArray(raw) ? raw : []
+  }
+
+  /** Normalize a single resource from { success, data: {...} }. */
+  function unwrapItem(payload) {
+    if (payload == null) return null
+    if (payload.data != null && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
+      return payload.data
+    }
+    return payload
+  }
+
   /**
    * جلب الموظفين الجاهزين للتقييم
    */
@@ -361,12 +377,12 @@ export const useEvaluationsStore = defineStore('evaluations', () => {
     scoringLoading.value = true
     error.value = null
     try {
-      // تم التصحيح هنا: استخدام evaluationCyclesService بدلاً من evaluationTemplatesService
       const result = await evaluationCyclesService.getScorableEmployees(cycleId)
-      scorableEmployees.value = result.data || result
-      return result
+      scorableEmployees.value = unwrapList(result)
+      return scorableEmployees.value
     } catch (err) {
       error.value = err.message
+      scorableEmployees.value = []
       throw err
     } finally {
       scoringLoading.value = false
@@ -374,18 +390,19 @@ export const useEvaluationsStore = defineStore('evaluations', () => {
   }
 
   /**
-   * جلب تفاصيل التقييم لموظف محدد لوضع الدرجات
+   * جلب أوراق التقييم (reviews) لموظف محدد لوضع الدرجات
+   * GET /hr/evaluation-cycles/{cycle}/scoring?employee_id= → data: Review[]
    */
   async function fetchScoringDetails(cycleId, params) {
     scoringLoading.value = true
     error.value = null
     try {
-      // تم التصحيح هنا
       const result = await evaluationCyclesService.getScoringDetails(cycleId, params)
-      scoringDetails.value = result.data || result
-      return result
+      scoringDetails.value = unwrapList(result)
+      return scoringDetails.value
     } catch (err) {
       error.value = err.message
+      scoringDetails.value = []
       throw err
     } finally {
       scoringLoading.value = false
@@ -393,15 +410,26 @@ export const useEvaluationsStore = defineStore('evaluations', () => {
   }
 
   /**
-   * حفظ درجات الـ HR لتقييم
+   * حفظ درجات الـ HR لورقة تقييم
+   * POST /hr/evaluation-cycles/{cycle}/reviews/{review}/score
+   * body: { scores: [{ answer_id, hr_score }] } → data: Review (مع total_score محدثاً)
    */
   async function submitReviewScore(cycleId, reviewId, payload) {
     ActionLoading.value = true
     error.value = null
     try {
-      // تم التصحيح هنا
       const result = await evaluationCyclesService.storeReviewScore(cycleId, reviewId, payload)
-      return result
+      const updatedReview = unwrapItem(result)
+
+      // تحديث الورقة داخل القائمة بالبيانات العائدة من الباك اند (total_score / hr_score)
+      if (updatedReview?.id) {
+        const idx = scoringDetails.value.findIndex((review) => review.id === updatedReview.id)
+        if (idx !== -1) {
+          scoringDetails.value[idx] = { ...scoringDetails.value[idx], ...updatedReview }
+        }
+      }
+
+      return updatedReview
     } catch (err) {
       error.value = err.message
       throw err
@@ -416,17 +444,18 @@ export const useEvaluationsStore = defineStore('evaluations', () => {
 
   /**
    * جلب النتائج النهائية للدورة
+   * GET /hr/evaluation-cycles/{cycle}/final-results → data: FinalResult[]
    */
   async function fetchFinalResults(cycleId) {
     finalResultsLoading.value = true
     error.value = null
     try {
-      // تم التصحيح هنا
       const result = await evaluationCyclesService.getFinalResults(cycleId)
-      finalResults.value = result.data || result
-      return result
+      finalResults.value = unwrapList(result)
+      return finalResults.value
     } catch (err) {
       error.value = err.message
+      finalResults.value = []
       throw err
     } finally {
       finalResultsLoading.value = false
@@ -434,15 +463,39 @@ export const useEvaluationsStore = defineStore('evaluations', () => {
   }
 
   /**
+   * جلب النتيجة النهائية لموظف واحد
+   * GET /hr/evaluation-cycles/{cycle}/final-results/{employee}
+   */
+  async function fetchEmployeeFinalResult(cycleId, employeeId) {
+    error.value = null
+    try {
+      const result = await evaluationCyclesService.getEmployeeFinalResult(cycleId, employeeId)
+      return unwrapItem(result)
+    } catch (err) {
+      // 404 when not finalized yet is expected — do not surface as a hard error
+      if (err.status === 404) return null
+      error.value = err.message
+      throw err
+    }
+  }
+
+  /**
    * اعتماد النتيجة النهائية لموظف
+   * POST /hr/evaluation-cycles/{cycle}/final-results/{employee}/finalize
+   * → data: FinalResult
    */
   async function finalizeScore(cycleId, employeeId) {
     ActionLoading.value = true
     error.value = null
     try {
-      // تم التصحيح هنا
       const result = await evaluationCyclesService.finalizeEmployeeScore(cycleId, employeeId)
-      return result
+      const item = unwrapItem(result)
+      if (item?.employee_id) {
+        const idx = finalResults.value.findIndex((r) => r.employee_id === item.employee_id)
+        if (idx !== -1) finalResults.value[idx] = item
+        else finalResults.value.push(item)
+      }
+      return item
     } catch (err) {
       error.value = err.message
       throw err
@@ -501,6 +554,7 @@ export const useEvaluationsStore = defineStore('evaluations', () => {
 
     // النتائج النهائية والاعتماد
     fetchFinalResults,
+    fetchEmployeeFinalResult,
     finalizeScore
   }
 })

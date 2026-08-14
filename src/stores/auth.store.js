@@ -41,8 +41,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isGeneralManager = computed(() => userRole.value === 'general_manager')
   const isHrManager = computed(() => userRole.value === 'hr_manager')
   // Alias for hr_manager role checks across the UI
-  const isHr = isHrManager
-
+  const isHr = computed(() => isHrManager.value)
   function hasRole(role) {
     return userRole.value === role
   }

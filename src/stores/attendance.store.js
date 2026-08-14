@@ -9,13 +9,23 @@ import * as attendanceService from '@/services/attendanceService'
 
 export const useAttendanceStore = defineStore('attendance', () => {
 
-  const records = ref([]) // سجلات الصفحة الحالية بعد الفلترة
+  const records = ref([]) // عناصر الروستر لصفحة/فلتر اليوم الحالي (يشمل not_arrived/on_leave أيضاً)
   const meta = ref({ current_page: 1, last_page: 1, per_page: 15, total: 0 })
-  const stats = ref({ present: 0, late: 0, earlyLeave: 0, absent: 0, offDay: 0, totalRecords: 0 })
+  const stats = ref({
+    present: 0,
+    late: 0,
+    earlyLeave: 0,
+    absent: 0,
+    notArrived: 0,
+    onLeave: 0,
+    offDay: 0,
+    totalEmployees: 0,
+    totalRecords: 0,
+  })
 
   const filters = ref({
     date: new Date().toISOString().slice(0, 10), // اليوم الحالي افتراضياً (Daily Attendance Log)
-    date_from: null,
+    date_from: null, // مُستخدَم فقط بطلب /stats (الروستر لا يدعم مدى تاريخي)
     date_to: null,
     department_id: 'all',
     employee_id: null,
@@ -43,23 +53,27 @@ export const useAttendanceStore = defineStore('attendance', () => {
   // --------------------------------------------------------------------
 
   /**
-   * توزيع طريقة توثيق الحضور (بصمة رقمية QR مقابل تعديل يدوي Manual) --
-   * محسوب بالكامل من الفرونت اند اعتماداً على سجلات الصفحة الحالية المُحمَّلة،
-   * لأن الباك اند لا يوفر إحصائية جاهزة لهذا التوزيع (فقط فئات
-   * present/late/absent/early_leave/off_day عبر /stats).
-   * ⚠️ بالتالي هذه النسبة تعكس فقط السجلات المعروضة حالياً (صفحة واحدة من
-   * الـ pagination) وليست شاملة لكل سجلات الشركة/التاريخ المُفلتَر.
+   * توزيع كل فئات الحالة (present/late/early_leave/absent/not_arrived/
+   * on_leave) كنسبة من إجمالي الموظفين النشطين -- محسوب من /stats مباشرة
+   * (وليس من records المعروضة بالصفحة الحالية)، لذلك يعكس اليوم/الفلتر كاملاً
+   * بغض النظر عن الترقيم (pagination).
+   * ⚠️ لاحظي: هذه الفئات مجتمعة يجب أن تساوي تقريباً totalEmployees (كل فئة
+   * تمثّل موظف واحد بحالة واحدة فقط، خلافاً لـ totalRecords اللي معناه مختلف
+   * -- "عدد من عنده صف attendance_records محفوظ فعلياً").
    */
-  const complianceBreakdown = computed(() => {
-    const digital = records.value.filter((r) => r.checkInMethod === 'qr').length
-    const manual = records.value.filter((r) => r.checkInMethod === 'manual').length
-    const totalVerified = digital + manual
+  const statusDistribution = computed(() => {
+    const s = stats.value
+    const total = s.totalEmployees || 0
+    const percentOf = (n) => (total ? Math.round((n / total) * 100) : 0)
     return {
-      digital,
-      manual,
-      totalVerified,
-      digitalPercent: totalVerified ? Math.round((digital / totalVerified) * 100) : 0,
-      manualPercent: totalVerified ? Math.round((manual / totalVerified) * 100) : 0,
+      total,
+      present: s.present, presentPercent: percentOf(s.present),
+      late: s.late, latePercent: percentOf(s.late),
+      earlyLeave: s.earlyLeave, earlyLeavePercent: percentOf(s.earlyLeave),
+      absent: s.absent, absentPercent: percentOf(s.absent),
+      notArrived: s.notArrived, notArrivedPercent: percentOf(s.notArrived),
+      onLeave: s.onLeave, onLeavePercent: percentOf(s.onLeave),
+      offDay: s.offDay, offDayPercent: percentOf(s.offDay),
     }
   })
 
@@ -67,30 +81,40 @@ export const useAttendanceStore = defineStore('attendance', () => {
   // Actions
   // --------------------------------------------------------------------
 
-  /** بناء query params فعلية من كائن الفلاتر (يُستثنى department_id='all') */
-  function buildQueryFromFilters(excludePagination = false) {
+  /** بناء query params لطلب الروستر (لا يدعم date_from/date_to) */
+  function buildRosterQuery() {
     const f = filters.value
-    const query = {
+    return {
+      date: f.date || undefined,
+      department_id: f.department_id && f.department_id !== 'all' ? f.department_id : undefined,
+      employee_id: f.employee_id || undefined,
+      per_page: f.per_page,
+      page: f.page,
+    }
+  }
+
+  /** بناء query params لطلب /stats (لا يدعم employee_id، لكنه يدعم مدى تاريخي) */
+  function buildStatsQuery() {
+    const f = filters.value
+    return {
       date: f.date || undefined,
       date_from: f.date_from || undefined,
       date_to: f.date_to || undefined,
       department_id: f.department_id && f.department_id !== 'all' ? f.department_id : undefined,
-      employee_id: f.employee_id || undefined,
     }
-    if (!excludePagination) {
-      query.per_page = f.per_page
-      query.page = f.page
-    }
-    return query
   }
 
-  /** جلب سجلات الحضور من الباك اند حسب الفلاتر الحالية بالـ store */
+  /**
+   * جلب الروستر اليومي (كل الموظفين + display_status) حسب الفلاتر الحالية.
+   * هذا هو مصدر بيانات "Daily Attendance Log" الآن (بدّلناه من GET
+   * /management/attendance القديم لأنه كان يُخفي الغائبين/من لم يصل بعد).
+   */
   async function fetchRecords() {
     loadingRecords.value = true
     errorMessage.value = ''
     try {
-      const query = buildQueryFromFilters()
-      const { records: list, meta: pageMeta } = await attendanceService.getAttendanceRecords(query)
+      const query = buildRosterQuery()
+      const { records: list, meta: pageMeta } = await attendanceService.getAttendanceRoster(query)
       records.value = list
       meta.value = pageMeta
     } catch (err) {
@@ -101,13 +125,11 @@ export const useAttendanceStore = defineStore('attendance', () => {
     }
   }
 
-  /** جلب الإحصائيات الجاهزة (present/late/absent/early_leave/off_day/total) */
+  /** جلب الإحصائيات الجاهزة (present/late/absent/early_leave/not_arrived/on_leave/off_day) */
   async function fetchStats() {
     loadingStats.value = true
     try {
-      // نستثني الترقيم من طلب الإحصائيات لأنها تخص كل السجلات المطابقة للفلتر
-      // وليس فقط الصفحة المعروضة بالجدول
-      const query = buildQueryFromFilters(true)
+      const query = buildStatsQuery()
       stats.value = await attendanceService.getAttendanceStats(query)
     } catch (err) {
       console.error('[attendance store] fetchStats failed:', err)
@@ -129,6 +151,11 @@ export const useAttendanceStore = defineStore('attendance', () => {
    * @returns {Promise<boolean>} نجاح العملية من عدمه
    */
   async function adjustRecord(attendanceRecordId, { newCheckIn, newCheckOut, reason }) {
+    if (!attendanceRecordId) {
+      // موظف بدون سجل فعلي (not_arrived / on_leave) -- لا يوجد id لإرساله بالمسار
+      errorMessage.value = 'This employee has no attendance record yet for this date.'
+      return false
+    }
     isAdjusting.value = true
     try {
       await attendanceService.adjustAttendanceRecord(attendanceRecordId, {
@@ -211,7 +238,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
     isAdjusting,
     errorMessage,
     // computed
-    complianceBreakdown,
+    statusDistribution,
     // actions
     fetchRecords,
     fetchStats,

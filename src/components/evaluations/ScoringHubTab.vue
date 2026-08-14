@@ -29,103 +29,213 @@ async function loadScoringData() {
 onMounted(loadScoringData)
 watch(() => props.cycleId, loadScoringData)
 
-function empId(emp) { return emp.employee_id ?? emp.id }
-function empName(emp) { return emp.name || emp.employee_name || '' }
-function empDept(emp) { return emp.department ?? emp.dept ?? '' }
+function empId(emp) {
+  // Scorable rows use employee record id; final-results use employee_id
+  return emp?.employee_id ?? emp?.employee?.id ?? emp?.id
+}
+
+/**
+ * Scorable: { user: { full_name } }
+ * Final results: { employee: { full_name } }
+ */
+function empName(emp) {
+  return (
+    emp?.user?.full_name ||
+    emp?.employee?.full_name ||
+    emp?.full_name ||
+    emp?.employee_name ||
+    emp?.name ||
+    ''
+  )
+}
+
+function departmentName(emp) {
+  if (typeof emp?.department === 'string') return emp.department
+  return (
+    emp?.department?.name ||
+    emp?.department_name ||
+    emp?.employee?.department?.name ||
+    emp?.dept ||
+    ''
+  )
+}
+
+function jobTitle(emp) {
+  return emp?.job_title || emp?.employee?.job_title || ''
+}
+
+/** Subtitle under the name: "Job Title · Department" (strings only — never objects). */
+function empSubtitle(emp) {
+  const parts = [jobTitle(emp), departmentName(emp)].filter(Boolean)
+  return parts.join(' · ')
+}
+
 function initials(name = '') {
-  return name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()
+  return String(name || '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
+}
+
+function formatScore(value) {
+  if (value === null || value === undefined || value === '') return '—'
+  const n = Number(value)
+  return Number.isFinite(n) ? n.toFixed(2) : String(value)
 }
 
 const departmentOptions = computed(() => {
-  const depts = [...new Set(evaluationsStore.scorableEmployees.map(empDept).filter(Boolean))]
+  const list = Array.isArray(evaluationsStore.scorableEmployees)
+    ? evaluationsStore.scorableEmployees
+    : []
+  const depts = [...new Set(list.map(departmentName).filter(Boolean))]
   return [{ value: 'all', label: 'All Departments' }, ...depts.map((d) => ({ value: d, label: d }))]
 })
 
-const filteredEmployees = computed(() =>
-  evaluationsStore.scorableEmployees.filter((emp) => {
+const filteredEmployees = computed(() => {
+  const list = Array.isArray(evaluationsStore.scorableEmployees)
+    ? evaluationsStore.scorableEmployees
+    : []
+  return list.filter((emp) => {
     const matchesSearch = empName(emp).toLowerCase().includes(searchName.value.toLowerCase())
-    const matchesDept = filterDept.value === 'all' || empDept(emp) === filterDept.value
+    const matchesDept = filterDept.value === 'all' || departmentName(emp) === filterDept.value
     return matchesSearch && matchesDept
   })
-)
+})
 
-// اختيار موظف من القائمة وجلب تفاصيل تصحيحه
+// اختيار موظف من القائمة وجلب تفاصيل تصحيحه + نتيجته إن وُجدت
 async function selectEmployee(id) {
   selectedEmployeeId.value = id
   finalResultForSelected.value = null
   await evaluationsStore.fetchScoringDetails(props.cycleId, { employee_id: id })
+  try {
+    finalResultForSelected.value = await evaluationsStore.fetchEmployeeFinalResult(props.cycleId, id)
+  } catch {
+    finalResultForSelected.value = null
+  }
 }
 
-const selectedEmployee = computed(() =>
-  evaluationsStore.scorableEmployees.find((e) => empId(e) === selectedEmployeeId.value) || null
+const selectedEmployee = computed(() => {
+  const list = Array.isArray(evaluationsStore.scorableEmployees)
+    ? evaluationsStore.scorableEmployees
+    : []
+  return list.find((e) => empId(e) === selectedEmployeeId.value) || null
+})
+/** GET /scoring يعيد مصفوفة مراجعات: كل عنصر ورقة تقييم (self / manager / peer). */
+const sheets = computed(() =>
+  Array.isArray(evaluationsStore.scoringDetails) ? evaluationsStore.scoringDetails : []
 )
-const sheets = computed(() => evaluationsStore.scoringDetails?.sheets ?? [])
-const allSheetsGraded = computed(() => sheets.value.length > 0 && sheets.value.every((s) => s.graded))
+
+const REVIEW_TYPE_LABELS = {
+  self: 'Self Review',
+  manager: 'Manager Review',
+  peer: 'Peer Review'
+}
+
+function sheetLabel(sheet) {
+  return REVIEW_TYPE_LABELS[sheet?.review_type] || sheet?.review_type || 'Review'
+}
+
+/** الأسئلة القابلة لوضع درجة HR هي من نوع rating فقط. */
+function ratingAnswers(sheet) {
+  return (sheet?.answers || []).filter((ans) => ans?.question?.response_type === 'rating')
+}
+
+/** الورقة مصححة عندما يعيد الباك اند total_score لها. */
+function isSheetGraded(sheet) {
+  return sheet?.total_score !== null && sheet?.total_score !== undefined
+}
 
 function sheetAverage(sheet) {
-  const scored = (sheet.questions || []).filter((q) => q.score !== null && q.score !== undefined)
-  if (!scored.length) return 0
-  return (scored.reduce((sum, q) => sum + Number(q.score), 0) / scored.length).toFixed(1)
+  return isSheetGraded(sheet) ? Number(sheet.total_score).toFixed(1) : '0.0'
 }
+
+const allSheetsGraded = computed(
+  () => sheets.value.length > 0 && sheets.value.every(isSheetGraded)
+)
 
 // ================= درج تصحيح الورقة =================
 const gradingSheet = ref(null)
 const draftScores = reactive({})
 
+const gradingAnswers = computed(() => gradingSheet.value?.answers || [])
+
 function openGradingDrawer(sheet) {
   gradingSheet.value = sheet
-  Object.keys(draftScores).forEach((k) => delete draftScores[k])
-  ;(sheet.questions || []).forEach((q) => {
-    draftScores[q.question_id ?? q.id] = q.score ?? null
+  Object.keys(draftScores).forEach((key) => delete draftScores[key])
+  // ratingAnswers(sheet).forEach((ans) => {
+  //   draftScores[ans.id] = ans.hr_score ?? null
+  // })
+  ;(sheet?.answers || []).forEach((ans) => {
+    draftScores[ans.id] = ans.hr_score ?? null
   })
 }
+
 function closeGradingDrawer() {
   gradingSheet.value = null
 }
 
+/** كل درجة يجب أن تكون رقماً بين 0 و 10 قبل الإرسال. */
+const canSubmitSheet = computed(() => {
+  const answers = ratingAnswers(gradingSheet.value)
+  if (!answers.length) return false
+  return answers.every((ans) => {
+    const value = draftScores[ans.id]
+    if (value === null || value === undefined || value === '') return false
+    const n = Number(value)
+    return Number.isFinite(n) && n >= 0 && n <= 10
+  })
+})
+
 async function submitGradedSheet() {
   const sheet = gradingSheet.value
-  if (!sheet) return
-  const anyMissing = Object.values(draftScores).some((v) => v === null || v === '')
-  if (anyMissing) return
+  if (!sheet || !canSubmitSheet.value) return
 
   const payload = {
-    scores: (sheet.questions || []).map((q) => ({
-      question_id: q.question_id ?? q.id,
-      score: Number(draftScores[q.question_id ?? q.id])
+    scores: ratingAnswers(sheet).map((ans) => ({
+      answer_id: ans.id,
+      hr_score: Number(draftScores[ans.id])
     }))
   }
-  await evaluationsStore.submitReviewScore(props.cycleId, sheet.review_id ?? sheet.id, payload)
 
-  sheet.graded = true
-  sheet.questions.forEach((q) => {
-    q.score = draftScores[q.question_id ?? q.id]
-  })
+  await evaluationsStore.submitReviewScore(props.cycleId, sheet.id, payload)
   closeGradingDrawer()
 }
 
-// ================= حساب النتيجة النهائية (الحساب فعلياً بالباك اند) =================
+// ================= اعتماد النتيجة النهائية (الحساب فعلياً بالباك اند) =================
 async function calculateFinalResult() {
   const result = await evaluationsStore.finalizeScore(props.cycleId, selectedEmployeeId.value)
-  finalResultForSelected.value = result?.data ?? result
+  finalResultForSelected.value = result
   await evaluationsStore.fetchFinalResults(props.cycleId)
 }
 
 // تصنيف احتياطي فقط في حال لم يرسل الباك اند تصنيفاً جاهزاً مع الدرجة
 function classify(score) {
-  if (score >= 8.5) return 'Excellent'
-  if (score >= 5.0) return 'Good'
+  const n = Number(score)
+  if (!Number.isFinite(n)) return null
+  if (n >= 8.5) return 'Excellent'
+  if (n >= 5.0) return 'Good'
   return 'Poor'
 }
 function classificationOf(result) {
   if (!result) return null
-  return result.rating ?? classify(Number(result.final_score ?? result.score ?? 0))
+  if (result.rating) return result.rating
+  return classify(result.final_score ?? result.score)
 }
 
+const finalResultsList = computed(() =>
+  Array.isArray(evaluationsStore.finalResults) ? evaluationsStore.finalResults : []
+)
+
 const existingFinalResult = computed(() =>
-  evaluationsStore.finalResults.find((r) => (r.employee_id ?? r.id) === selectedEmployeeId.value)
+  finalResultsList.value.find((r) => (r.employee_id ?? r.employee?.id) === selectedEmployeeId.value) ?? null
 )
 const displayedFinalResult = computed(() => finalResultForSelected.value ?? existingFinalResult.value ?? null)
+const isAlreadyFinalized = computed(() =>
+  String(displayedFinalResult.value?.status || '').toLowerCase() === 'finalized'
+)
 
 const badgeColorClass = computed(() => {
   const rating = classificationOf(displayedFinalResult.value)
@@ -135,18 +245,20 @@ const badgeColorClass = computed(() => {
 })
 
 // ================= إحصائيات وتوزيع الـ Donut =================
-const totalRated = computed(() => evaluationsStore.finalResults.length)
-const totalEmployees = computed(() => evaluationsStore.scorableEmployees.length)
-const excellentCount = computed(() => evaluationsStore.finalResults.filter((r) => classificationOf(r) === 'Excellent').length)
-const goodCount = computed(() => evaluationsStore.finalResults.filter((r) => classificationOf(r) === 'Good').length)
-const poorCount = computed(() => evaluationsStore.finalResults.filter((r) => classificationOf(r) === 'Poor').length)
+const totalRated = computed(() => finalResultsList.value.length)
+const totalEmployees = computed(() =>
+  Array.isArray(evaluationsStore.scorableEmployees) ? evaluationsStore.scorableEmployees.length : 0
+)
+const excellentCount = computed(() => finalResultsList.value.filter((r) => classificationOf(r) === 'Excellent').length)
+const goodCount = computed(() => finalResultsList.value.filter((r) => classificationOf(r) === 'Good').length)
+const poorCount = computed(() => finalResultsList.value.filter((r) => classificationOf(r) === 'Poor').length)
 
 const pctExcellent = computed(() => (totalRated.value ? (excellentCount.value / totalRated.value) * 100 : 0))
 const pctGood = computed(() => (totalRated.value ? (goodCount.value / totalRated.value) * 100 : 0))
 const pctPoor = computed(() => (totalRated.value ? (poorCount.value / totalRated.value) * 100 : 0))
 
 function isCalculated(emp) {
-  return !!classificationOf(evaluationsStore.finalResults.find((r) => (r.employee_id ?? r.id) === empId(emp)))
+  return !!finalResultsList.value.find((r) => (r.employee_id ?? r.employee?.id) === empId(emp))
 }
 </script>
 
@@ -217,7 +329,7 @@ function isCalculated(emp) {
           <BaseSelect v-model="filterDept" :options="departmentOptions" />
         </div>
 
-        <LoadingSpinner v-if="evaluationsStore.loading" />
+        <LoadingSpinner v-if="evaluationsStore.scoringLoading && !selectedEmployeeId" />
         <div v-else class="space-y-3 max-h-[350px] overflow-y-auto pr-1">
           <p v-if="!filteredEmployees.length" class="text-center text-[11px] text-slate-400 py-6">No matching candidates in grading queue.</p>
           <div
@@ -236,8 +348,8 @@ function isCalculated(emp) {
                 {{ initials(empName(emp)) }}
               </div>
               <div>
-                <h5 class="font-extrabold text-xs text-slate-900 dark:text-white">{{ empName(emp) }}</h5>
-                <p class="text-[9px] text-slate-400">{{ empDept(emp) }}</p>
+                <h5 class="font-extrabold text-xs text-slate-900 dark:text-white">{{ empName(emp) || '—' }}</h5>
+                <p class="text-[9px] text-slate-400">{{ empSubtitle(emp) }}</p>
               </div>
             </div>
             <span v-if="isCalculated(emp)" class="text-[9px] bg-emerald-500/15 text-emerald-500 px-2 py-0.5 rounded font-extrabold uppercase">
@@ -255,8 +367,8 @@ function isCalculated(emp) {
               {{ initials(empName(selectedEmployee)) }}
             </div>
             <div>
-              <h4 class="text-sm font-black text-slate-900 dark:text-white">{{ empName(selectedEmployee) }}</h4>
-              <p class="text-[10px] text-slate-400">{{ empDept(selectedEmployee) }}</p>
+              <h4 class="text-sm font-black text-slate-900 dark:text-white">{{ empName(selectedEmployee) || '—' }}</h4>
+              <p class="text-[10px] text-slate-400">{{ empSubtitle(selectedEmployee) }}</p>
             </div>
           </div>
         </div>
@@ -267,26 +379,41 @@ function isCalculated(emp) {
             <span class="text-[10px] text-khubrat-goldDark dark:text-khubrat-goldLight font-bold">Grades on a 10-point scale</span>
           </div>
 
-          <p v-if="!sheets.length" class="text-xs text-slate-400 p-4">No grading sheets available for this candidate.</p>
+          <LoadingSpinner v-if="evaluationsStore.scoringLoading" label="Loading evaluation sheets…" />
+
+          <p v-else-if="!sheets.length" class="text-xs text-slate-400 p-4">
+            No submitted evaluation sheets found for this candidate in the current cycle.
+          </p>
+
           <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div
               v-for="sheet in sheets"
-              :key="sheet.review_id ?? sheet.id"
+              :key="sheet.id"
               class="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between space-y-4 hover:shadow-md transition-all"
             >
-              <div class="flex justify-between items-start">
+              <div class="flex justify-between items-start gap-2">
                 <div>
                   <span class="text-[9px] text-slate-400 block uppercase font-bold">Feedback Source</span>
-                  <h5 class="font-extrabold text-xs text-slate-800 dark:text-slate-200">{{ sheet.source }}</h5>
+                  <h5 class="font-extrabold text-xs text-slate-800 dark:text-slate-200">{{ sheetLabel(sheet) }}</h5>
+                  <p class="text-[9px] text-slate-400 mt-0.5">{{ sheet.reviewer?.full_name }}</p>
                 </div>
-                <span class="px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider" :class="sheet.graded ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'">
-                  {{ sheet.graded ? `Done (${sheetAverage(sheet)}/10)` : 'Pending Grading' }}
+                <span
+                  class="px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider shrink-0"
+                  :class="isSheetGraded(sheet) ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
+                >
+                  {{ isSheetGraded(sheet) ? `Done (${sheetAverage(sheet)}/10)` : 'Pending Grading' }}
                 </span>
               </div>
               <div class="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-800">
-                <span class="text-[10px] text-slate-400 font-bold">{{ (sheet.questions || []).length }} criteria responses</span>
-                <button class="text-[10px] font-black text-khubrat-blue dark:text-khubrat-goldLight hover:underline flex items-center gap-1" @click="openGradingDrawer(sheet)">
-                  {{ sheet.graded ? 'Edit Sheet Score' : 'Grade Sheet' }} <i class="fa-solid fa-chevron-right text-[8px]"></i>
+                <span class="text-[10px] text-slate-400 font-bold">
+                  {{ ratingAnswers(sheet).length }} scorable / {{ (sheet.answers || []).length }} responses
+                </span>
+                <button
+                  class="text-[10px] font-black text-khubrat-blue dark:text-khubrat-goldLight hover:underline flex items-center gap-1"
+                  @click="openGradingDrawer(sheet)"
+                >
+                  {{ isSheetGraded(sheet) ? 'Edit Sheet Score' : 'Grade Sheet' }}
+                  <i class="fa-solid fa-chevron-right text-[8px]"></i>
                 </button>
               </div>
             </div>
@@ -298,26 +425,51 @@ function isCalculated(emp) {
             <h6 class="text-xs font-bold text-slate-800 dark:text-slate-200">Final Index Appraisal Report</h6>
             <p class="text-[10px] text-slate-400 leading-relaxed max-w-md">Weighted index is calculated automatically by the server once all sheets are graded.</p>
           </div>
-          <BaseButton variant="blue" :disabled="!allSheetsGraded" :loading="evaluationsStore.ActionLoading" @click="calculateFinalResult">
-            Calculate Final Result
+          <BaseButton
+            variant="blue"
+            :disabled="!allSheetsGraded || isAlreadyFinalized"
+            :loading="evaluationsStore.ActionLoading"
+            @click="calculateFinalResult"
+          >
+            {{ isAlreadyFinalized ? 'Score Finalized' : 'Calculate Final Result' }}
           </BaseButton>
         </div>
 
-        <div v-if="displayedFinalResult" class="p-5 rounded-2xl border-2 border-emerald-500 bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 flex justify-between items-center shadow-md">
-          <div class="flex items-center gap-4">
-            <div class="p-3 bg-emerald-500 text-white rounded-xl text-xl">
-              <i class="fa-solid fa-award"></i>
+        <div v-if="displayedFinalResult && (displayedFinalResult.final_score !== null && displayedFinalResult.final_score !== undefined)" class="p-5 rounded-2xl border-2 border-emerald-500 bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 space-y-4 shadow-md">
+          <div class="flex justify-between items-center gap-4">
+            <div class="flex items-center gap-4">
+              <div class="p-3 bg-emerald-500 text-white rounded-xl text-xl">
+                <i class="fa-solid fa-award"></i>
+              </div>
+              <div class="space-y-0.5">
+                <span class="text-[10px] font-black uppercase tracking-widest block text-slate-400">Weighted Performance Rating</span>
+                <h4 class="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  Grade:
+                  <span class="text-emerald-600 dark:text-emerald-400 font-extrabold">
+                    {{ formatScore(displayedFinalResult.final_score) }}/10
+                  </span>
+                </h4>
+              </div>
             </div>
-            <div class="space-y-0.5">
-              <span class="text-[10px] font-black uppercase tracking-widest block text-slate-400">Weighted Performance Rating</span>
-              <h4 class="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                Grade: <span class="text-emerald-600 dark:text-emerald-400 font-extrabold">{{ displayedFinalResult.final_score ?? displayedFinalResult.score }}/10</span>
-              </h4>
+            <span class="px-4 py-2 text-white font-black text-xs rounded-xl uppercase tracking-widest" :class="badgeColorClass">
+              {{ classificationOf(displayedFinalResult) }}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3 pt-2 border-t border-emerald-500/20">
+            <div class="text-center">
+              <p class="text-[9px] font-bold uppercase text-slate-400">Manager</p>
+              <p class="text-sm font-black text-slate-800 dark:text-white">{{ formatScore(displayedFinalResult.manager_score) }}</p>
+            </div>
+            <div class="text-center">
+              <p class="text-[9px] font-bold uppercase text-slate-400">Self</p>
+              <p class="text-sm font-black text-slate-800 dark:text-white">{{ formatScore(displayedFinalResult.self_score) }}</p>
+            </div>
+            <div class="text-center">
+              <p class="text-[9px] font-bold uppercase text-slate-400">Peer</p>
+              <p class="text-sm font-black text-slate-800 dark:text-white">{{ formatScore(displayedFinalResult.peer_score) }}</p>
             </div>
           </div>
-          <span class="px-4 py-2 text-white font-black text-xs rounded-xl uppercase tracking-widest" :class="badgeColorClass">
-            {{ classificationOf(displayedFinalResult) }}
-          </span>
         </div>
       </div>
 
@@ -330,14 +482,18 @@ function isCalculated(emp) {
 
     <!-- Sheet grading drawer -->
     <div v-if="gradingSheet" class="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true">
-      <div class="absolute inset-0 bg-black/55 backdrop-blur-xs" @click="closeGradingDrawer"></div>
+      <div class="absolute inset-0 bg-black/55 backdrop-blur-sm" @click="closeGradingDrawer"></div>
       <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
         <div class="pointer-events-auto w-screen max-w-xl bg-white dark:bg-slate-800 shadow-2xl flex flex-col">
           <div class="bg-khubrat-blue text-white p-6 border-b border-khubrat-goldLight/20">
             <div class="flex items-center justify-between">
               <div>
-                <h2 class="text-md font-extrabold text-khubrat-goldLight uppercase tracking-wider">Grade Sheet: {{ gradingSheet.source }}</h2>
-                <p class="text-[10px] text-white/60 mt-0.5">Review answers for {{ selectedEmployee ? empName(selectedEmployee) : '' }}</p>
+                <h2 class="text-md font-extrabold text-khubrat-goldLight uppercase tracking-wider">
+                  Grade Sheet: {{ sheetLabel(gradingSheet) }}
+                </h2>
+                <p class="text-[10px] text-white/60 mt-0.5">
+                  Review answers for {{ selectedEmployee ? empName(selectedEmployee) : '' }}
+                </p>
               </div>
               <button class="text-white/60 hover:text-white transition-all" @click="closeGradingDrawer">
                 <i class="fa-solid fa-xmark text-lg"></i>
@@ -347,22 +503,33 @@ function isCalculated(emp) {
 
           <div class="flex-1 overflow-y-auto p-6 space-y-6 text-xs">
             <div
-              v-for="(question, idx) in gradingSheet.questions"
-              :key="question.question_id ?? question.id"
+              v-for="(answer, idx) in gradingAnswers"
+              :key="answer.id"
               class="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 space-y-3"
             >
               <div class="space-y-1">
-                <span class="text-[9px] text-khubrat-goldDark dark:text-khubrat-goldLight font-black uppercase block">Evaluation Criteria {{ idx + 1 }}</span>
-                <h5 class="font-bold text-xs text-slate-800 dark:text-slate-100">{{ question.text ?? question.question }}</h5>
+                <span class="text-[9px] text-khubrat-goldDark dark:text-khubrat-goldLight font-black uppercase block">
+                  Evaluation Criteria {{ idx + 1 }}
+                </span>
+                <h5 class="font-bold text-xs text-slate-800 dark:text-slate-100">
+                  {{ answer.question?.question }}
+                </h5>
               </div>
-              <div class="p-3 bg-white dark:bg-slate-850 rounded-lg italic text-slate-500 dark:text-slate-300 border-l-4 border-khubrat-blue dark:border-khubrat-goldLight">
-                "{{ question.answer }}"
+
+              <div class="p-3 bg-white dark:bg-slate-950 rounded-lg italic text-slate-500 dark:text-slate-300 border-l-4 border-khubrat-blue dark:border-khubrat-goldLight">
+                <template v-if="answer.comment">"{{ answer.comment }}"</template>
+                <template v-else-if="answer.rating !== null && answer.rating !== undefined">
+                  Rating given: <strong class="text-slate-800 dark:text-slate-100">{{ answer.rating }} / 5</strong>
+                </template>
+                <template v-else>No written answer provided.</template>
               </div>
+
+              <!-- درجة الـ HR تُرسل لأسئلة النوع rating فقط -->
               <div class="flex items-center justify-between pt-2 border-t border-slate-200/50 dark:border-slate-800">
                 <span class="text-[10px] text-slate-400 font-bold uppercase">Assign Score Value (0 - 10)</span>
                 <div class="flex items-center gap-2">
                   <input
-                    v-model="draftScores[question.question_id ?? question.id]"
+                    v-model="draftScores[answer.id]"
                     type="number"
                     min="0"
                     max="10"
@@ -372,12 +539,21 @@ function isCalculated(emp) {
                   <span class="text-slate-400 font-bold">/ 10</span>
                 </div>
               </div>
+              
             </div>
           </div>
 
           <div class="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex gap-3">
             <BaseButton variant="ghost" full-width @click="closeGradingDrawer">Cancel</BaseButton>
-            <BaseButton variant="blue" full-width :loading="evaluationsStore.ActionLoading" @click="submitGradedSheet">Mark Sheet as Done</BaseButton>
+            <BaseButton
+              variant="blue"
+              full-width
+              :disabled="!canSubmitSheet"
+              :loading="evaluationsStore.ActionLoading"
+              @click="submitGradedSheet"
+            >
+              Save Scores
+            </BaseButton>
           </div>
         </div>
       </div>

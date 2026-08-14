@@ -22,7 +22,6 @@ onMounted(async () => {
     <!-- جديد: شريط عنوان + زر واضح لإظهار الـ QR -->
     <div class="flex items-center justify-between">
       <div>
-        <h2 class="text-lg font-black text-khubrat-blue dark:text-khubrat-goldLight">Attendance Tracker</h2>
         <p class="text-xs text-slate-400">Daily presence overview and clock-in QR management.</p>
       </div>
       <button

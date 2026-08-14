@@ -72,6 +72,19 @@ const routes = [
     component: () => import('@/views/onboarding/VerificationSuccessView.vue'),
     meta: { guestOnly: true }
   },
+  // ---- Public: Payment Callbacks ----
+  {
+    path: '/payment/success',
+    name: 'payment-success',
+    component: () => import('@/views/onboarding/SetupAdminAccountView.vue'),
+    meta: { guestOnly: true } // أو بدون meta حسب ما تفضلين
+  },
+  {
+    path: '/payment/cancel',
+    name: 'payment-cancel',
+    component: () => import('@/views/onboarding/SetupAdminAccountView.vue'),
+    meta: { guestOnly: true }
+  },
 
   // ---- Protected: PLATFORM admin dashboard (Super Admin) ----
   {
@@ -145,12 +158,12 @@ const routes = [
         component: () => import('@/views/company/StaffManagementView.vue'),
         meta: { requiresAuth: true, persona: 'company-user', title: 'Staff Management' } 
       },
-      {
-        path: 'evaluations',
-        name: 'company-evaluations',
-        component: () => import('@/views/company/EvaluationHubView.vue'),
-        meta: { title: 'Evaluations Hub' }
-      },
+        {
+          path: 'evaluations',
+          name: 'company-evaluations',
+          component: () => import('@/views/company/EvaluationHubView.vue'),
+          meta: { title: 'Evaluations Hub', requiresHr: true } 
+        },
       {
         path: 'attendance',
         name: 'company-attendance',
@@ -216,6 +229,10 @@ router.beforeEach((to) => {
   }
 
   if (to.meta.requiresGeneralManager && !authStore.isGeneralManager) {
+    return { name: 'company-dashboard' }
+  }
+
+  if (to.meta.requiresHr && !authStore.isHr) {
     return { name: 'company-dashboard' }
   }
 

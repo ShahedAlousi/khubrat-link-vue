@@ -2,65 +2,58 @@
  * ============================================================================
  * attendanceService.js
  * ----------------------------------------------------------------------------
- *
- * ⚠️ ملاحظة مهمة جداً:
- * توثيق الـ API لم يحدد شكل عنصر السجل (attendance record) القادم من
- * GET /attendance بالتفصيل (فقط "Paginated attendance records" بدون schema).
- * لذلك تم افتراض شكل منطقي للـ Resource اعتماداً على الحقول الظاهرة بباقي
- * الـ endpoints (مثل new_check_in/new_check_out بتابع adjust، وأسماء فئات
- * stats). هذا الافتراض معزول بالكامل داخل normalizeAttendanceRecord() فقط.
- * إذا اختلف شكل الاستجابة الحقيقي، التعديل يكون هنا فقط ولن يؤثر على أي
- * مكوّن Vue آخر (كل الواجهات تعتمد على الشكل الموحّد الذي يُرجعه هذا التابع).
+ * ✅ مُحدَّث اعتماداً على توثيق الـ API الفعلي (roster / stats / adjust) بعد
+ * ما تأكدنا من الشكل الحقيقي للاستجابات. أهم فرق: تابع getAttendanceRecords
+ * القديم (GET /management/attendance) أُزيل نهائياً واستُبدل بـ
+ * getAttendanceRoster() (GET /management/attendance/roster) لأن الـ roster
+ * يُرجع كل الموظفين النشطين لليوم (بمن فيهم من لم يصل بعد / بإجازة) مع
+ * display_status جاهز، بينما القديم يُرجع فقط صفوف attendance_records
+ * الموجودة فعلياً -- وبالتالي كان الغائبون/من لم يصل يختفون من الجدول.
  * ============================================================================
  */
 import api from './api'
-// ⚠️ عدّلي المسار أعلاه ليطابق ملف axios instance الفعلي عندك
-// (نفس الـ instance المستخدم بباقي ملفات services بالمشروع، مع الـ base URL
-// وheaders التوثيق Sanctum الجاهزة).
 
 const BASE_URL = '/management/attendance'
 
 /**
- * جلب قائمة سجلات الحضور (Paginated) مع إمكانية الفلترة بالتاريخ/القسم/الموظف.
- * HR Manager و General Manager يشاهدان كل الشركة، بينما Department Manager
- * يُقيَّد تلقائياً بأقسامه من طرف الباك اند (لا حاجة لأي منطق فرونت اند إضافي).
+ * جلب "الروستر" اليومي (Daily Attendance Log الحقيقي): كل الموظفين النشطين
+ * بتاريخ واحد مع display_status محسوب من الباك اند (present / late / absent /
+ * early_leave / off_day / not_arrived / on_leave).
+ * ⚠️ هذا الـ endpoint يقبل فقط: date, department_id, employee_id, per_page,
+ * page -- لا يدعم date_from/date_to (تاريخ واحد فقط، وليس مدى تاريخي).
  *
  * @param {Object} params
- * @param {string} [params.date]         - تاريخ محدد (YYYY-MM-DD)
- * @param {string} [params.date_from]    - بداية مدى تاريخي
- * @param {string} [params.date_to]      - نهاية مدى تاريخي
+ * @param {string} [params.date]
  * @param {string} [params.department_id]
  * @param {string} [params.employee_id]
  * @param {number} [params.per_page=15]
  * @param {number} [params.page]
- * @returns {Promise<{records: Array<Object>, meta: Object}>}
+ * @returns {Promise<{date: string|null, records: Array<Object>, meta: Object}>}
  */
-export async function getAttendanceRecords(params = {}) {
-  const { data } = await api.get(BASE_URL, { params })
-
-  // الباك اند لم يوثّق الشكل الدقيق للاستجابة، لذلك نتعامل بمرونة مع أكثر
-  // من احتمال شائع بمشاريع Laravel (resource collection مع/بدون success wrapper)
-  const rawList = data?.data?.data ?? data?.data ?? data ?? []
-  const rawMeta =
-    data?.data?.meta ??
-    data?.meta ?? {
-      current_page: 1,
-      last_page: 1,
-      per_page: params.per_page || 15,
-      total: Array.isArray(rawList) ? rawList.length : 0,
-    }
+export async function getAttendanceRoster(params = {}) {
+  const { data } = await api.get(`${BASE_URL}/roster`, { params })
+  const payload = data?.data || {}
+  const items = Array.isArray(payload.items) ? payload.items : []
 
   return {
-    records: Array.isArray(rawList) ? rawList.map(normalizeAttendanceRecord) : [],
-    meta: rawMeta,
+    date: payload.date ?? null,
+    records: items.map(normalizeRosterItem),
+    meta:
+      payload.meta ?? {
+        current_page: 1,
+        last_page: 1,
+        per_page: params.per_page || 15,
+        total: items.length,
+      },
   }
 }
 
 /**
- * جلب الإحصائيات الجاهزة من الباك اند (present / late / early_leave / absent /
- * off_day / total_records). شكل هذه الاستجابة موثّق بدقة بملف الـ API، فلا
- * حاجة لأي افتراض هنا (خلافاً لتابع getAttendanceRecords أعلاه).
- * تفتَرِض الإحصائيات "اليوم الحالي" إذا لم تُمرَّر أي فلترة تاريخ.
+ * جلب الإحصائيات الجاهزة لتاريخ/مدى تاريخي (present/late/early_leave/absent/
+ * not_arrived/on_leave/off_day/total_employees/total_records).
+ * ⚠️ هذا الـ endpoint يقبل: date, date_from, date_to, department_id فقط --
+ * لا يدعم employee_id (خلافاً لما كان مفترَضاً سابقاً).
+ * تفتَرِض "اليوم الحالي" إذا لم تُمرَّر أي فلترة تاريخ.
  */
 export async function getAttendanceStats(params = {}) {
   const { data } = await api.get(`${BASE_URL}/stats`, { params })
@@ -70,16 +63,18 @@ export async function getAttendanceStats(params = {}) {
     late: stats.late ?? 0,
     earlyLeave: stats.early_leave ?? 0,
     absent: stats.absent ?? 0,
+    notArrived: stats.not_arrived ?? 0,
+    onLeave: stats.on_leave ?? 0,
     offDay: stats.off_day ?? 0,
+    totalEmployees: stats.total_employees ?? 0,
+    // عدد الموظفين اللي عندهم صف attendance_records فعلي محفوظ لهذا التاريخ
+    // (مو بالضرورة يساوي مجموع الفئات أعلاه -- راجعي التعليق بالـ store)
     totalRecords: stats.total_records ?? 0,
   }
 }
 
 /**
  * جلب رمز QR الدوّار (يتغيّر كل 60 ثانية) لعرضه على شاشة/كشك تسجيل الحضور.
- * غير مُستخدَم حالياً بواجهة "Attendance Tracker" الإدارية (dashboard) لأن
- * التصميم المرفق لا يتضمن عرض كشك، لكنه أُضيف هنا لاكتمال التغطية مع الباك
- * اند، ويمكن استدعاؤه لاحقاً من أي واجهة kiosk مستقبلية دون أي تعديل إضافي.
  */
 export async function getAttendanceQrCode() {
   const { data } = await api.get(`${BASE_URL}/qr-code`)
@@ -92,8 +87,11 @@ export async function getAttendanceQrCode() {
 }
 
 /**
- * تعديل يدوي (Exceptional Override) لسجل حضور موجود (صلاحية HR / General
- * Manager فقط بحسب توثيق الباك اند).
+ * تعديل يدوي (Exceptional Override) لسجل حضور موجود فعلياً (صلاحية HR /
+ * General Manager فقط). يتطلب attendanceRecordId حقيقي -- موظف بدون سجل
+ * (not_arrived / on_leave، أي attendance_record_id = null بالروستر) لا يمكن
+ * تعديله عبر هذا التابع أصلاً لأن الباك اند يطلبه بمسار الرابط (path param)
+ * ويرجع 404 لو غير موجود.
  *
  * @param {string} attendanceRecordId
  * @param {Object} payload
@@ -107,32 +105,44 @@ export async function adjustAttendanceRecord(attendanceRecordId, payload) {
     new_check_out: payload.newCheckOut ?? null,
     reason: payload.reason,
   })
-  return data?.data ? normalizeAttendanceRecord(data.data) : null
+  // ⚠️ شكل استجابة هذا التابع غير موثّق بدقة بملف الـ API (فقط وصف نصي "Record
+  // adjusted and minutes recalculated" بدون schema)، لذلك لا نحاول تطبيعه لشكل
+  // موحّد هنا. غير حرج لأن الـ store يستدعي refreshAll() فوراً بعد النجاح
+  // ويُعيد تحميل كل شيء من الروستر/الإحصائيات على أي حال.
+  return data?.data ?? null
 }
 
 /**
- * تطبيع (normalize) عنصر سجل حضور واحد قادم من الباك اند إلى شكل ثابت تعتمد
- * عليه كل مكوّنات الواجهة. هذا هو المكان الوحيد الذي يجب تعديله إذا اختلفت
- * أسماء الحقول الحقيقية القادمة من الـ API الفعلي.
+ * تطبيع (normalize) عنصر واحد قادم من GET /management/attendance/roster إلى
+ * شكل ثابت تعتمد عليه كل مكوّنات الواجهة. هذا هو المكان الوحيد الذي يجب
+ * تعديله إذا اختلفت أسماء الحقول الحقيقية القادمة من الـ API الفعلي.
  */
-function normalizeAttendanceRecord(raw) {
+function normalizeRosterItem(raw) {
   if (!raw) return null
   return {
-    id: raw.id,
-    date: raw.work_date ?? null, 
+    // ⚠️ قد تكون null لموظف لم يصل بعد أو بإجازة (لا يوجد سجل attendance_record
+    // فعلي له بعد بهذا التاريخ) -- استخدمي هذا الحقل تحديداً لأي عملية adjust،
+    // وليس employeeId
+    attendanceRecordId: raw.attendance_record_id ?? null,
     employeeId: raw.employee_id ?? null,
-    employeeName: raw.employee_name ?? '—', 
-    employeeTitle: '', 
-    employeeAvatar: null,
-    departmentId: null,
-    departmentName: raw.department_name ?? '—', 
-    checkIn: raw.check_in_time ?? null, 
-    checkOut: raw.check_out_time ?? null, 
-    status: raw.status ?? 'absent',
-    attendanceType: raw.attendance_type,
+    employeeName: raw.employee_name ?? '—',
+    employeeTitle: '', // غير موجود بالـ roster -- لو احتجناه لاحقاً لازم دمج مع staff API
+    employeeAvatar: null, // غير موجود بالـ roster
+    departmentId: raw.department_id ?? null,
+    departmentName: raw.department_name ?? '—',
+    date: raw.work_date ?? null,
+    checkIn: raw.check_in_time ?? null,
+    checkOut: raw.check_out_time ?? null,
+    // display_status هو الحقل المُعتمَد لعرض شارة الحالة بالجدول (يشمل
+    // not_arrived و on_leave خلافاً لحقل status الخام اللي يعكس فقط ما هو
+    // مخزّن فعلياً بجدول attendance_records، ويكون null لمن لا سجل له)
+    displayStatus: raw.display_status ?? 'not_arrived',
+    rawStatus: raw.status ?? null,
+    attendanceType: raw.attendance_type ?? null,
+    leaveTypeName: raw.leave_type_name ?? null, // مثال: "Annual Leave" لحالة on_leave فقط
     lateMinutes: raw.late_minutes ?? 0,
     earlyLeaveMinutes: raw.early_leave_minutes ?? 0,
-    totalWorkMinutes: raw.total_work_minutes ?? 0,
+    totalWorkMinutes: raw.total_work_minutes ?? null,
   }
 }
 
@@ -155,15 +165,18 @@ export function buildIsoDateTime(dateOnly, time) {
 }
 
 /**
- * تفكيك ISO datetime (أو نص جاهز مثل "09:12 AM") قادم من الباك اند إلى بنية
- * {hours, minutes, period} تفهمها الساعة التناظرية Vue Component. تُستخدم
- * لتعبئة القيم الحالية عند فتح مودال التعديل، وأيضاً لعرض الوقت بالجدول.
+ * تفكيك تاريخ/وقت قادم من الباك اند إلى بنية {hours, minutes, period} تفهمها
+ * الساعة التناظرية Vue Component. تُستخدم لتعبئة القيم الحالية عند فتح مودال
+ * التعديل، وأيضاً لعرض الوقت بالجدول.
+ * ✅ مُصحَّح: الباك اند الفعلي يُرجع check_in_time/check_out_time بصيغة
+ * "YYYY-MM-DD HH:mm:ss" (مسافة، وليس حرف T)، فعدّلنا الـ regex ليقبل الاثنين.
  */
 export function parseTimeForClock(isoOrLabel) {
   if (!isoOrLabel) return { hours: 9, minutes: 0, period: 'AM' }
 
-  // الحالة الأولى: ISO datetime كاملة (مثال: 2026-08-02T09:12:00)
-  const isoMatch = isoOrLabel.match(/T(\d{2}):(\d{2})/)
+  // الحالة الأولى: تاريخ+وقت كامل، سواء بصيغة ISO (T) أو صيغة Laravel/Carbon
+  // الافتراضية (مسافة) -- مثال: "2026-08-14T09:12:00" أو "2026-08-14 09:12:00"
+  const isoMatch = isoOrLabel.match(/[T ](\d{2}):(\d{2})/)
   if (isoMatch) {
     let h = parseInt(isoMatch[1], 10)
     const m = parseInt(isoMatch[2], 10)
@@ -187,7 +200,7 @@ export function parseTimeForClock(isoOrLabel) {
 }
 
 export default {
-  getAttendanceRecords,
+  getAttendanceRoster,
   getAttendanceStats,
   getAttendanceQrCode,
   adjustAttendanceRecord,

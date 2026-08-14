@@ -41,35 +41,38 @@ async function handleSubmit() {
 
   submitting.value = true
   try {
-    await companiesStore.registerCompany({
+    // حفظ الاستجابة لفحصها
+    const response = await companiesStore.registerCompany({
       name: onboardingStore.workspace.name,
       email: onboardingStore.workspace.email,
       address: form.address,
       contact_name: `${form.firstName} ${form.lastName}`.trim(),
       phone: form.phone,
-      // التعديل: إرسال الباقة المختارة ديناميكياً بدلاً من القيم الثابتة
       plan_id: onboardingStore.plan.id,
       payment_status: onboardingStore.plan.plan_type === 'free' ? 'active' : 'pending'
     })
 
-    // التوجيه بناء على نوع الباقة
-    if (onboardingStore.plan.plan_type === 'free') {
-      router.push({ name: 'signup-success' })
+    // التوجيه بناء على الاستجابة من الـ API
+    if (response.payment_required && response.payment_url) {
+      // إعادة التوجيه إلى بوابة الدفع في نفس التبويب
+      window.location.href = response.payment_url
     } else {
-      // PLACEHOLDER: توجيه لبوابة الدفع (Syriatel Cash وغيرها) غير موثق بالـ API حالياً
-      alert('سيتم توجيهك الآن إلى بوابة الدفع الإلكتروني...') 
+      // في حال الباقة المجانية
+      router.push({ name: 'signup-success' })
     }
   } catch (err) {
     submitError.value = err.message
-  } finally {
-    submitting.value = false
-  }
+    // نوقف التحميل فقط في حال حدوث خطأ لتجنب تجميد الواجهة
+    submitting.value = false 
+  } 
+  // تم إزالة block finally عمداً ليبقى زر التسجيل في حالة التحميل 
+  // ريثما يتم انتقال المتصفح إلى رابط بوابة الدفع
 }
 </script>
 
 <template>
   <AuthLayout
-    title="Welcome to Khubrat!"
+    title="Welcome to Khebrat Link!"
     subtitle="Let's set up your admin account"
     max-width="max-w-2xl"
     back-label="Go Back"
@@ -85,7 +88,9 @@ async function handleSubmit() {
         <BaseInput v-model="form.address" label="Company Address" required :error="fieldErrors.address" />
       </div>
 
-      <BaseButton type="submit" variant="gold" full-width :loading="submitting">Complete Registration</BaseButton>
+      <BaseButton type="submit" variant="gold" full-width :loading="submitting">
+        {{ submitting ? 'Processing...' : 'Complete Registration' }}
+      </BaseButton>
     </form>
   </AuthLayout>
 </template>

@@ -58,7 +58,15 @@ export const useCompaniesStore = defineStore('companies', () => {
     loading.value = true
     error.value = null
     try {
-      return await companiesService.register(payload)
+      const response = await companiesService.register(payload)
+      
+      // التحقق مما إذا كانت الباقة مدفوعة وتتطلب تحويلاً لبوابة الدفع
+      if (response.payment_required && response.payment_url) {
+        // فتح الرابط في تبويب جديد
+        window.open(response.payment_url, '_blank')
+      }
+
+      return response
     } catch (err) {
       error.value = err.message
       throw err
@@ -67,30 +75,45 @@ export const useCompaniesStore = defineStore('companies', () => {
     }
   }
 
-  function patchLocalStatus(companyId, patch) {
+  function patchLocalStatus(companyId, statusValue) {
+    const isActive = statusValue === 'active'
+  
+    // 1. تحديث العنصر في القائمة (والذي يستقبل is_active)
     const index = companies.value.findIndex((c) => c.id === companyId)
-    if (index !== -1) companies.value[index] = { ...companies.value[index], ...patch }
+    if (index !== -1) {
+      companies.value[index] = {
+        ...companies.value[index],
+        is_active: isActive,
+        status: statusValue // كحقل احتياطي
+      }
+    }
+  
+    // 2. تحديث تفاصيل الشركة الحالية (والتي تستقبل status)
     if (currentCompany.value?.id === companyId) {
-      currentCompany.value = { ...currentCompany.value, ...patch }
+      currentCompany.value = {
+        ...currentCompany.value,
+        is_active: isActive,
+        status: statusValue
+      }
     }
   }
-
+  
   async function freezeCompany(companyId, reason) {
     error.value = null
     try {
       await companiesService.freeze(companyId, reason)
-      patchLocalStatus(companyId, { status: 'frozen' })
+      patchLocalStatus(companyId, 'frozen')
     } catch (err) {
       error.value = err.message
       throw err
     }
   }
-
+  
   async function activateCompany(companyId) {
     error.value = null
     try {
       await companiesService.activate(companyId)
-      patchLocalStatus(companyId, { status: 'active' })
+      patchLocalStatus(companyId, 'active')
     } catch (err) {
       error.value = err.message
       throw err

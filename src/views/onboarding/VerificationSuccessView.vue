@@ -59,20 +59,20 @@ function goToLogin() {
       </div>
       
       <p class="text-slate-700 text-lg font-medium leading-relaxed dark:text-slate-200">
-        مرحباً بك في خبرات لينك! تم إنشاء بيئة العمل لشركتك بنجاح ضمن الباقة المجانية.
+        Welcome to Link Experiences! Your company's work environment has been successfully created within the free package.
       </p>
 
       <div class="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
-        <p class="text-sm text-slate-600 mb-1">لقد أرسلنا للتو رابط تفعيل الحساب مع كلمة المرور المؤقتة إلى:</p>
+        <p class="text-sm text-slate-600 mb-1">We have just sent the account activation link with the temporary password to:</p>
         <p class="font-bold text-khubrat-blue text-lg">{{ email }}</p>
       </div>
 
       <div class="pt-4 flex flex-col gap-3">
         <BaseButton @click="goToLogin" variant="gold" full-width>
-          الانتقال لصفحة تسجيل الدخول
+          Go to the login page
         </BaseButton>
         
-        <BaseButton 
+        <!-- <BaseButton 
           @click="handleResend" 
           variant="ghost" 
           full-width 
@@ -80,7 +80,7 @@ function goToLogin() {
         >
           <span v-if="timer > 0">إعادة إرسال البريد بعد ({{ timer }} ثانية)</span>
           <span v-else><i class="fa-solid fa-rotate-right mr-2"></i> إعادة إرسال البريد</span>
-        </BaseButton>
+        </BaseButton> -->
       </div>
     </div>
   </AuthLayout>
