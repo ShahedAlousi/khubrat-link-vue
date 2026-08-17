@@ -4,6 +4,7 @@ import { employeesService } from '@/services/employees.service'
 import { hrManagersService } from '@/services/hrManagers.service'
 import { departmentsService } from '@/services/departments.service'
 import { useAuthStore } from '@/stores/auth.store'
+import { HR_DEPARTMENT_NAME, unwrapHrManagerPayload } from '@/stores/hrManagers.store'
 
 export const STAFF_TYPE = {
   HR: 'HR',
@@ -21,34 +22,41 @@ function asNumber(value) {
  * @param {'HR'|'REGULAR'} staffType
  */
 export function normalizeStaffRow(row, staffType) {
-  const user = row?.user ?? {}
-  const department = row?.department ?? null
+  const source = staffType === STAFF_TYPE.HR ? unwrapHrManagerPayload(row) : row
+  const user = source?.user ?? {}
+  const department = source?.department ?? null
+  const nested = source?.employee && typeof source.employee === 'object' ? source.employee : null
+  const employment = nested ?? source
+  const isHr = staffType === STAFF_TYPE.HR
 
   return {
-    id: row.id,
-    user_id: row.user_id ?? user.id ?? null,
-    company_id: row.company_id ?? null,
-    department_id: row.department_id ?? department?.id ?? null,
-    education: row.education ?? '',
-    job_title: row.job_title ?? '',
-    base_salary: asNumber(row.base_salary),
-    hire_date: row.hire_date ?? '',
-    employment_type: row.employment_type ?? 'full-time',
-    is_active: row.is_active ?? true,
-    created_at: row.created_at ?? null,
-    full_name: user.full_name ?? row.full_name ?? '',
-    email: user.email ?? row.email ?? '',
-    phone: user.phone ?? row.phone ?? '',
-    role: user.role ?? row.role ?? (staffType === STAFF_TYPE.HR ? 'hr_manager' : 'employee'),
-    status: user.status ?? null,
-    gender: user.gender ?? row.gender ?? null,
-    marital_status: user.marital_status ?? row.marital_status ?? null,
-    nationality: user.nationality ?? row.nationality ?? null,
-    residence: user.residence ?? row.residence ?? null,
-    department_name: department?.name ?? '',
-    department,
+    id: source.id,
+    user_id: source.user_id ?? user.id ?? (isHr ? source.id : null),
+    employee_id: source.employee_id ?? nested?.id ?? null,
+    company_id: source.company_id ?? null,
+    department_id: employment.department_id ?? source.department_id ?? department?.id ?? null,
+    education: employment.education ?? source.education ?? '',
+    job_title: employment.job_title ?? source.job_title ?? '',
+    base_salary: asNumber(employment.base_salary ?? source.base_salary),
+    hire_date: employment.hire_date ?? source.hire_date ?? '',
+    employment_type: employment.employment_type ?? source.employment_type ?? 'full-time',
+    is_active: employment.is_active ?? source.is_active ?? true,
+    created_at: source.created_at ?? null,
+    full_name: user.full_name ?? source.full_name ?? '',
+    email: user.email ?? source.email ?? '',
+    phone: user.phone ?? source.phone ?? '',
+    role: user.role ?? source.role ?? (isHr ? 'hr_manager' : 'employee'),
+    status: user.status ?? source.status ?? null,
+    gender: user.gender ?? source.gender ?? null,
+    marital_status: user.marital_status ?? source.marital_status ?? null,
+    nationality: user.nationality ?? source.nationality ?? null,
+    residence: user.residence ?? source.residence ?? null,
+    department_name: isHr
+      ? HR_DEPARTMENT_NAME
+      : (department?.name ?? source.department_name ?? ''),
+    department: isHr ? { name: HR_DEPARTMENT_NAME } : department,
     user,
-    document: row.document ?? null,
+    document: source.document ?? null,
     staffType
   }
 }

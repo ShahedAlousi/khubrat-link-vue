@@ -5,7 +5,11 @@ import BaseButton from '@/components/common/BaseButton.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import BaseAlert from '@/components/common/BaseAlert.vue'
 import { useAuthStore } from '@/stores/auth.store'
-import { useLeaveTypesStore } from '@/stores/leaveTypes.store'
+import {
+  useLeaveTypesStore,
+  LEAVE_TYPE_CATEGORIES,
+  FREE_DAYS_LEAVE_CATEGORY
+} from '@/stores/leaveTypes.store'
 
 const props = defineProps({
   readonly: { type: Boolean, default: false }
@@ -14,32 +18,18 @@ const props = defineProps({
 const authStore = useAuthStore()
 const leaveTypesStore = useLeaveTypesStore()
 
-// القائمة الثابتة لفئات الإجازات المعروضة دائمًا (مطابقة للتصميم المرفق)،
-// مع نص "الشروط ومتطلبات الإثبات" ثابت هنا في الواجهة فقط — هذا الحقل غير
-// موجود في مخطط الـ API، فهو مجرد شرح توضيحي محلي لكل فئة معروفة.
-const FIXED_CATEGORIES = [
-  { name: 'Maternity Leave', terms: 'Requires medical certificate submission', defaultDays: 90, defaultActive: true, requiresProof: true },
-  { name: 'Marriage Leave', terms: 'Requires certificate proof within 14 days', defaultDays: 7, defaultActive: true, requiresProof: true },
-  { name: 'Travel Leave', terms: 'Approved holiday relocation check-in', defaultDays: 15, defaultActive: false, requiresProof: true },
-  { name: 'Study/Exams Leave', terms: 'Requires accredited university exam agenda', defaultDays: 10, defaultActive: true, requiresProof: true },
-  { name: 'Sick Leave', terms: 'Requires verified medical board diagnosis', defaultDays: 14, defaultActive: true, requiresProof: true },
-  { name: 'Hajj Leave', terms: 'Granted once per career cycle, requires passport stamp', defaultDays: 30, defaultActive: false, requiresProof: true },
-  { name: 'Compassionate Leave', terms: 'Requires direct relative verification certificate', defaultDays: 3, defaultActive: true, requiresProof: true }
-]
-
-// الصف الخاص "أيام حرة مدفوعة" يُعرض بشكل منفصل تحت الجدول الرئيسي، بنفس بنية البيانات
-const FREE_DAYS_CATEGORY = {
-  name: 'Paid Free Days Leave Allocation',
-  terms: 'Independent annual balance. Deduct basic wage ONLY if free days requests exceed this specific balance in the calendar year.',
-  defaultDays: 14,
-  defaultActive: true,
-  requiresProof: false
-}
-
 const rows = ref([])
 const freeDaysRow = ref(null)
 const actionError = ref('')
 const saveSuccess = ref(false)
+
+function unitLabel(row) {
+  return row?.allocation_unit === 'hours' ? 'hours' : 'days'
+}
+
+function proofLabel(required) {
+  return required ? 'Required' : 'Not required'
+}
 
 // يبني صف جدول واحد: يأخذ البيانات الحقيقية من الـ API لو الفئة موجودة مسبقًا، وإلا يستخدم القيم الافتراضية
 function buildRow(category) {
@@ -48,17 +38,17 @@ function buildRow(category) {
     id: existing?.id ?? null,
     name: category.name,
     terms: category.terms,
-    allocation_unit: existing?.allocation_unit ?? 'days',
-    allocation_value: existing?.allocation_value ?? category.defaultDays,
-    requires_proof: existing?.requires_proof ?? category.requiresProof,
+    allocation_unit: category.allocationUnit ?? existing?.allocation_unit ?? 'days',
+    allocation_value: existing?.allocation_value ?? category.defaultValue,
+    requires_proof: existing?.requires_proof ?? category.requiresProof ?? false,
     is_active: existing?.is_active ?? category.defaultActive
   }
 }
 
 // يعيد بناء كل صفوف الجدول (والصف الخاص) من الحالة الحالية للـ Store
 function rebuildRows() {
-  rows.value = FIXED_CATEGORIES.map(buildRow)
-  freeDaysRow.value = buildRow(FREE_DAYS_CATEGORY)
+  rows.value = LEAVE_TYPE_CATEGORIES.map(buildRow)
+  freeDaysRow.value = buildRow(FREE_DAYS_LEAVE_CATEGORY)
 }
 
 onMounted(async () => {
@@ -95,18 +85,9 @@ async function handleSaveAll() {
   const toCreate = allRows.filter((r) => !r.id)
   const toUpdate = allRows.filter((r) => r.id)
 
-  const toPayload = (r) => ({
-    ...(r.id ? { id: r.id } : {}),
-    name: r.name,
-    allocation_value: Number(r.allocation_value),
-    allocation_unit: r.allocation_unit,
-    requires_proof: r.requires_proof,
-    is_active: r.is_active
-  })
-
   try {
-    if (toCreate.length) await leaveTypesStore.createLeaveTypesBulk(authStore.companyId, toCreate.map(toPayload))
-    if (toUpdate.length) await leaveTypesStore.updateLeaveTypesBulk(authStore.companyId, toUpdate.map(toPayload))
+    if (toCreate.length) await leaveTypesStore.createLeaveTypesBulk(authStore.companyId, toCreate)
+    if (toUpdate.length) await leaveTypesStore.updateLeaveTypesBulk(authStore.companyId, toUpdate)
     rebuildRows()
     saveSuccess.value = true
   } catch (err) {
@@ -121,9 +102,9 @@ async function handleSaveAll() {
       <span class="font-extrabold text-khubrat-blue dark:text-khubrat-goldLight">
         <i class="fa-solid fa-circle-info mr-1"></i> Policy Note:
       </span>
-      The maximum limits configured below represent allocations permitted per individual occurrence or event, and
-      can be requested multiple times inside the calendar year. High-contrast labels provide complete transparency
-      on legal proof constraints.
+      The maximum limits below are per occurrence (days or hours for Hourly Leave). Proof documents are
+      <span class="font-extrabold">not required by default</span> — enable the proof switch on any leave type
+      if employees must attach supporting documentation when requesting it.
     </div>
 
     <BaseAlert v-if="saveSuccess" variant="success">Leave policies saved successfully.</BaseAlert>
@@ -137,17 +118,40 @@ async function handleSaveAll() {
           <thead>
             <tr class="text-slate-800 dark:text-slate-100 border-b-2 border-slate-200 dark:border-slate-700 font-extrabold text-[13px]">
               <th class="pb-3 pl-4">Leave Category</th>
-              <th class="pb-3 px-3">Terms &amp; Proof Requirement</th>
+              <th class="pb-3 px-3 text-center">Require Proof</th>
               <th class="pb-3 text-center">Status Switch</th>
-              <th class="pb-3 text-right pr-6">Maximum Days Limit</th>
+              <th class="pb-3 text-right pr-6">Maximum Limit</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-200 dark:divide-slate-700 font-semibold text-slate-700 dark:text-slate-300">
             <tr v-for="row in rows" :key="row.name" class="hover:bg-amber-500/5 dark:hover:bg-khubrat-goldDark/10 transition-colors">
-              <td class="py-4 pl-4 font-black text-khubrat-blue dark:text-khubrat-goldLight text-sm tracking-wide border-l-4 border-khubrat-blue dark:border-khubrat-goldLight">
-                {{ row.name }}
+              <td class="py-4 pl-4 border-l-4 border-khubrat-blue dark:border-khubrat-goldLight">
+                <p class="font-black text-khubrat-blue dark:text-khubrat-goldLight text-sm tracking-wide">
+                  <i v-if="row.allocation_unit === 'hours'" class="fa-solid fa-clock mr-1.5 text-khubrat-goldDark dark:text-khubrat-goldLight"></i>
+                  {{ row.name }}
+                </p>
+                <p class="text-[11px] text-slate-400 font-medium mt-0.5 max-w-xs">{{ row.terms }}</p>
               </td>
-              <td class="py-4 px-3 text-slate-500 dark:text-slate-400 font-medium">{{ row.terms }}</td>
+              <td class="py-4 px-3 text-center">
+                <div class="flex flex-col items-center gap-1">
+                  <span
+                    v-if="readonly"
+                    class="text-xs font-bold"
+                    :class="row.requires_proof ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'"
+                  >
+                    {{ proofLabel(row.requires_proof) }}
+                  </span>
+                  <template v-else>
+                    <ToggleSwitch v-model="row.requires_proof" />
+                    <span
+                      class="text-[10px] font-bold"
+                      :class="row.requires_proof ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'"
+                    >
+                      {{ proofLabel(row.requires_proof) }}
+                    </span>
+                  </template>
+                </div>
+              </td>
               <td class="py-4 text-center">
                 <span
                   v-if="readonly"
@@ -159,16 +163,27 @@ async function handleSaveAll() {
                 <ToggleSwitch v-else :model-value="row.is_active" @update:model-value="handleToggle(row)" />
               </td>
               <td class="py-4 text-right pr-6">
-                <span v-if="readonly" class="text-sm font-bold text-slate-800 dark:text-slate-100">
-                  {{ row.allocation_value ?? '—' }}
-                </span>
-                <input
-                  v-else
-                  v-model.number="row.allocation_value"
-                  type="number"
-                  min="0"
-                  class="w-20 text-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg py-1.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight dark:text-white"
-                />
+                <div class="inline-flex flex-col items-end gap-0.5">
+                  <div class="inline-flex items-center justify-end gap-1.5">
+                    <span v-if="readonly" class="text-sm font-bold text-slate-800 dark:text-slate-100">
+                      {{ row.allocation_value ?? '—' }}
+                    </span>
+                    <input
+                      v-else
+                      v-model.number="row.allocation_value"
+                      type="number"
+                      min="0"
+                      step="1"
+                      :title="row.allocation_unit === 'hours' ? 'Hours available to request' : 'Maximum days limit'"
+                      :placeholder="row.allocation_unit === 'hours' ? 'Hours' : 'Days'"
+                      class="w-20 text-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg py-1.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight dark:text-white"
+                    />
+                    <span class="text-[10px] font-bold text-slate-400 uppercase w-10 text-left">{{ unitLabel(row) }}</span>
+                  </div>
+                  <span v-if="row.allocation_unit === 'hours'" class="text-[10px] text-slate-400 font-medium">
+                    Hours available to request
+                  </span>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -184,7 +199,26 @@ async function handleSaveAll() {
             <p class="text-[11px] text-slate-400 max-w-xl">{{ freeDaysRow.terms }}</p>
           </div>
         </div>
-        <div class="flex items-center gap-3 flex-shrink-0">
+        <div class="flex items-center gap-4 flex-shrink-0 flex-wrap justify-end">
+          <div class="flex flex-col items-center gap-1">
+            <span class="text-[10px] font-bold text-slate-400 uppercase">Require Proof</span>
+            <span
+              v-if="readonly"
+              class="text-xs font-bold"
+              :class="freeDaysRow.requires_proof ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'"
+            >
+              {{ proofLabel(freeDaysRow.requires_proof) }}
+            </span>
+            <template v-else>
+              <ToggleSwitch v-model="freeDaysRow.requires_proof" />
+              <span
+                class="text-[10px] font-bold"
+                :class="freeDaysRow.requires_proof ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'"
+              >
+                {{ proofLabel(freeDaysRow.requires_proof) }}
+              </span>
+            </template>
+          </div>
           <span
             v-if="readonly"
             class="text-xs font-bold"
@@ -194,15 +228,17 @@ async function handleSaveAll() {
           </span>
           <ToggleSwitch v-else :model-value="freeDaysRow.is_active" @update:model-value="handleToggle(freeDaysRow)" />
           <span v-if="readonly" class="text-sm font-bold text-slate-800 dark:text-slate-100">
-            {{ freeDaysRow.allocation_value ?? '—' }} days
+            {{ freeDaysRow.allocation_value ?? '—' }} {{ unitLabel(freeDaysRow) }}
           </span>
-          <input
-            v-else
-            v-model.number="freeDaysRow.allocation_value"
-            type="number"
-            min="0"
-            class="w-20 text-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg py-1.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight dark:text-white"
-          />
+          <div v-else class="inline-flex items-center gap-1.5">
+            <input
+              v-model.number="freeDaysRow.allocation_value"
+              type="number"
+              min="0"
+              class="w-20 text-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg py-1.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight dark:text-white"
+            />
+            <span class="text-[10px] font-bold text-slate-400 uppercase">{{ unitLabel(freeDaysRow) }}</span>
+          </div>
         </div>
       </div>
 

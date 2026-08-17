@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useStaffStore, STAFF_TYPE } from '@/stores/staff.store'
+import { HR_DEPARTMENT_NAME } from '@/stores/hrManagers.store'
 import BaseButton from '@/components/common/BaseButton.vue'
 import BaseAlert from '@/components/common/BaseAlert.vue'
 import BaseInput from '@/components/common/BaseInput.vue'
@@ -44,7 +45,7 @@ const filteredStaff = computed(() => {
   const rows = staffStore.sortedStaff
   if (!q) return rows
   return rows.filter((row) => {
-    const haystack = [row.full_name, row.email, row.job_title, row.department_name, row.staffType]
+    const haystack = [row.full_name, row.email, row.job_title, departmentLabel(row), row.staffType]
       .join(' ')
       .toLowerCase()
     return haystack.includes(q)
@@ -193,6 +194,11 @@ function roleBadgeClass(staffType) {
     ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300'
     : 'bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
 }
+
+function departmentLabel(row) {
+  if (row.staffType === STAFF_TYPE.HR) return HR_DEPARTMENT_NAME
+  return row.department_name || '—'
+}
 </script>
 
 <template>
@@ -278,7 +284,7 @@ function roleBadgeClass(staffType) {
                   {{ row.staffType === STAFF_TYPE.HR ? 'HR' : 'Employee' }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-slate-600 dark:text-slate-300">{{ row.department_name || '—' }}</td>
+              <td class="px-4 py-3 text-slate-600 dark:text-slate-300">{{ departmentLabel(row) }}</td>
               <td class="px-4 py-3 text-slate-600 dark:text-slate-300">{{ row.job_title || '—' }}</td>
               <td class="px-4 py-3 text-slate-600 dark:text-slate-300">{{ formatDate(row.hire_date) }}</td>
               <td class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-200">

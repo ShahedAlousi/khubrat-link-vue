@@ -3,6 +3,32 @@ import { ref } from 'vue'
 import { hrManagersService } from '@/services/hrManagers.service'
 import { departmentsService } from '@/services/departments.service'
 
+/** HR department is not taken from the API — always shown as this label. */
+export const HR_DEPARTMENT_NAME = 'Human Resources'
+
+/**
+ * HR list/detail payloads keep identity fields at the top level and nest
+ * employment fields (job_title, base_salary, hire_date, …) under `employee`.
+ */
+export function unwrapHrManagerPayload(row) {
+  if (!row || typeof row !== 'object') return row
+
+  const employee = row.employee && typeof row.employee === 'object' ? row.employee : null
+
+  return {
+    ...row,
+    employee_id: employee?.id ?? row.employee_id ?? null,
+    department_id: employee?.department_id ?? row.department_id ?? null,
+    education: employee?.education ?? row.education ?? null,
+    job_title: employee?.job_title ?? row.job_title ?? null,
+    base_salary: employee?.base_salary ?? row.base_salary ?? null,
+    hire_date: employee?.hire_date ?? row.hire_date ?? null,
+    employment_type: employee?.employment_type ?? row.employment_type ?? null,
+    is_active: employee?.is_active ?? row.is_active ?? row.status === 'active',
+    department_name: HR_DEPARTMENT_NAME
+  }
+}
+
 /**
  * Store خاص بميزة "إدارة الكادر والمسؤولين" — تبويب إضافة مدير HR حاليًا.
  * سيُستخدم لاحقًا أيضًا لتبويبي "الدليل" و"الاستيراد الجماعي" عند بناء
