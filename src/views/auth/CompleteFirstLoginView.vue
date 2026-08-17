@@ -32,6 +32,23 @@ async function handleSubmit() {
       password: form.password,
       password_confirmation: form.confirmPassword
     })
+
+    if (!authStore.hasWebConsoleAccess) {
+      router.push({ name: 'forbidden' })
+      return
+    }
+
+    if (authStore.isCompanyUser) {
+      router.push(
+        authStore.isDepartmentManager
+          ? { name: 'company-requests' }
+          : authStore.canManagePolicies
+            ? { name: 'company-policies' }
+            : { name: 'company-dashboard' }
+      )
+      return
+    }
+
     router.push({ name: 'dashboard-overview' })
   } catch (err) {
     submitError.value = err.message

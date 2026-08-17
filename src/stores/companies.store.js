@@ -1,6 +1,17 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { companiesService } from '@/services/companies.service'
+import { useAuthStore } from '@/stores/auth.store'
+import { resolveCheckout } from '@/utils/checkout'
+
+// عدد الأيام المتبقية التي يبدأ عندها تحذير التجديد بالظهور للمستخدم
+const RENEWAL_WARNING_DAYS = 5
+
+/** أي حالة نصية غير "active" تعني أن الشركة غير فعّالة (frozen / suspended / inactive …) */
+function isInactiveStatus(status) {
+  if (typeof status !== 'string' || !status.trim()) return false
+  return status.trim().toLowerCase() !== 'active'
+}
 
 export const useCompaniesStore = defineStore('companies', () => {
   const companies = ref([])
@@ -10,6 +21,11 @@ export const useCompaniesStore = defineStore('companies', () => {
   const loading = ref(false)
   const statsLoading = ref(false)
   const error = ref(null)
+
+  // ---- اشتراك الشركة الحالية (لوحة الشركة، وليس لوحة المنصة) ----
+  const subscriptionUsage = ref(null)
+  const usageLoading = ref(false)
+  const renewing = ref(false)
 
   async function fetchCompanies() {
     loading.value = true
@@ -58,15 +74,8 @@ export const useCompaniesStore = defineStore('companies', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await companiesService.register(payload)
-      
-      // التحقق مما إذا كانت الباقة مدفوعة وتتطلب تحويلاً لبوابة الدفع
-      if (response.payment_required && response.payment_url) {
-        // فتح الرابط في تبويب جديد
-        window.open(response.payment_url, '_blank')
-      }
-
-      return response
+      // لا نفتح بوابة الدفع هنا — الصفحة تستدعي redirect بنفس التبويب بعد حفظ session_id
+      return await companiesService.register(payload)
     } catch (err) {
       error.value = err.message
       throw err
@@ -120,6 +129,74 @@ export const useCompaniesStore = defineStore('companies', () => {
     }
   }
 
+  /** الأيام المتبقية من مدة الاشتراك (null إن كانت الباقة بلا مدة محددة) */
+  const daysRemaining = computed(() => {
+    const value = subscriptionUsage.value?.period?.days_remaining
+    return typeof value === 'number' ? value : null
+  })
+
+  const isSubscriptionExpired = computed(() =>
+    Boolean(subscriptionUsage.value?.period?.is_expired)
+  )
+
+  /**
+   * الشركة غير فعّالة (مجمّدة من المنصة أو موقوفة لانتهاء الاشتراك).
+   * نعتمد company_status القادم من /usage، ونرجع لبيانات الشركة المخزّنة عند
+   * تسجيل الدخول كخطة بديلة لأن endpoint الاستهلاك قد يُحجب للشركة المجمّدة.
+   */
+  const isCompanyFrozen = computed(() => {
+    if (isInactiveStatus(subscriptionUsage.value?.company_status)) return true
+
+    const company = useAuthStore().company
+    if (!company) return false
+    if (company.is_active === false) return true
+    return isInactiveStatus(company.status ?? company.company_status)
+  })
+
+  /** يظهر زر التجديد البارز عند التجميد أو انتهاء الاشتراك أو تبقّي 5 أيام أو أقل */
+  const needsRenewal = computed(() => {
+    if (isCompanyFrozen.value || isSubscriptionExpired.value) return true
+    return daysRemaining.value !== null && daysRemaining.value <= RENEWAL_WARNING_DAYS
+  })
+
+  async function fetchSubscriptionUsage() {
+    usageLoading.value = true
+    error.value = null
+    try {
+      subscriptionUsage.value = await companiesService.subscriptionUsage()
+      return subscriptionUsage.value
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      usageLoading.value = false
+    }
+  }
+
+  /**
+   * تجديد اشتراك الشركة بباقة مختارة.
+   * @returns {Promise<{paymentUrl: string|null, sessionId: string|null, response: object}>}
+   * paymentUrl يكون null للباقات المجانية (الباك اند يرسل بريداً بدل جلسة الدفع).
+   */
+  async function renewSubscription(planId) {
+    renewing.value = true
+    error.value = null
+    try {
+      const response = await companiesService.renewSubscription(planId)
+      const checkout = resolveCheckout(response)
+      return {
+        paymentUrl: checkout.paymentUrl,
+        sessionId: checkout.sessionId,
+        response
+      }
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      renewing.value = false
+    }
+  }
+
   async function removeCompany(companyId) {
     error.value = null
     try {
@@ -138,12 +215,21 @@ export const useCompaniesStore = defineStore('companies', () => {
     loading,
     statsLoading,
     error,
+    subscriptionUsage,
+    usageLoading,
+    renewing,
+    daysRemaining,
+    isSubscriptionExpired,
+    isCompanyFrozen,
+    needsRenewal,
     fetchCompanies,
     fetchCompany,
     fetchStats,
     registerCompany,
     freezeCompany,
     activateCompany,
-    removeCompany
+    removeCompany,
+    fetchSubscriptionUsage,
+    renewSubscription
   }
 })

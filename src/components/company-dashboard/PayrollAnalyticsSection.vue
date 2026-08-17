@@ -126,10 +126,6 @@ onMounted(() => {
           class="w-40"
           @update:model-value="onMonthChange"
         />
-        <BaseButton variant="blue" :disabled="!store.analytics" @click="exportReport">
-          <i class="fa-solid fa-file-export text-xs"></i>
-          Export Report
-        </BaseButton>
       </div>
     </div>
 

@@ -23,11 +23,8 @@ export const useSalariesStore = defineStore('salaries', () => {
 
   async function fetchSalaries(params = {}) {
     const p = { per_page: params.per_page ?? pagination.per_page, page: params.page ?? 1, ...params }
-    const res = await salariesService.list(p)
-    // The backend returns a paginated envelope under data (seen in example)
-    const data = res?.data ?? res
+    const data = await salariesService.list(p)
     salariesList.value = data?.data ?? []
-    // update pagination
     pagination.current_page = data?.current_page ?? 1
     pagination.last_page = data?.last_page ?? 1
     pagination.per_page = data?.per_page ?? pagination.per_page
@@ -35,9 +32,8 @@ export const useSalariesStore = defineStore('salaries', () => {
     pagination.prev_page_url = data?.prev_page_url ?? null
     pagination.total = data?.total ?? (salariesList.value.length || 0)
 
-    // compute stats client-side
     computeStats()
-  }
+}
 
   function computeStats() {
     const list = salariesList.value || []

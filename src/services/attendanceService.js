@@ -88,10 +88,8 @@ export async function getAttendanceQrCode() {
 
 /**
  * تعديل يدوي (Exceptional Override) لسجل حضور موجود فعلياً (صلاحية HR /
- * General Manager فقط). يتطلب attendanceRecordId حقيقي -- موظف بدون سجل
- * (not_arrived / on_leave، أي attendance_record_id = null بالروستر) لا يمكن
- * تعديله عبر هذا التابع أصلاً لأن الباك اند يطلبه بمسار الرابط (path param)
- * ويرجع 404 لو غير موجود.
+ * General Manager فقط). يتطلب attendanceRecordId حقيقي.
+ * لموظف بدون سجل بعد (attendance_record_id = null) استخدمي registerAttendance().
  *
  * @param {string} attendanceRecordId
  * @param {Object} payload
@@ -109,6 +107,28 @@ export async function adjustAttendanceRecord(attendanceRecordId, payload) {
   // adjusted and minutes recalculated" بدون schema)، لذلك لا نحاول تطبيعه لشكل
   // موحّد هنا. غير حرج لأن الـ store يستدعي refreshAll() فوراً بعد النجاح
   // ويُعيد تحميل كل شيء من الروستر/الإحصائيات على أي حال.
+  return data?.data ?? null
+}
+
+/**
+ * تسجيل حضور يدوي لموظف لم يمسح QR (صلاحية HR / General Manager).
+ * يُستخدم عندما يكون attendance_record_id = null في الروستر (مثلاً not_arrived).
+ *
+ * @param {Object} payload
+ * @param {string} payload.employeeId
+ * @param {string} payload.workDate       - "YYYY-MM-DD"
+ * @param {string} payload.checkInTime    - "YYYY-MM-DD HH:mm:ss"
+ * @param {string} payload.checkOutTime   - "YYYY-MM-DD HH:mm:ss"
+ * @param {string} payload.reason
+ */
+export async function registerAttendance(payload) {
+  const { data } = await api.post(`${BASE_URL}/register`, {
+    employee_id: payload.employeeId,
+    work_date: payload.workDate,
+    check_in_time: payload.checkInTime,
+    check_out_time: payload.checkOutTime,
+    reason: payload.reason,
+  })
   return data?.data ?? null
 }
 
@@ -165,6 +185,15 @@ export function buildIsoDateTime(dateOnly, time) {
 }
 
 /**
+ * نفس بناء التاريخ/الوقت لكن بصيغة Laravel/Carbon التي يتوقعها تابع
+ * register: "YYYY-MM-DD HH:mm:ss" (مسافة بدل حرف T).
+ */
+export function buildLaravelDateTime(dateOnly, time) {
+  const iso = buildIsoDateTime(dateOnly, time)
+  return iso ? iso.replace('T', ' ') : null
+}
+
+/**
  * تفكيك تاريخ/وقت قادم من الباك اند إلى بنية {hours, minutes, period} تفهمها
  * الساعة التناظرية Vue Component. تُستخدم لتعبئة القيم الحالية عند فتح مودال
  * التعديل، وأيضاً لعرض الوقت بالجدول.
@@ -204,6 +233,8 @@ export default {
   getAttendanceStats,
   getAttendanceQrCode,
   adjustAttendanceRecord,
+  registerAttendance,
   buildIsoDateTime,
+  buildLaravelDateTime,
   parseTimeForClock,
 }

@@ -9,6 +9,10 @@ const authStore = useAuthStore()
 const activeTab = ref('directory')
 
 const tabs = computed(() => {
+  if (authStore.isDepartmentManager) {
+    return [{ id: 'directory', label: 'Employees', icon: 'fa-address-book' }]
+  }
+
   const items = [
     { id: 'directory', label: 'Employees & HR', icon: 'fa-address-book' },
     { id: 'departments', label: 'Departments', icon: 'fa-sitemap' }
@@ -44,7 +48,7 @@ const tabs = computed(() => {
     <div v-show="activeTab === 'directory'">
       <StaffDirectoryTab />
     </div>
-    <div v-show="activeTab === 'departments'">
+    <div v-if="!authStore.isDepartmentManager" v-show="activeTab === 'departments'">
       <DepartmentsTab />
     </div>
     <div v-if="authStore.isHrManager" v-show="activeTab === 'import'">

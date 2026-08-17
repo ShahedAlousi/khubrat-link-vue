@@ -6,9 +6,23 @@ const CompanyLayout = () => import('@/components/layout/CompanyLayout.vue')
 
 /** Default landing route for authenticated company (tenant) users. */
 function companyHomeRoute(authStore) {
+  if (authStore.isDepartmentManager) {
+    return { name: 'company-requests' }
+  }
   return authStore.canManagePolicies
     ? { name: 'company-policies' }
     : { name: 'company-dashboard' }
+}
+
+function defaultHomeRoute(authStore) {
+  if (authStore.isCompanyUser) return companyHomeRoute(authStore)
+  if (authStore.isPlatformAdmin) return { name: 'dashboard-overview' }
+  return { name: 'forbidden' }
+}
+
+function isAuthOrPublicSurface(to) {
+  if (to.meta.guestOnly || to.meta.publicAccess) return true
+  return to.matched.some((record) => record.meta.guestOnly || record.meta.publicAccess)
 }
 
 const routes = [
@@ -16,8 +30,8 @@ const routes = [
     path: '/',
     redirect: () => {
       const authStore = useAuthStore()
-      if (authStore.isCompanyUser) return companyHomeRoute(authStore)
-      return { name: 'dashboard-overview' }
+      if (!authStore.isAuthenticated) return { name: 'login' }
+      return defaultHomeRoute(authStore)
     }
   },
 
@@ -44,7 +58,7 @@ const routes = [
     path: '/complete-first-login',
     name: 'complete-first-login',
     component: () => import('@/views/auth/CompleteFirstLoginView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, publicAccess: true }
   },
 
   // ---- Public: onboarding / self-service signup ----
@@ -72,18 +86,25 @@ const routes = [
     component: () => import('@/views/onboarding/VerificationSuccessView.vue'),
     meta: { guestOnly: true }
   },
-  // ---- Public: Payment Callbacks ----
+  // ---- Public: Payment Callbacks (Stripe success_url / cancel_url) ----
   {
     path: '/payment/success',
     name: 'payment-success',
-    component: () => import('@/views/onboarding/SetupAdminAccountView.vue'),
-    meta: { guestOnly: true } // أو بدون meta حسب ما تفضلين
+    component: () => import('@/views/onboarding/PaymentSuccessView.vue'),
+    meta: { publicAccess: true }
   },
   {
     path: '/payment/cancel',
     name: 'payment-cancel',
-    component: () => import('@/views/onboarding/SetupAdminAccountView.vue'),
-    meta: { guestOnly: true }
+    component: () => import('@/views/onboarding/PaymentCancelView.vue'),
+    meta: { publicAccess: true }
+  },
+
+  {
+    path: '/forbidden',
+    name: 'forbidden',
+    component: () => import('@/views/ForbiddenView.vue'),
+    meta: { publicAccess: true }
   },
 
   // ---- Protected: PLATFORM admin dashboard (Super Admin) ----
@@ -127,13 +148,19 @@ const routes = [
     children: [
       {
         path: '',
-        redirect: () => companyHomeRoute(useAuthStore())
+        redirect: () => {
+          const authStore = useAuthStore()
+          if (!authStore.hasWebConsoleAccess || !authStore.isCompanyUser) {
+            return { name: 'forbidden' }
+          }
+          return companyHomeRoute(authStore)
+        }
       },
       {
         path: 'dashboard',
         name: 'company-dashboard',
         component: () => import('@/views/company/CompanyDashboardView.vue'),
-        meta: { title: 'Dashboard' }
+        meta: { title: 'Dashboard', denyDepartmentManager: true }
       },
       {
         path: 'profile',
@@ -145,7 +172,7 @@ const routes = [
         path: 'policies',
         name: 'company-policies',
         component: () => import('@/views/company/PolicyConfigurationView.vue'),
-        meta: { title: 'Company Policy Configuration', requiresPolicyManager: true }
+        meta: { title: 'Company Policy Configuration', requiresPolicyViewer: true }
       },
       {
         path: 'requests',
@@ -153,34 +180,51 @@ const routes = [
         component: () => import('@/views/company/RequestsManagementView.vue'),
         meta: { title: 'Requests', requiresRequestViewer: true }
       },
-      { path: 'staff',
+      {
+        path: 'staff',
         name: 'company-staff-management',
         component: () => import('@/views/company/StaffManagementView.vue'),
-        meta: { requiresAuth: true, persona: 'company-user', title: 'Staff Management' } 
+        meta: { title: 'Staff Management' }
       },
-        {
-          path: 'evaluations',
-          name: 'company-evaluations',
-          component: () => import('@/views/company/EvaluationHubView.vue'),
-          meta: { title: 'Evaluations Hub', requiresHr: true } 
-        },
+      {
+        path: 'evaluations',
+        name: 'company-evaluations',
+        component: () => import('@/views/company/EvaluationHubView.vue'),
+        meta: { title: 'Evaluations Hub', requiresHr: true }
+      },
       {
         path: 'attendance',
         name: 'company-attendance',
         component: () => import('@/views/company/AttendanceTrackerView.vue'),
-        meta: { title: 'AattendanceTracker' }
+        meta: { title: 'Attendance Tracker', denyDepartmentManager: true }
       },
       {
         path: 'payroll',
         name: 'company-payroll',
         component: () => import('@/views/company/PayrollManagementView.vue'),
-        meta: { title: 'Payroll Management' }
+        meta: { title: 'Payroll Management', denyDepartmentManager: true }
+      },
+      {
+        path: 'settings',
+        name: 'company-settings',
+        component: () => import('@/views/company/CompanySettingsView.vue'),
+        meta: { title: 'Settings' }
+      },
+      {
+        path: 'subscription/renew',
+        name: 'company-subscription-renew',
+        component: () => import('@/views/company/RenewSubscriptionView.vue'),
+        meta: { title: 'Renew Subscription', requiresGeneralManager: true }
       }
-    
     ]
   },
 
-  { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue') }
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    component: () => import('@/views/NotFoundView.vue'),
+    meta: { publicAccess: true }
+  }
 ]
 
 const router = createRouter({
@@ -191,49 +235,63 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const authStore = useAuthStore()
+  const onAuthOrPublicSurface = isAuthOrPublicSurface(to)
 
-  // 1. General login session protection
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    return { name: 'login', query: { redirect: to.fullPath } }
+  // 1. Auth / public surfaces stay reachable; guests bounce away from guestOnly when logged in
+  if (onAuthOrPublicSurface) {
+    if (to.name === 'complete-first-login' && !authStore.isAuthenticated) {
+      return { name: 'forbidden' }
+    }
+
+    if (to.meta.guestOnly && authStore.isAuthenticated) {
+      if (!authStore.hasWebConsoleAccess) return { name: 'forbidden' }
+      return defaultHomeRoute(authStore)
+    }
+
+    return true
   }
 
-  // 2. Redirect guests that are already authenticated
-  if (to.meta.guestOnly && authStore.isAuthenticated) {
-    return authStore.isCompanyUser ? companyHomeRoute(authStore) : { name: 'dashboard-overview' }
+  // 2. Everything else: must be logged in with a console-eligible role (blocks guests + employee)
+  if (!authStore.hasWebConsoleAccess) {
+    return { name: 'forbidden' }
   }
 
   // 3. Force password reset on initial login cycles
-  if (
-    authStore.isAuthenticated &&
-    authStore.mustChangePassword &&
-    to.name !== 'complete-first-login'
-  ) {
+  if (authStore.mustChangePassword && to.name !== 'complete-first-login') {
     return { name: 'complete-first-login' }
   }
 
   // 4. Platform Superadmin vs Tenant console split protection
   if (to.meta.persona === 'platform-admin' && !authStore.isPlatformAdmin) {
-    return companyHomeRoute(authStore)
+    return { name: 'forbidden' }
   }
   if (to.meta.persona === 'company-user' && !authStore.isCompanyUser) {
-    return { name: 'dashboard-overview' }
+    return { name: 'forbidden' }
   }
 
-  // 5. Fine grained route guards
-  if (to.meta.requiresPolicyManager && !authStore.canManagePolicies) {
-    return { name: 'company-dashboard' }
+  // 5. Fine grained route guards → forbidden when role lacks permission
+  if (to.meta.denyDepartmentManager && authStore.isDepartmentManager) {
+    return { name: 'forbidden' }
+  }
+
+  if (to.name && authStore.isCompanyUser && !authStore.canAccessCompanyRoute(to.name)) {
+    return { name: 'forbidden' }
+  }
+
+  if (to.meta.requiresPolicyViewer && !authStore.canViewPolicies) {
+    return { name: 'forbidden' }
   }
 
   if (to.meta.requiresRequestViewer && !authStore.canViewRequestDetails) {
-    return { name: 'company-dashboard' }
+    return { name: 'forbidden' }
   }
 
   if (to.meta.requiresGeneralManager && !authStore.isGeneralManager) {
-    return { name: 'company-dashboard' }
+    return { name: 'forbidden' }
   }
 
   if (to.meta.requiresHr && !authStore.isHr) {
-    return { name: 'company-dashboard' }
+    return { name: 'forbidden' }
   }
 
   return true

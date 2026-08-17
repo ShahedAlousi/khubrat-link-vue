@@ -2,46 +2,97 @@ import { reactive, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { attendancePolicyService } from '@/services/attendancePolicy.service'
 
-const DEFAULT_POLICY = {
-  work_start_time: '09:00:00',
-  work_end_time: '17:00:00',
-  allowed_late_minutes: 15,
-  allowed_early_leave_minutes: 15,
-  allows_overtime: true,
-  allowed_perimeter: 150,
-  latitude: 33.5138,
-  longitude: 36.2765
+// Empty shape: the panel shows placeholders until the tenant's saved policy arrives.
+const EMPTY_POLICY = {
+  work_start_time: '',
+  work_end_time: '',
+  allowed_late_minutes: '',
+  allowed_early_leave_minutes: '',
+  allows_overtime: false,
+  allowed_perimeter: '',
+  latitude: null,
+  longitude: null
 }
 
 export const useAttendancePolicyStore = defineStore('attendancePolicy', () => {
-  const policy = reactive({ ...DEFAULT_POLICY })
+  const policy = reactive({ ...EMPTY_POLICY })
+  const loading = ref(false)
+  const loaded = ref(false)
   const savingPolicy = ref(false)
   const savingLocation = ref(false)
   const error = ref(null)
 
+  function toNumberOrEmpty(value) {
+    return value === null || value === undefined || value === '' ? '' : Number(value)
+  }
+
+  function toCoordinate(value) {
+    return value === null || value === undefined || value === '' ? null : Number(value)
+  }
+
+  function applyPolicyData(data = {}) {
+    if (data.work_start_time !== undefined) policy.work_start_time = data.work_start_time ?? ''
+    if (data.work_end_time !== undefined) policy.work_end_time = data.work_end_time ?? ''
+    if (data.allowed_late_minutes !== undefined) {
+      policy.allowed_late_minutes = toNumberOrEmpty(data.allowed_late_minutes)
+    }
+    if (data.allowed_early_leave_minutes !== undefined) {
+      policy.allowed_early_leave_minutes = toNumberOrEmpty(data.allowed_early_leave_minutes)
+    }
+    if (data.allows_overtime !== undefined) policy.allows_overtime = Boolean(data.allows_overtime)
+    if (data.allowed_perimeter !== undefined || data.allowed_radius !== undefined) {
+      policy.allowed_perimeter = toNumberOrEmpty(data.allowed_perimeter ?? data.allowed_radius)
+    }
+    if (data.latitude !== undefined || data.company_latitude !== undefined) {
+      policy.latitude = toCoordinate(data.latitude ?? data.company_latitude)
+    }
+    if (data.longitude !== undefined || data.company_longitude !== undefined) {
+      policy.longitude = toCoordinate(data.longitude ?? data.company_longitude)
+    }
+  }
+
+  async function fetchPolicy(companyId) {
+    loading.value = true
+    error.value = null
+    try {
+      const data = await attendancePolicyService.getPolicy(companyId)
+      applyPolicyData(data ?? {})
+      loaded.value = true
+      return data
+    } catch (err) {
+      error.value =
+        err.response?.data?.message || err.message || 'Failed to load the attendance policy.'
+      console.error('[AttendancePolicy] Fetch failed:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
 
   async function saveAttendancePolicy(companyId, payload) {
     savingPolicy.value = true
     error.value = null
     try {
+      if (!payload.work_start_time || !payload.work_end_time) {
+        throw new Error('Please set both the shift start time and the shift end time.')
+      }
+
       if (
-        payload.allowed_late_minutes === '' || 
-        payload.allowed_late_minutes === null || 
+        payload.allowed_late_minutes === '' ||
+        payload.allowed_late_minutes === null ||
         payload.allowed_late_minutes === undefined
       ) {
         throw new Error('Please enter the allowed delay limit (you can type 0 but cannot leave it blank).')
       }
-  
-      // 2. التحقق الصارم من حقل "حد الانصراف المبكر" (يمنع الفراغ ويسمح بالـ 0)
+
       if (
-        payload.allowed_early_leave_minutes === '' || 
-        payload.allowed_early_leave_minutes === null || 
+        payload.allowed_early_leave_minutes === '' ||
+        payload.allowed_early_leave_minutes === null ||
         payload.allowed_early_leave_minutes === undefined
       ) {
         throw new Error('Please enter the allowed early departure limit (you can write 0 but it cannot be left blank).')
       }
-  
-      // 3. بناء الـ Payload بعد ضمان سلامة البيانات وتحويلها رقمياً
+
       const policyPayload = {
         work_start_time: payload.work_start_time,
         work_end_time: payload.work_end_time,
@@ -49,18 +100,18 @@ export const useAttendancePolicyStore = defineStore('attendancePolicy', () => {
         allowed_early_leave_minutes: Number(payload.allowed_early_leave_minutes),
         allows_overtime: Boolean(payload.allows_overtime)
       }
-  
+
       const result = await attendancePolicyService.updatePolicy(companyId, policyPayload)
-      Object.assign(policy, policyPayload)
+      applyPolicyData({ ...policyPayload, ...(result?.data ?? {}) })
       return result
     } catch (err) {
-      // سيتم إمساك أخطاء التحقق المحلية أو أخطاء السيرفر هنا وتخزين رسالتها
       error.value = err.response?.data?.message || err.message || 'فشل حفظ سياسة الحضور.'
       throw err
     } finally {
       savingPolicy.value = false
     }
   }
+
   /**
    * دالة حفظ البصمة الجغرافية فقط (لزر الموقع)
    */
@@ -68,6 +119,10 @@ export const useAttendancePolicyStore = defineStore('attendancePolicy', () => {
     savingLocation.value = true
     error.value = null
     try {
+      if (payload.latitude === null || payload.longitude === null || payload.latitude === '' || payload.longitude === '') {
+        throw new Error('Please pick the company location on the map first.')
+      }
+
       const locationPayload = {
         allowed_perimeter: Number(payload.allowed_perimeter),
         latitude: Number(payload.latitude),
@@ -75,7 +130,7 @@ export const useAttendancePolicyStore = defineStore('attendancePolicy', () => {
       }
 
       const result = await attendancePolicyService.updateLocation(companyId, locationPayload)
-      Object.assign(policy, locationPayload)
+      applyPolicyData({ ...locationPayload, ...(result?.data ?? {}) })
       return result
     } catch (err) {
       error.value = err.response?.data?.message || err.message || 'فشل حفظ موقع البصمة.'
@@ -85,12 +140,15 @@ export const useAttendancePolicyStore = defineStore('attendancePolicy', () => {
     }
   }
 
-  return { 
-    policy, 
-    savingPolicy, 
-    savingLocation, 
-    error, 
-    saveAttendancePolicy, 
-    saveLocationPolicy 
+  return {
+    policy,
+    loading,
+    loaded,
+    savingPolicy,
+    savingLocation,
+    error,
+    fetchPolicy,
+    saveAttendancePolicy,
+    saveLocationPolicy
   }
 })

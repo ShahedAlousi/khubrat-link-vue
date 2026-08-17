@@ -43,8 +43,13 @@ function handleResend() {
 
 function goToLogin() {
   onboardingStore.reset()
-  // إرسال الإيميل كـ Query Parameter ليتم تعبئته تلقائياً في صفحة الـ Login
-  router.push({ name: 'login', query: { email: email.value } })
+  router.push({
+    name: 'login',
+    query: {
+      registered: 'true',
+      ...(email.value ? { email: email.value } : {})
+    }
+  })
 }
 </script>
 

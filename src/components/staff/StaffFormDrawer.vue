@@ -6,6 +6,7 @@ import BaseButton from '@/components/common/BaseButton.vue'
 import BaseAlert from '@/components/common/BaseAlert.vue'
 import ToggleSwitch from '@/components/policies/ToggleSwitch.vue'
 import { STAFF_TYPE } from '@/stores/staff.store'
+import { useDepartmentsStore } from '@/stores/department.store'
 import { isRequired, isValidEmail, isValidPhone, isValidHireDate } from '@/utils/validators'
 
 const props = defineProps({
@@ -19,6 +20,8 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'submit'])
 
+const departmentsStore = useDepartmentsStore()
+
 const form = reactive(emptyForm())
 const fieldErrors = reactive({})
 const formError = reactive({ message: '' })
@@ -28,9 +31,23 @@ const title = computed(() => {
   return props.mode === 'edit' ? `Edit ${kind}` : `Add ${kind}`
 })
 
-const departmentOptions = computed(() =>
-  props.departments.map((d) => ({ value: d.id, label: d.name }))
-)
+// The prop holds the list the parent loaded when the page opened; once the
+// dropdown is clicked the store becomes the fresher source of truth.
+const departmentOptions = computed(() => {
+  const source = departmentsStore.departments.length
+    ? departmentsStore.sortedDepartments
+    : props.departments
+  return source.map((d) => ({ value: d.id, label: d.name }))
+})
+
+async function refreshDepartments() {
+  if (departmentsStore.loading) return
+  try {
+    await departmentsStore.fetchDepartments({ is_active: true })
+  } catch {
+    // Keep the currently rendered options; the store exposes the error.
+  }
+}
 
 const genderOptions = [
   { value: 'male', label: 'Male' },
@@ -171,6 +188,8 @@ defineExpose({ setServerError })
             required
             :options="departmentOptions"
             :error="fieldErrors.department_id"
+            @mousedown="refreshDepartments"
+            @keydown.enter="refreshDepartments"
           />
           <BaseInput v-model="form.job_title" label="Job Title" required :error="fieldErrors.job_title" />
           <BaseInput

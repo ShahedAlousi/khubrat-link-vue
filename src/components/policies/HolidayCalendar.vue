@@ -3,7 +3,8 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 const props = defineProps({
   holidays: { type: Array, default: () => [] }, // { name, start_date, end_date, repeats_annually }
-  weeklyRestDays: { type: Array, default: () => [] } // e.g. ["friday", "saturday"]
+  weeklyRestDays: { type: Array, default: () => [] }, // e.g. ["friday", "saturday"]
+  readonly: { type: Boolean, default: false }
 })
 
 // يُبعث مع نطاق التاريخ المحدد (يوم واحد أو عدة أيام عبر السحب)
@@ -36,12 +37,33 @@ function toDateOnly(value) {
   return String(value).slice(0, 10)
 }
 
-// يبحث عن العطلة التي يقع ضمن مداها التاريخ الممرَّر، إن وجدت
+function isRecurring(value) {
+  return value === true || value === 1 || value === '1' || value === 'true'
+}
+
+// يبحث عن العطلة التي يقع ضمن مداها التاريخ الممرَّر، إن وجدت.
+// العطلة السنوية تُطابق بالشهر واليوم فقط حتى تظهر في كل سنة معروضة،
+// وليس فقط في السنة التي حُفظت بها أول مرة.
 function findHoliday(dateStr) {
   const target = new Date(`${dateStr}T00:00:00`)
   return props.holidays.find((h) => {
-    const start = new Date(`${toDateOnly(h.start_date)}T00:00:00`)
-    const end = new Date(`${toDateOnly(h.end_date) || toDateOnly(h.start_date)}T00:00:00`)
+    const startDate = toDateOnly(h.start_date)
+    const endDate = toDateOnly(h.end_date) || startDate
+    if (!startDate) return false
+
+    if (isRecurring(h.repeats_annually)) {
+      const targetMonthDay = dateStr.slice(5)
+      const startMonthDay = startDate.slice(5)
+      const endMonthDay = endDate.slice(5)
+
+      // يدعم أيضًا نطاقًا سنويًا يعبر نهاية السنة، مثل 31-12 إلى 01-01.
+      return startMonthDay <= endMonthDay
+        ? targetMonthDay >= startMonthDay && targetMonthDay <= endMonthDay
+        : targetMonthDay >= startMonthDay || targetMonthDay <= endMonthDay
+    }
+
+    const start = new Date(`${startDate}T00:00:00`)
+    const end = new Date(`${endDate}T00:00:00`)
     return target >= start && target <= end
   })
 }
@@ -99,7 +121,7 @@ function isInSelection(dateStr) {
 
 // يبدأ التحديد عند الضغط على خلية (يعمل أيضًا كنقرة عادية ليوم واحد)
 function startDrag(cell) {
-  if (!cell) return
+  if (props.readonly || !cell) return
   isDragging.value = true
   dragStart.value = cell.dateStr
   dragEnd.value = cell.dateStr
@@ -107,7 +129,7 @@ function startDrag(cell) {
 
 // يوسّع نطاق التحديد أثناء تمرير المؤشر فوق خلية جديدة والسحب مستمر
 function extendDrag(cell) {
-  if (!cell || !isDragging.value) return
+  if (props.readonly || !cell || !isDragging.value) return
   dragEnd.value = cell.dateStr
 }
 
@@ -164,11 +186,11 @@ onBeforeUnmount(() => window.removeEventListener('mouseup', finishDrag))
           :key="index"
           class="h-16 rounded-lg p-1.5 flex flex-col justify-between text-[9px] transition-all"
           :class="[
-            !cell ? 'bg-slate-100/40 dark:bg-slate-900/10 border border-slate-200 dark:border-slate-800 pointer-events-none' : 'cursor-pointer hover:shadow-md border text-slate-900 dark:text-slate-100',
+            !cell ? 'bg-slate-100/40 dark:bg-slate-900/10 border border-slate-200 dark:border-slate-800 pointer-events-none' : readonly ? 'border text-slate-900 dark:text-slate-100' : 'cursor-pointer hover:shadow-md border text-slate-900 dark:text-slate-100',
             cell && !cell.holiday && cell.isRestDay ? 'bg-slate-300/60 dark:bg-slate-600/50 border-slate-400 dark:border-slate-500' : '',
             cell && !cell.holiday && !cell.isRestDay ? 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600' : '',
-            cell && cell.holiday && cell.holiday.repeats_annually ? 'bg-emerald-600/15 border-emerald-600 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-400' : '',
-            cell && cell.holiday && !cell.holiday.repeats_annually ? 'bg-blue-600/15 border-blue-600 dark:bg-blue-950/40 text-blue-800 dark:text-blue-400' : '',
+            cell && cell.holiday && isRecurring(cell.holiday.repeats_annually) ? 'bg-emerald-600/15 border-emerald-600 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-400' : '',
+            cell && cell.holiday && !isRecurring(cell.holiday.repeats_annually) ? 'bg-blue-600/15 border-blue-600 dark:bg-blue-950/40 text-blue-800 dark:text-blue-400' : '',
             cell && isInSelection(cell.dateStr) ? '!bg-khubrat-goldLight/40 !border-khubrat-goldDark ring-2 ring-khubrat-goldDark/50' : ''
           ]"
           :title="cellTooltip(cell)"
@@ -181,7 +203,7 @@ onBeforeUnmount(() => window.removeEventListener('mouseup', finishDrag))
               <span
                 v-if="cell.holiday"
                 class="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                :class="cell.holiday.repeats_annually ? 'bg-emerald-600' : 'bg-blue-600'"
+                :class="isRecurring(cell.holiday.repeats_annually) ? 'bg-emerald-600' : 'bg-blue-600'"
               ></span>
             </div>
             <!-- line-clamp-2 يسمح بعرض سطرين من اسم العطلة داخل المربع الصغير بدل قصّه بسطر واحد فقط -->

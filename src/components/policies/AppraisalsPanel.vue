@@ -1,10 +1,15 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import PolicyReadonlyValue from './PolicyReadonlyValue.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import BaseAlert from '@/components/common/BaseAlert.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useEvaluationPolicyStore } from '@/stores/evaluationPolicy.store'
+
+const props = defineProps({
+  readonly: { type: Boolean, default: false }
+})
 
 const authStore = useAuthStore()
 const evaluationPolicyStore = useEvaluationPolicyStore()
@@ -52,14 +57,24 @@ async function handleSave() {
       </div>
       <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
         <span class="text-xs font-bold">Link Appraisals to Payroll?</span>
-        <ToggleSwitch v-model="form.apply_review_to_salary" />
+        <span v-if="readonly" class="text-sm font-semibold text-slate-800 dark:text-slate-100">
+          {{ form.apply_review_to_salary ? 'Yes' : 'No' }}
+        </span>
+        <ToggleSwitch v-else v-model="form.apply_review_to_salary" />
       </div>
     </div>
 
     <BaseAlert v-if="saveSuccess" variant="success">Evaluation policy saved successfully.</BaseAlert>
     <BaseAlert v-if="saveError" variant="error">{{ saveError }}</BaseAlert>
 
-    <div class="space-y-2 max-w-sm">
+    <PolicyReadonlyValue
+      v-if="readonly"
+      label="Peer Reviews per Employee"
+      :value="form.peer_reviews_count ?? '—'"
+      hint="Number of coworkers each employee must evaluate during a review cycle."
+    />
+
+    <div v-else class="space-y-2 max-w-sm">
       <label class="text-xs font-bold text-slate-500 dark:text-slate-300">Peer Reviews per Employee</label>
       <div class="flex items-center">
         <input
@@ -77,6 +92,17 @@ async function handleSave() {
     </div>
 
     <div
+      v-if="readonly"
+      class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2"
+      :class="!form.apply_review_to_salary ? 'opacity-40' : ''"
+    >
+      <PolicyReadonlyValue label="&quot;Excellent&quot; Appraisal Salary Increase (%)" :value="`${form.excellent_adjustment_percent ?? '—'}%`" />
+      <PolicyReadonlyValue label="&quot;Good&quot; Appraisal Salary Increase (%)" :value="`${form.good_adjustment_percent ?? '—'}%`" />
+      <PolicyReadonlyValue label="&quot;Poor&quot; Appraisal Salary Deduction (%)" :value="`${form.poor_adjustment_percent ?? '—'}%`" />
+    </div>
+
+    <div
+      v-else
       class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2 transition-all duration-300"
       :class="!form.apply_review_to_salary ? 'opacity-40 pointer-events-none' : ''"
     >
@@ -128,7 +154,7 @@ async function handleSave() {
       apply_review_to_salary, review weights, and peer_reviews_count.
     </p>
 
-    <BaseButton variant="gold" :loading="evaluationPolicyStore.saving" @click="handleSave">
+    <BaseButton v-if="!readonly" variant="gold" :loading="evaluationPolicyStore.saving" @click="handleSave">
       <i class="fa-solid fa-floppy-disk"></i>
       Save Evaluation Policy
     </BaseButton>

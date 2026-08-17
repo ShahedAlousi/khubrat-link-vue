@@ -31,7 +31,7 @@ const recentPlatforms = computed(() => companiesStore.stats?.latest_registered_p
 
     <template v-else>
       <!-- Top counters -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard
           label="Total Revenue"
           :value="formatCurrency(summary.total_revenue)"
@@ -53,14 +53,6 @@ const recentPlatforms = computed(() => companiesStore.stats?.latest_registered_p
           hint-class="text-amber-500"
           icon="fa-cubes-stacked"
           icon-wrap-class="bg-amber-500/10 text-amber-600 dark:text-amber-400"
-        />
-        <StatCard
-          label="Auto-deletion Period"
-          :value="`${summary.auto_deletion_period_days ?? 30} Days`"
-          hint="For non-renewed accounts"
-          hint-class="text-rose-500"
-          icon="fa-clock-rotate-left"
-          icon-wrap-class="bg-rose-500/10 text-rose-600 dark:text-rose-400"
         />
       </div>
 

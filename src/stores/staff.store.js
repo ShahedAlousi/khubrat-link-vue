@@ -114,6 +114,7 @@ export const useStaffStore = defineStore('staff', () => {
    * Load directory rows according to role:
    * - GM: employees + HR managers (Promise.all), merged with staffType
    * - HR: employees only (regular)
+   * - Department manager: employees in their department only (read-only)
    */
   async function fetchDirectory() {
     loading.value = true
@@ -139,7 +140,9 @@ export const useStaffStore = defineStore('staff', () => {
         for (const row of hrs) byId.set(row.id, row)
         staff.value = Array.from(byId.values())
       } else {
-        const employees = await employeesService.list()
+        const employees = authStore.isDepartmentManager
+          ? await employeesService.listForDepartmentManager()
+          : await employeesService.list()
         staff.value = (employees || [])
           .filter((row) => (row?.user?.role ?? row?.role) !== 'hr_manager')
           .map((row) => normalizeStaffRow(row, STAFF_TYPE.REGULAR))
@@ -167,7 +170,9 @@ export const useStaffStore = defineStore('staff', () => {
         raw = raw?.hr_manager ?? raw
         selected.value = normalizeStaffRow(raw, STAFF_TYPE.HR)
       } else {
-        raw = await employeesService.get(row.id)
+        raw = authStore.isDepartmentManager
+          ? await employeesService.getForDepartmentManager(row.id)
+          : await employeesService.get(row.id)
         selected.value = normalizeStaffRow(raw, STAFF_TYPE.REGULAR)
       }
       return selected.value

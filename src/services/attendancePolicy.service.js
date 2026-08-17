@@ -6,6 +6,18 @@ import api from './api'
  */
 export const attendancePolicyService = {
   /**
+   * GET /api/companies/{company}/attendance-policy
+   * Returns the persisted policy (shift hours, grace periods, geofencing).
+   *
+   * @param {string} companyId
+   */
+  getPolicy(companyId) {
+    return api
+      .get(`/companies/${companyId}/attendance-policy`)
+      .then((res) => res.data?.data ?? res.data)
+  },
+
+  /**
    * PUT /api/companies/{company}/attendance-policy
    * Updates only shift hours and grace periods.
    * 

@@ -12,12 +12,34 @@ export const useHolidaysStore = defineStore('holidays', () => {
   const savingRestDays = ref(false)
   const error = ref(null)
 
+  function normalizeHoliday(holiday) {
+    const recurring = holiday?.repeats_annually
+    return {
+      ...holiday,
+      start_date: holiday?.start_date ? String(holiday.start_date).slice(0, 10) : '',
+      end_date: holiday?.end_date
+        ? String(holiday.end_date).slice(0, 10)
+        : holiday?.start_date
+          ? String(holiday.start_date).slice(0, 10)
+          : '',
+      repeats_annually:
+        recurring === true || recurring === 1 || recurring === '1' || recurring === 'true'
+    }
+  }
+
+  function holidayListFrom(data) {
+    if (Array.isArray(data)) return data
+    if (Array.isArray(data?.holidays)) return data.holidays
+    if (Array.isArray(data?.items)) return data.items
+    return []
+  }
+
   async function fetchHolidays(companyId) {
     loading.value = true
     error.value = null
     try {
       const data = await holidaysService.list(companyId)
-      holidays.value = Array.isArray(data) ? data : []
+      holidays.value = holidayListFrom(data).map(normalizeHoliday)
       console.log('[Holidays] Fetch holidays succeeded:', holidays.value)
       return holidays.value
     } catch (err) {

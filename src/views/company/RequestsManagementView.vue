@@ -3,42 +3,145 @@ import { computed, onMounted, ref } from 'vue'
 import BaseSelect from '@/components/common/BaseSelect.vue'
 import BaseAlert from '@/components/common/BaseAlert.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
-import LeaveRequestDrawer from '@/components/requests/LeaveRequestDrawer.vue'
+import RequestDetailsDrawer from '@/components/requests/RequestDetailsDrawer.vue'
 import LeaveRejectionModal from '@/components/requests/LeaveRejectionModal.vue'
-import { useManagementLeavesStore } from '@/stores/managementLeaves.store'
-import { formatDate, initials } from '@/utils/format'
+import { useManagementRequestsStore } from '@/stores/managementRequests.store'
+import { formatCurrency, formatDate, initials } from '@/utils/format'
 
-const store = useManagementLeavesStore()
+const store = useManagementRequestsStore()
 
 const activeTab = ref('pending')
 const typeFilter = ref('all')
 const viewStyle = ref('list')
 const rejectionModalOpen = ref(false)
-const rejectionTargetId = ref(null)
+const rejectionTarget = ref(null)
 const toast = ref(null)
 
 const REQUEST_TYPES = [
   { value: 'all', label: 'All Request Types' },
   { value: 'leave', label: 'Leaves' },
   { value: 'advance', label: 'Advances' },
-  { value: 'permission', label: 'Permissions' },
-  { value: 'overtime', label: 'Overtime' }
+  { value: 'overtime', label: 'Overtime' },
+  { value: 'permission', label: 'Permissions' }
 ]
 
-const upcomingTypes = ['advance', 'permission', 'overtime']
+const upcomingTypes = ['permission']
 
-const displayedLeaves = computed(() => {
-  if (typeFilter.value !== 'all' && typeFilter.value !== 'leave') return []
-  return activeTab.value === 'pending' ? store.inbox : store.resolvedLog
+const TYPE_STYLES = {
+  leave: {
+    label: 'Leave',
+    icon: 'fa-plane-departure',
+    badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+  },
+  advance: {
+    label: 'Advance',
+    icon: 'fa-money-bill-transfer',
+    badge: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20'
+  },
+  overtime: {
+    label: 'Overtime',
+    icon: 'fa-business-time',
+    badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+  }
+}
+
+/** "2026-08-15 16:17:18" is not ISO — normalize before sorting. */
+function toTimestamp(value) {
+  if (!value) return 0
+  const parsed = Date.parse(String(value).replace(' ', 'T'))
+  return Number.isNaN(parsed) ? 0 : parsed
+}
+
+const pendingRequests = computed(() => {
+  return [...store.inbox, ...store.advances, ...store.overtime].sort(
+    (a, b) => toTimestamp(b.created_at) - toTimestamp(a.created_at)
+  )
+})
+
+const displayedRequests = computed(() => {
+  if (upcomingTypes.includes(typeFilter.value)) return []
+
+  const source = activeTab.value === 'pending' ? pendingRequests.value : store.resolvedLog
+  if (typeFilter.value === 'all') return source
+  return source.filter((req) => (req.request_type || 'leave') === typeFilter.value)
 })
 
 const showComingSoon = computed(() => upcomingTypes.includes(typeFilter.value))
+
+const isLoading = computed(
+  () => store.loading || store.advancesLoading || store.overtimeLoading
+)
 
 const listContainerClass = computed(() =>
   viewStyle.value === 'grid'
     ? 'grid grid-cols-1 md:grid-cols-2 gap-4'
     : 'grid grid-cols-1 gap-4'
 )
+
+const drawerRequest = computed(() => {
+  const selected = store.selectedRequest
+  const details = store.requestDetails
+  if (selected && details && details.id === selected.id) return { ...selected, ...details }
+  return selected ?? details
+})
+
+const drawerCanAct = computed(
+  () => activeTab.value === 'pending' && Boolean(drawerRequest.value) && canActOn(drawerRequest.value)
+)
+
+function typeOf(req) {
+  return req?.request_type || 'leave'
+}
+
+function typeStyle(req) {
+  return TYPE_STYLES[typeOf(req)] ?? TYPE_STYLES.leave
+}
+
+function canActOn(req) {
+  const type = typeOf(req)
+  if (type === 'advance') return store.canActOnAdvances
+  if (type === 'overtime') return store.canActOnOvertime
+  return store.canActOnRequests
+}
+
+function subtitleOf(req) {
+  const type = typeOf(req)
+  if (type === 'advance') return 'Salary Advance'
+  if (type === 'overtime') return 'Overtime Work'
+  return req.leave_type_name || 'Leave Request'
+}
+
+function unitLabel(req) {
+  const n = Number(req?.units_requested)
+  if (!Number.isFinite(n)) return '—'
+  const suffix = req?.duration_type === 'day' ? 'day' : 'hr'
+  return `${n} ${suffix}${n === 1 ? '' : 's'}`
+}
+
+/** Bold headline on the right side of a row. */
+function primaryLine(req) {
+  const type = typeOf(req)
+  if (type === 'advance') return `Requested: ${money(req.requested_amount)}`
+  if (type === 'overtime') return formatDate(req.request_date)
+  return `${formatDate(req.start_date)} to ${formatDate(req.end_date)}`
+}
+
+/** Muted supporting line under the headline. */
+function secondaryLine(req) {
+  const type = typeOf(req)
+  if (type === 'advance') {
+    const months = req.repayment_months ? `${req.repayment_months} month(s)` : '—'
+    return `Base Monthly: ${money(req.basic_salary)} • Repaid over ${months}`
+  }
+  if (type === 'overtime') return `Duration: ${unitLabel(req)}`
+  return `${durationLabel(req)} requested`
+}
+
+function money(value) {
+  if (value === null || value === undefined || value === '') return '—'
+  const n = Number(value)
+  return Number.isFinite(n) ? formatCurrency(n) : '—'
+}
 
 function showToast(message, variant = 'info') {
   toast.value = { message, variant }
@@ -47,46 +150,102 @@ function showToast(message, variant = 'info') {
   }, 3000)
 }
 
-async function loadInbox() {
-  try {
-    await store.fetchInbox()
-  } catch {
-    // Error surfaced via store.error
+function durationLabel(req) {
+  const days = req?.duration_days
+  if (days === null || days === undefined || Number.isNaN(Number(days))) return '—'
+  const n = Number(days)
+  return `${n} day${n === 1 ? '' : 's'}`
+}
+
+function statusLabel(status) {
+  if (!status) return 'pending'
+  return String(status).replaceAll('_', ' ')
+}
+
+function statusTone(status) {
+  const s = String(status || '').toLowerCase()
+  if (s.includes('approved') || s === 'paid_off') {
+    return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
   }
+  if (s.includes('rejected')) {
+    return 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+  }
+  return 'bg-amber-500/10 text-amber-500 border-amber-500/20'
 }
 
-function openDrawer(id) {
-  store.openDrawer(id)
+function statusIcon(status) {
+  const s = String(status || '').toLowerCase()
+  if (s.includes('approved') || s === 'paid_off') return 'fa-check'
+  if (s.includes('rejected')) return 'fa-xmark'
+  return 'fa-spinner'
 }
 
-async function handleApprove(id) {
+async function loadRequests() {
+  const tasks = [store.fetchInbox(), store.fetchOvertime()]
+  if (store.canViewAdvances) tasks.push(store.fetchAdvances())
+
+  // Each store action already records its own error; keep the others running.
+  await Promise.allSettled(tasks)
+}
+
+function openDetails(req) {
+  store.openDrawer(req.id)
+
+  const type = typeOf(req)
+  if (type === 'advance') store.fetchAdvanceDetails(req.id).catch(() => {})
+  else if (type === 'overtime') store.fetchOvertimeDetails(req.id).catch(() => {})
+}
+
+async function handleApprove(req, options = {}) {
+  const type = typeOf(req)
   try {
-    await store.approveRequest(id)
-    showToast('Leave request approved successfully.', 'success')
+    if (type === 'advance') await store.approveAdvance(req.id)
+    else if (type === 'overtime') await store.approveOvertime(req.id, options)
+    else await store.approveRequest(req.id)
+
+    showToast(`${typeStyle(req).label} request approved successfully.`, 'success')
   } catch {
     showToast(store.error || 'Failed to approve request.', 'error')
   }
 }
 
-function openRejection(id) {
-  rejectionTargetId.value = id
+function openRejection(req) {
+  rejectionTarget.value = req
   rejectionModalOpen.value = true
 }
 
 async function handleRejectionSubmit(reason) {
-  if (!rejectionTargetId.value) return
+  const req = rejectionTarget.value
+  if (!req) return
+
+  const type = typeOf(req)
   try {
-    await store.rejectRequest(rejectionTargetId.value, reason)
+    if (type === 'advance') await store.rejectAdvance(req.id, reason)
+    else if (type === 'overtime') await store.rejectOvertime(req.id, reason)
+    else await store.rejectRequest(req.id, reason)
+
     rejectionModalOpen.value = false
-    rejectionTargetId.value = null
-    showToast('Leave request rejected.', 'error')
+    rejectionTarget.value = null
+    showToast(`${typeStyle(req).label} request rejected.`, 'error')
   } catch {
     showToast(store.error || 'Failed to reject request.', 'error')
   }
 }
 
+async function handlePayInstallment(installment) {
+  const req = drawerRequest.value
+  if (!req || !installment?.id) return
+
+  try {
+    await store.payAdvanceInstallment(req.id, installment.id)
+    showToast('Installment marked as paid.', 'success')
+  } catch {
+    showToast(store.error || 'Failed to mark the installment as paid.', 'error')
+  }
+}
+
 onMounted(() => {
-  loadInbox()
+  loadRequests()
 })
 </script>
 
@@ -104,7 +263,7 @@ onMounted(() => {
       <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
         <div class="space-y-1">
           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Awaiting Decision</p>
-          <h3 class="text-2xl font-black text-amber-500">{{ store.pendingCount }}</h3>
+          <h3 class="text-2xl font-black text-amber-500">{{ store.totalPendingCount }}</h3>
           <p class="text-[10px] text-slate-500 font-semibold">Action required immediately</p>
         </div>
         <div class="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400 text-xl">
@@ -126,14 +285,23 @@ onMounted(() => {
       <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm lg:col-span-2 flex flex-col justify-center">
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Module Coverage</p>
         <div class="flex flex-wrap gap-2">
-          <span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-blue-500/10 text-blue-600 border border-blue-500/20">
-            Leaves — Live
+          <span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+            Leaves — {{ store.pendingCount }} pending
           </span>
-          <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-900 text-slate-400 border border-slate-200 dark:border-slate-700">
-            Advances — Soon
+          <span
+            v-if="store.canViewAdvances"
+            class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-sky-500/10 text-sky-600 border border-sky-500/20"
+          >
+            Advances — {{ store.advancesCount }} pending
           </span>
-          <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-900 text-slate-400 border border-slate-200 dark:border-slate-700">
-            Overtime — Soon
+          <span
+            v-else
+            class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-900 text-slate-400 border border-slate-200 dark:border-slate-700"
+          >
+            Advances — HR only
+          </span>
+          <span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-amber-500/10 text-amber-600 border border-amber-500/20">
+            Overtime — {{ store.overtimeCount }} pending
           </span>
           <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-900 text-slate-400 border border-slate-200 dark:border-slate-700">
             Permissions — Soon
@@ -199,13 +367,17 @@ onMounted(() => {
       </div>
     </div>
 
-    <BaseAlert v-if="store.error && !store.loading" variant="error">{{ store.error }}</BaseAlert>
+    <BaseAlert v-if="store.error && !isLoading" variant="error">{{ store.error }}</BaseAlert>
 
     <BaseAlert v-if="!store.canActOnRequests" variant="info">
       Your account can view requests but cannot approve or reject them. Only HR managers and department managers can take action.
     </BaseAlert>
 
-    <LoadingSpinner v-if="store.loading && activeTab === 'pending'" label="Loading leave requests…" />
+    <BaseAlert v-else-if="typeFilter === 'advance' && !store.canViewAdvances" variant="info">
+      Salary advances skip the department manager stage — only HR managers review them.
+    </BaseAlert>
+
+    <LoadingSpinner v-if="isLoading && activeTab === 'pending'" label="Loading requests…" />
 
     <div
       v-else-if="showComingSoon"
@@ -216,25 +388,25 @@ onMounted(() => {
       </div>
       <h4 class="text-sm font-bold text-slate-700 dark:text-slate-200">Module coming soon</h4>
       <p class="text-xs text-slate-400 max-w-sm mx-auto">
-        This request type is not wired to the backend yet. Leave requests are fully supported in this build.
+        This request type is not wired to the backend yet. Leaves, advances and overtime are fully supported in this build.
       </p>
     </div>
 
-    <div v-else-if="!displayedLeaves.length" class="bg-white dark:bg-slate-800 p-12 rounded-2xl border border-slate-200 dark:border-slate-700 text-center space-y-3">
+    <div v-else-if="!displayedRequests.length" class="bg-white dark:bg-slate-800 p-12 rounded-2xl border border-slate-200 dark:border-slate-700 text-center space-y-3">
       <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center mx-auto text-slate-400 text-2xl">
         <i class="fa-solid fa-folder-open"></i>
       </div>
       <h4 class="text-sm font-bold text-slate-700 dark:text-slate-200">No requests match this view</h4>
       <p class="text-xs text-slate-400 max-w-sm mx-auto">
-        <template v-if="activeTab === 'pending'">There are no pending leave requests in your inbox.</template>
+        <template v-if="activeTab === 'pending'">There are no pending requests in your inbox.</template>
         <template v-else>Resolved requests from this session will appear here. A full history API is not yet available.</template>
       </p>
     </div>
 
     <div v-else :class="listContainerClass">
       <article
-        v-for="req in displayedLeaves"
-        :key="req.id"
+        v-for="req in displayedRequests"
+        :key="`${typeOf(req)}-${req.id}`"
         class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all p-4"
         :class="viewStyle === 'grid' ? 'flex flex-col justify-between gap-4' : 'flex flex-col md:flex-row items-start md:items-center justify-between gap-4'"
       >
@@ -247,76 +419,92 @@ onMounted(() => {
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2">
               <h4 class="text-sm font-bold text-slate-800 dark:text-slate-100">{{ req.employee_name }}</h4>
-              <span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                <i class="fa-solid fa-plane-departure mr-1"></i> Leave Request
+              <span
+                class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase border"
+                :class="typeStyle(req).badge"
+              >
+                <i class="fa-solid mr-1" :class="typeStyle(req).icon"></i>
+                {{ typeStyle(req).label }}
               </span>
             </div>
             <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
-              <span class="font-black text-slate-800 dark:text-slate-100">
-                {{ req.duration_days }} day(s)
-                <span class="text-[10px] font-normal text-slate-400">({{ req.leave_type_name }})</span>
+              <span class="text-slate-500 dark:text-slate-400 font-semibold">{{ subtitleOf(req) }}</span>
+              <span v-if="req.department_name" class="text-[10px] text-slate-400">
+                • {{ req.department_name }}
               </span>
-              <span class="text-[10px] text-slate-400">• {{ formatDate(req.start_date) }} – {{ formatDate(req.end_date) }}</span>
+              <span
+                v-if="req.attachment_url"
+                class="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-600 dark:text-sky-400"
+                title="Supporting document attached"
+              >
+                <i class="fa-solid fa-paperclip"></i>
+                Attachment
+              </span>
             </div>
           </div>
         </div>
 
         <div
-          class="flex items-center gap-3 w-full md:w-auto justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 dark:border-slate-700"
+          class="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 dark:border-slate-700"
         >
-          <span
-            class="px-2.5 py-1 rounded-lg text-[10px] font-bold capitalize border"
-            :class="req.status === 'approved'
-              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-              : req.status === 'rejected'
-                ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
-                : 'bg-amber-500/10 text-amber-500 border-amber-500/20'"
-          >
-            <i
-              class="fa-solid mr-1"
-              :class="req.status === 'approved' ? 'fa-check' : req.status === 'rejected' ? 'fa-xmark' : 'fa-spinner'"
-            ></i>
-            {{ req.status || 'pending' }}
-          </span>
+          <div class="md:text-right min-w-0">
+            <p class="text-xs font-black text-slate-800 dark:text-slate-100 truncate">
+              {{ primaryLine(req) }}
+            </p>
+            <p class="text-[10px] text-slate-400 mt-0.5 truncate">{{ secondaryLine(req) }}</p>
+          </div>
 
-          <button
-            type="button"
-            class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all"
-            @click="openDrawer(req.id)"
-          >
-            {{ viewStyle === 'grid' ? 'Details' : 'View File' }}
-          </button>
+          <div class="flex items-center gap-3 justify-end">
+            <span
+              class="px-2.5 py-1 rounded-lg text-[10px] font-bold capitalize border"
+              :class="statusTone(req.status)"
+            >
+              <i class="fa-solid mr-1" :class="statusIcon(req.status)"></i>
+              {{ statusLabel(req.status) }}
+            </span>
 
-          <template v-if="activeTab === 'pending' && store.canActOnRequests">
             <button
               type="button"
-              class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-60"
-              :disabled="store.actionLoading"
-              @click="handleApprove(req.id)"
+              class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all"
+              @click="openDetails(req)"
             >
-              Approve
+              {{ viewStyle === 'grid' ? 'Details' : 'View File' }}
             </button>
-            <button
-              type="button"
-              class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-60"
-              :disabled="store.actionLoading"
-              @click="openRejection(req.id)"
-            >
-              Reject
-            </button>
-          </template>
+
+            <template v-if="activeTab === 'pending' && canActOn(req)">
+              <button
+                type="button"
+                class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-60"
+                :disabled="store.actionLoading"
+                @click="handleApprove(req)"
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-60"
+                :disabled="store.actionLoading"
+                @click="openRejection(req)"
+              >
+                Reject
+              </button>
+            </template>
+          </div>
         </div>
       </article>
     </div>
 
-    <LeaveRequestDrawer
+    <RequestDetailsDrawer
       :open="store.drawerOpen"
-      :request="store.selectedRequest"
-      :can-act="store.canActOnRequests && activeTab === 'pending'"
+      :request="drawerRequest"
+      :can-act="drawerCanAct"
+      :can-pay-installments="store.canActOnAdvances"
       :action-loading="store.actionLoading"
+      :details-loading="store.detailsLoading"
       @close="store.closeDrawer()"
       @approve="handleApprove"
       @reject="openRejection"
+      @pay-installment="handlePayInstallment"
     />
 
     <LeaveRejectionModal

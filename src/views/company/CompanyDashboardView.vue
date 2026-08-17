@@ -6,18 +6,22 @@
  * restructuring the page.
  */
 import PayrollAnalyticsSection from '@/components/company-dashboard/PayrollAnalyticsSection.vue'
+import HeadcountAnalyticsSection from '@/components/company-dashboard/HeadcountAnalyticsSection.vue'
 </script>
 
 <template>
   <div class="space-y-10 max-w-[1400px] mx-auto">
-    <header>
+    <!-- <header>
       <h1 class="text-xl font-black text-khubrat-blue dark:text-white">
         Company Dashboard
       </h1>
       <p class="text-xs text-slate-400 mt-1">
-        Operational analytics across payroll and other company modules.
+        Operational analytics across payroll, workforce, and other company modules.
       </p>
-    </header>
+    </header> -->
+
+    <!-- Headcount & Workforce analytics domain -->
+    <HeadcountAnalyticsSection />
 
     <!-- Payroll analytics domain -->
     <PayrollAnalyticsSection />

@@ -9,6 +9,7 @@ const props = defineProps({
   placeholder: { type: String, default: '' },
   error: { type: String, default: '' },
   required: { type: Boolean, default: false },
+  disabled: { type: Boolean, default: false },
   autocomplete: { type: String, default: 'off' }
 })
 
@@ -42,7 +43,8 @@ const resolvedType = computed(() => {
         :value="modelValue"
         :placeholder="placeholder"
         :autocomplete="autocomplete"
-        class="w-full rounded-xl border px-4 py-2.5 text-sm transition-all duration-150 outline-none"
+        :disabled="disabled"
+        class="w-full rounded-xl border px-4 py-2.5 text-sm transition-all duration-150 outline-none disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-900 disabled:text-slate-500 dark:disabled:text-slate-400 disabled:hover:border-slate-200 dark:disabled:hover:border-slate-700 disabled:hover:ring-0"
         :class="[
           props.error
             ? 'bg-white dark:bg-slate-800 border-rose-500 dark:border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 text-slate-800 dark:text-slate-200'

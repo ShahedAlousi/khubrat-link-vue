@@ -4,7 +4,7 @@
   <script setup>
   import { ref, computed, onMounted } from 'vue'
   import { useAttendanceStore } from '@/stores/attendance.store'
-  import { buildIsoDateTime, parseTimeForClock } from '@/services/attendanceService'
+  import { buildIsoDateTime, buildLaravelDateTime, parseTimeForClock } from '@/services/attendanceService'
   import BaseSelect from '@/components/common/BaseSelect.vue'
   import BaseInput from '@/components/common/BaseInput.vue'
   import BaseButton from '@/components/common/BaseButton.vue'
@@ -12,11 +12,7 @@
   import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
   import ClockTimePickerModal from './ClockTimePickerModal.vue'
   
-  // ⚠️ افتراض بشأن الـ props الشائعة لهذه المكوّنات المشتركة (BaseSelect
-  // v-model + options:[{label,value}], BaseInput v-model + type, BaseButton
-  // variant/size/loading, BaseAlert type + slot). عدّلي أسماء الـ props أدناه
-  // إذا كانت مختلفة فعلياً بمكوّناتك.
-  
+
   // قائمة الأقسام تُمرَّر من الأب (AttendanceTrackerView) لأنها على الأغلب
   // قادمة من نفس مصدر قائمة الأقسام المستخدم مسبقاً بميزة Staff Management
   const props = defineProps({
@@ -88,6 +84,8 @@
   const showOverrideModal = ref(false)
   const overrideForm = ref({
     recordId: null,
+    employeeId: null,
+    isNewRegistration: false,
     employeeName: '',
     employeeTitle: '',
     employeeAvatar: '',
@@ -97,18 +95,23 @@
     reason: '',
   })
   const overrideError = ref('')
-  
 
   function openOverrideModal(record) {
-    if (!record.attendanceRecordId) return
+    const isNewRegistration = !record.attendanceRecordId
     overrideForm.value = {
       recordId: record.attendanceRecordId,
+      employeeId: record.employeeId,
+      isNewRegistration,
       employeeName: record.employeeName,
       employeeTitle: record.employeeTitle,
       employeeAvatar: record.employeeAvatar,
-      date: record.date,
-      checkInTime: parseTimeForClock(record.checkIn),
-      checkOutTime: parseTimeForClock(record.checkOut),
+      date: record.date || store.filters.date,
+      checkInTime: record.checkIn
+        ? parseTimeForClock(record.checkIn)
+        : { hours: 9, minutes: 0, period: 'AM' },
+      checkOutTime: record.checkOut
+        ? parseTimeForClock(record.checkOut)
+        : { hours: 5, minutes: 0, period: 'PM' },
       reason: '',
     }
     overrideError.value = ''
@@ -117,15 +120,15 @@
   function closeOverrideModal() {
     showOverrideModal.value = false
   }
-  
+
   // -- الساعة التناظرية: تُفتح لضبط إمّا وقت الدخول أو وقت الخروج --
   const clockPickerOpen = ref(false)
   const clockPickerTarget = ref(null) // 'checkIn' | 'checkOut'
-  
+
   const clockPickerValue = computed(() =>
     clockPickerTarget.value === 'checkIn' ? overrideForm.value.checkInTime : overrideForm.value.checkOutTime
   )
-  
+
   function openClockFor(target) {
     clockPickerTarget.value = target
     clockPickerOpen.value = true
@@ -135,23 +138,39 @@
     if (clockPickerTarget.value === 'checkOut') overrideForm.value.checkOutTime = value
     clockPickerOpen.value = false
   }
-  
-  /** إرسال التعديل إلى الباك اند (PUT /management/attendance/{id}/adjust) */
+
+  /**
+   * حفظ: إن لم يكن للموظف سجل حضور بعد → POST /register،
+   * وإلا → PUT /{id}/adjust.
+   */
   async function submitOverride() {
     if (!overrideForm.value.reason?.trim()) {
       overrideError.value = 'Override reason is required.'
       return
     }
     overrideError.value = ''
-  
-    const payload = {
-      newCheckIn: buildIsoDateTime(overrideForm.value.date, overrideForm.value.checkInTime),
-      newCheckOut: buildIsoDateTime(overrideForm.value.date, overrideForm.value.checkOutTime),
-      reason: overrideForm.value.reason.trim(),
+
+    const form = overrideForm.value
+    let ok = false
+
+    if (form.isNewRegistration) {
+      ok = await store.registerRecord({
+        employeeId: form.employeeId,
+        workDate: form.date,
+        checkInTime: buildLaravelDateTime(form.date, form.checkInTime),
+        checkOutTime: buildLaravelDateTime(form.date, form.checkOutTime),
+        reason: form.reason.trim(),
+      })
+    } else {
+      ok = await store.adjustRecord(form.recordId, {
+        newCheckIn: buildIsoDateTime(form.date, form.checkInTime),
+        newCheckOut: buildIsoDateTime(form.date, form.checkOutTime),
+        reason: form.reason.trim(),
+      })
     }
-  
-    const ok = await store.adjustRecord(overrideForm.value.recordId, payload)
+
     if (ok) closeOverrideModal()
+    else if (store.errorMessage) overrideError.value = store.errorMessage
   }
   </script>
   
@@ -243,9 +262,8 @@
                 <td class="p-4 text-center pr-6">
                   <button
                     type="button"
-                    :disabled="!rec.attendanceRecordId"
-                    class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-khubrat-blue hover:text-white dark:bg-slate-900 dark:hover:bg-khubrat-goldLight dark:hover:text-khubrat-blue flex items-center justify-center transition-all mx-auto border border-slate-200 dark:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-slate-100 disabled:hover:text-inherit dark:disabled:hover:bg-slate-900"
-                    :title="rec.attendanceRecordId ? 'Record exceptional attendance override' : 'No attendance record yet for this employee'"
+                    class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-khubrat-blue hover:text-white dark:bg-slate-900 dark:hover:bg-khubrat-goldLight dark:hover:text-khubrat-blue flex items-center justify-center transition-all mx-auto border border-slate-200 dark:border-slate-700"
+                    :title="rec.attendanceRecordId ? 'Record exceptional attendance override' : 'Manually register attendance'"
                     @click="openOverrideModal(rec)"
                   >
                     <i class="fa-solid fa-user-pen"></i>
@@ -292,8 +310,16 @@
         <div class="bg-white dark:bg-slate-800 w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
           <div class="p-6 bg-khubrat-blue text-white flex items-center justify-between">
             <div>
-              <h3 class="font-bold text-md text-khubrat-goldLight uppercase tracking-wider">Exceptional Attendance Override</h3>
-              <p class="text-xs text-white/60">Status will be recalculated automatically by the backend after saving.</p>
+              <h3 class="font-bold text-md text-khubrat-goldLight uppercase tracking-wider">
+                {{ overrideForm.isNewRegistration ? 'Manual Attendance Registration' : 'Exceptional Attendance Override' }}
+              </h3>
+              <p class="text-xs text-white/60">
+                {{
+                  overrideForm.isNewRegistration
+                    ? 'Register attendance for an employee who did not scan the QR code.'
+                    : 'Status will be recalculated automatically by the backend after saving.'
+                }}
+              </p>
             </div>
             <button
               type="button"
@@ -345,11 +371,15 @@
             <!-- حقل السبب: أُضيف لأن الباك اند يطلبه إلزامياً (422 بدونه)، ولم
                  يكن موجوداً بالتصميم الأصلي HTML -->
             <div class="space-y-1">
-              <label class="text-[10px] font-black uppercase text-slate-400">Override Reason *</label>
+              <label class="text-[10px] font-black uppercase text-slate-400">
+                {{ overrideForm.isNewRegistration ? 'Registration Reason *' : 'Override Reason *' }}
+              </label>
               <textarea
                 v-model="overrideForm.reason"
                 rows="2"
-                placeholder="e.g. Forgot to check out, confirmed with manager"
+                :placeholder="overrideForm.isNewRegistration
+                  ? 'e.g. Employee forgot phone; confirmed presence with department manager'
+                  : 'e.g. Forgot to check out, confirmed with manager'"
                 class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold dark:text-white focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight resize-none"
               ></textarea>
             </div>
@@ -359,7 +389,9 @@
   
           <div class="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-3">
             <BaseButton variant="ghost" @click="closeOverrideModal">Cancel</BaseButton>
-            <BaseButton variant="blue" :loading="store.isAdjusting" @click="submitOverride">Save Override</BaseButton>
+            <BaseButton variant="blue" :loading="store.isAdjusting" @click="submitOverride">
+              {{ overrideForm.isNewRegistration ? 'Register Attendance' : 'Save Override' }}
+            </BaseButton>
           </div>
         </div>
       </div>

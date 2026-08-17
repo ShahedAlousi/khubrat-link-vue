@@ -11,6 +11,8 @@ export default defineConfig({
     }
   },
   server: {
-    port: 5173
+    // يجب أن يطابق FRONTEND_URL / Stripe success_url في الباك اند (غالباً :3000)
+    port: 3000,
+    strictPort: true
   }
 })

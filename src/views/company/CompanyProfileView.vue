@@ -6,6 +6,7 @@ import BaseInput from '@/components/common/BaseInput.vue'
 import BaseAlert from '@/components/common/BaseAlert.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { isRequired, isValidEmail } from '@/utils/validators'
+import { toMediaUrl } from '@/utils/format'
 
 const profileStore = useCompanyProfileStore()
 
@@ -25,13 +26,13 @@ const editHeading = computed(() =>
 
 const displayLogoUrl = computed(() => {
   if (logoPreviewUrl.value) return logoPreviewUrl.value
-  if (profileStore.profile.logo_url) return profileStore.profile.logo_url
+  if (profileStore.profile.logo_url) return toMediaUrl(profileStore.profile.logo_url)
   return fallbackLogoUrl(profileStore.profile.name)
 })
 
 const editLogoUrl = computed(() => {
   if (logoPreviewUrl.value) return logoPreviewUrl.value
-  if (profileStore.profile.logo_url) return profileStore.profile.logo_url
+  if (profileStore.profile.logo_url) return toMediaUrl(profileStore.profile.logo_url)
   return fallbackLogoUrl(profileStore.draftProfile.name)
 })
 
@@ -185,6 +186,7 @@ function handleCancel() {
                 <img
                   :src="displayLogoUrl"
                   alt="Company Logo"
+                  referrerpolicy="no-referrer"
                   class="max-w-full max-h-full object-contain rounded-xl"
                   @error="($event.target.src = fallbackLogoUrl(profileStore.profile.name))"
                 />
@@ -331,6 +333,7 @@ function handleCancel() {
                 <img
                   :src="editLogoUrl"
                   alt="Logo Preview"
+                  referrerpolicy="no-referrer"
                   class="max-w-full max-h-full object-contain rounded-lg"
                   @error="($event.target.src = fallbackLogoUrl(profileStore.draftProfile.name))"
                 />

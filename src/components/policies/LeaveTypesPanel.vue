@@ -7,6 +7,10 @@ import BaseAlert from '@/components/common/BaseAlert.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useLeaveTypesStore } from '@/stores/leaveTypes.store'
 
+const props = defineProps({
+  readonly: { type: Boolean, default: false }
+})
+
 const authStore = useAuthStore()
 const leaveTypesStore = useLeaveTypesStore()
 
@@ -145,10 +149,21 @@ async function handleSaveAll() {
               </td>
               <td class="py-4 px-3 text-slate-500 dark:text-slate-400 font-medium">{{ row.terms }}</td>
               <td class="py-4 text-center">
-                <ToggleSwitch :model-value="row.is_active" @update:model-value="handleToggle(row)" />
+                <span
+                  v-if="readonly"
+                  class="text-xs font-bold"
+                  :class="row.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'"
+                >
+                  {{ row.is_active ? 'Active' : 'Inactive' }}
+                </span>
+                <ToggleSwitch v-else :model-value="row.is_active" @update:model-value="handleToggle(row)" />
               </td>
               <td class="py-4 text-right pr-6">
+                <span v-if="readonly" class="text-sm font-bold text-slate-800 dark:text-slate-100">
+                  {{ row.allocation_value ?? '—' }}
+                </span>
                 <input
+                  v-else
                   v-model.number="row.allocation_value"
                   type="number"
                   min="0"
@@ -170,8 +185,19 @@ async function handleSaveAll() {
           </div>
         </div>
         <div class="flex items-center gap-3 flex-shrink-0">
-          <ToggleSwitch :model-value="freeDaysRow.is_active" @update:model-value="handleToggle(freeDaysRow)" />
+          <span
+            v-if="readonly"
+            class="text-xs font-bold"
+            :class="freeDaysRow.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'"
+          >
+            {{ freeDaysRow.is_active ? 'Active' : 'Inactive' }}
+          </span>
+          <ToggleSwitch v-else :model-value="freeDaysRow.is_active" @update:model-value="handleToggle(freeDaysRow)" />
+          <span v-if="readonly" class="text-sm font-bold text-slate-800 dark:text-slate-100">
+            {{ freeDaysRow.allocation_value ?? '—' }} days
+          </span>
           <input
+            v-else
             v-model.number="freeDaysRow.allocation_value"
             type="number"
             min="0"
@@ -180,7 +206,7 @@ async function handleSaveAll() {
         </div>
       </div>
 
-      <BaseButton variant="gold" :loading="leaveTypesStore.saving" @click="handleSaveAll">
+      <BaseButton v-if="!readonly" variant="gold" :loading="leaveTypesStore.saving" @click="handleSaveAll">
         <i class="fa-solid fa-floppy-disk"></i>
         Save Leave Policies
       </BaseButton>

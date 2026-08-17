@@ -43,6 +43,27 @@ export const employeesService = {
   },
 
   /**
+   * GET /api/management/employees
+   * Returns only employees in the authenticated department manager's department.
+   * @param {Record<string, unknown>} [params]
+   */
+  listForDepartmentManager(params = {}) {
+    return api
+      .get('/management/employees', { params })
+      .then((res) => unwrapList(res.data?.data ?? res.data))
+  },
+
+  /**
+   * GET /api/management/employees/{employee}
+   * @param {string} employeeId
+   */
+  getForDepartmentManager(employeeId) {
+    return api
+      .get(`/management/employees/${employeeId}`)
+      .then((res) => res.data?.data ?? res.data)
+  },
+
+  /**
    * POST /api/hr/employees
    * @param {object} payload
    */

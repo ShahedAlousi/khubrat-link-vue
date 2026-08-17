@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import CompaniesTable from '@/components/dashboard/CompaniesTable.vue'
 import CompanyDetailModal from '@/components/dashboard/CompanyDetailModal.vue'
 import FreezeReasonModal from '@/components/dashboard/FreezeReasonModal.vue'
+import DeleteBlockedModal from '@/components/dashboard/DeleteBlockedModal.vue'
 // import CompanyFormModal from '@/components/dashboard/CompanyFormModal.vue'
 import ConfirmModal from '@/components/common/ConfirmModal.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
@@ -22,6 +23,7 @@ const freezeLoading = ref(false)
 
 const deleteTarget = ref(null)
 const deleteLoading = ref(false)
+const deleteBlocked = ref(null)
 
 const createOpen = ref(false)
 const createLoading = ref(false)
@@ -81,17 +83,41 @@ function askDelete(company) {
   deleteTarget.value = company
 }
 
+// الباك اند يرفض حذف شركة لها سجلات مرتبطة (موظفون، رواتب، طلبات…) — نميّز
+// هذا الرفض عن أخطاء الشبكة/الصلاحيات لنقترح على المدير التجميد بدلاً من الحذف.
+const CONFLICT_STATUSES = [400, 409, 422]
+
+function isActivityConflict(err) {
+  if (CONFLICT_STATUSES.includes(err?.status)) return true
+  // قيود المفاتيح الأجنبية قد تصل كخطأ 500 برسالة قاعدة البيانات
+  return /constraint|foreign key|integrity|cannot be deleted|has (employees|records|activity)/i.test(
+    err?.message || ''
+  )
+}
+
 async function confirmDelete() {
+  const target = deleteTarget.value
   deleteLoading.value = true
   actionError.value = ''
   try {
-    await companiesStore.removeCompany(deleteTarget.value.id)
+    await companiesStore.removeCompany(target.id)
     deleteTarget.value = null
   } catch (err) {
-    actionError.value = err.message
+    deleteTarget.value = null
+    if (isActivityConflict(err)) {
+      deleteBlocked.value = { company: target, message: err.message }
+    } else {
+      actionError.value = err.message
+    }
   } finally {
     deleteLoading.value = false
   }
+}
+
+function freezeInsteadOfDelete() {
+  const company = deleteBlocked.value?.company
+  deleteBlocked.value = null
+  if (company) askFreeze(company)
 }
 
 function openCreate() {
@@ -179,5 +205,14 @@ async function handleCreate(payload) {
         This will permanently delete <strong>{{ deleteTarget?.name }}</strong> and cannot be undone. Are you sure?
       </p>
     </ConfirmModal>
+
+    <DeleteBlockedModal
+      v-if="deleteBlocked"
+      :company-name="deleteBlocked.company?.name"
+      :details="deleteBlocked.message"
+      :can-freeze="deleteBlocked.company?.is_active !== false"
+      @freeze="freezeInsteadOfDelete"
+      @cancel="deleteBlocked = null"
+    />
   </section>
 </template>

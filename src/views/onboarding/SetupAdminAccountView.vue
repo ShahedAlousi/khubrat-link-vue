@@ -7,7 +7,9 @@ import BaseButton from '@/components/common/BaseButton.vue'
 import BaseAlert from '@/components/common/BaseAlert.vue'
 import { useOnboardingStore } from '@/stores/onboarding.store'
 import { useCompaniesStore } from '@/stores/companies.store'
-import { isRequired } from '@/utils/validators'
+import { isRequired, isValidPhone } from '@/utils/validators'
+import { resolveCheckout } from '@/utils/checkout'
+import { savePendingCheckout } from '@/utils/paymentSession'
 
 const router = useRouter()
 const onboardingStore = useOnboardingStore()
@@ -30,7 +32,13 @@ const submitting = ref(false)
 function validate() {
   fieldErrors.firstName = isRequired(form.firstName) ? '' : 'First name is required.'
   fieldErrors.lastName = isRequired(form.lastName) ? '' : 'Last name is required.'
-  fieldErrors.phone = isRequired(form.phone) ? '' : 'Phone number is required.'
+  if (!isRequired(form.phone)) {
+    fieldErrors.phone = 'Phone number is required.'
+  } else if (!isValidPhone(form.phone)) {
+    fieldErrors.phone = 'Phone must start with 09 and contain 10 digits.'
+  } else {
+    fieldErrors.phone = ''
+  }
   fieldErrors.address = isRequired(form.address) ? '' : 'Company address is required.'
   return !fieldErrors.firstName && !fieldErrors.lastName && !fieldErrors.phone && !fieldErrors.address
 }
@@ -40,8 +48,11 @@ async function handleSubmit() {
   if (!validate()) return
 
   submitting.value = true
+  const isPaidPlan = onboardingStore.plan?.plan_type !== 'free'
+  // فتح النافذة مبكراً قبل await حتى لا يحجب المتصفح النافذة المنبثقة
+  const checkoutTab = isPaidPlan ? window.open('about:blank', '_blank') : null
+
   try {
-    // حفظ الاستجابة لفحصها
     const response = await companiesStore.registerCompany({
       name: onboardingStore.workspace.name,
       email: onboardingStore.workspace.email,
@@ -49,24 +60,39 @@ async function handleSubmit() {
       contact_name: `${form.firstName} ${form.lastName}`.trim(),
       phone: form.phone,
       plan_id: onboardingStore.plan.id,
-      payment_status: onboardingStore.plan.plan_type === 'free' ? 'active' : 'pending'
+      payment_status: isPaidPlan ? 'pending' : 'active'
     })
 
-    // التوجيه بناء على الاستجابة من الـ API
-    if (response.payment_required && response.payment_url) {
-      // إعادة التوجيه إلى بوابة الدفع في نفس التبويب
-      window.location.href = response.payment_url
-    } else {
-      // في حال الباقة المجانية
-      router.push({ name: 'signup-success' })
+    const checkout = resolveCheckout(response)
+
+    if (checkout.paymentRequired && checkout.paymentUrl) {
+      savePendingCheckout({
+        sessionId: checkout.sessionId,
+        email: onboardingStore.workspace.email,
+        context: 'signup'
+      })
+
+      if (checkoutTab) {
+        checkoutTab.location.href = checkout.paymentUrl
+      } else {
+        window.location.href = checkout.paymentUrl
+        return
+      }
+
+      await router.push({
+        name: 'payment-success',
+        query: checkout.sessionId ? { session_id: checkout.sessionId } : {}
+      })
+      return
     }
+
+    if (checkoutTab) checkoutTab.close()
+    router.push({ name: 'signup-success' })
   } catch (err) {
+    if (checkoutTab) checkoutTab.close()
     submitError.value = err.message
-    // نوقف التحميل فقط في حال حدوث خطأ لتجنب تجميد الواجهة
-    submitting.value = false 
-  } 
-  // تم إزالة block finally عمداً ليبقى زر التسجيل في حالة التحميل 
-  // ريثما يتم انتقال المتصفح إلى رابط بوابة الدفع
+    submitting.value = false
+  }
 }
 </script>
 
@@ -84,7 +110,13 @@ async function handleSubmit() {
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
         <BaseInput v-model="form.firstName" label="First Name of General Manager" required :error="fieldErrors.firstName" />
         <BaseInput v-model="form.lastName" label="Last Name of General Manager" required :error="fieldErrors.lastName" />
-        <BaseInput v-model="form.phone" label="Phone Number" required :error="fieldErrors.phone" />
+        <BaseInput
+          v-model="form.phone"
+          label="Phone Number"
+          placeholder="09xxxxxxxx"
+          required
+          :error="fieldErrors.phone"
+        />
         <BaseInput v-model="form.address" label="Company Address" required :error="fieldErrors.address" />
       </div>
 

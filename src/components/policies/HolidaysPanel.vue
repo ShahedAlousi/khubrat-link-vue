@@ -11,6 +11,10 @@ import { formatDate } from '@/utils/format'
 import { useAuthStore } from '@/stores/auth.store'
 import { useHolidaysStore } from '@/stores/holidays.store'
 
+const props = defineProps({
+  readonly: { type: Boolean, default: false }
+})
+
 const authStore = useAuthStore()
 const holidaysStore = useHolidaysStore()
 
@@ -130,7 +134,7 @@ async function confirmDelete() {
     <BaseAlert v-if="actionError" variant="error">{{ actionError }}</BaseAlert>
 
     <!-- Syrian defaults seeder -->
-    <div class="bg-gradient-to-r from-[#002173] to-[#001037] text-white p-6 rounded-3xl relative overflow-hidden shadow-lg border border-khubrat-goldLight/20 gold-glow">
+    <div v-if="!readonly" class="bg-gradient-to-r from-[#002173] to-[#001037] text-white p-6 rounded-3xl relative overflow-hidden shadow-lg border border-khubrat-goldLight/20 gold-glow">
       <div class="absolute right-4 bottom-0 opacity-10 pointer-events-none transform translate-y-6 translate-x-12">
         <i class="fa-solid fa-calendar-days text-[180px]"></i>
       </div>
@@ -158,20 +162,26 @@ async function confirmDelete() {
         <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
           <div class="flex justify-between items-center gap-3">
             <div class="flex-1">
-              <WeekdaySelector v-model="restDaysDraft" label="Weekly Rest Days Configuration" />
+              <WeekdaySelector v-model="restDaysDraft" label="Weekly Rest Days Configuration" :readonly="readonly" />
             </div>
-            <BaseButton variant="blue" :loading="savingRestDays" @click="handleSaveRestDays">Save</BaseButton>
+            <BaseButton v-if="!readonly" variant="blue" :loading="savingRestDays" @click="handleSaveRestDays">Save</BaseButton>
           </div>
           <BaseAlert v-if="restDaysSuccess" variant="success">Weekly rest days saved successfully.</BaseAlert>
         </div>
 
-        <div class="p-3 bg-khubrat-blue/5 dark:bg-slate-900/40 border border-khubrat-blue/10 dark:border-slate-800 text-xs rounded-xl flex items-center gap-2 text-khubrat-blue dark:text-khubrat-goldLight">
+        <div v-if="!readonly" class="p-3 bg-khubrat-blue/5 dark:bg-slate-900/40 border border-khubrat-blue/10 dark:border-slate-800 text-xs rounded-xl flex items-center gap-2 text-khubrat-blue dark:text-khubrat-goldLight">
           <i class="fa-solid fa-circle-info"></i>
           <span><strong>Interactive Selection:</strong> Click a single date, or press and drag across several days, to add a holiday policy for that range.</span>
         </div>
 
         <LoadingSpinner v-if="holidaysStore.loading && !holidaysStore.holidays.length" label="Loading calendar…" />
-        <HolidayCalendar v-else :holidays="holidaysStore.holidays" :weekly-rest-days="holidaysStore.weeklyRestDays" @select-range="openCreate" />
+        <HolidayCalendar
+          v-else
+          :holidays="holidaysStore.holidays"
+          :weekly-rest-days="holidaysStore.weeklyRestDays"
+          :readonly="readonly"
+          @select-range="openCreate"
+        />
       </div>
 
       <!-- Holiday directory -->
@@ -182,6 +192,7 @@ async function confirmDelete() {
             <p class="text-[10px] text-slate-400">Chronological list of all custom and imported holidays.</p>
           </div>
           <button
+            v-if="!readonly"
             class="w-8 h-8 rounded-lg bg-khubrat-blue hover:bg-opacity-90 dark:bg-khubrat-goldLight dark:text-khubrat-blue text-white flex items-center justify-center transition-all"
             @click="openCreate()"
           >
@@ -210,7 +221,7 @@ async function confirmDelete() {
                 {{ h.repeats_annually ? 'Repeats annually' : 'One-off' }}
               </p>
             </div>
-            <div class="flex gap-1">
+            <div v-if="!readonly" class="flex gap-1">
               <button
                 class="p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[10px] rounded-lg hover:bg-slate-50"
                 @click="openEdit(h)"

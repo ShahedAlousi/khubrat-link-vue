@@ -1,6 +1,6 @@
 <!-- // Login.vue -->
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AuthLayout from '@/components/layout/AuthLayout.vue'
 import BaseInput from '@/components/common/BaseInput.vue'
@@ -13,13 +13,22 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
-const form = reactive({ email: '', password: '' })
+const form = reactive({
+  email: typeof route.query.email === 'string' ? route.query.email : '',
+  password: ''
+})
 const fieldErrors = reactive({ email: '', password: '' })
 const submitError = ref('')
 const submitting = ref(false)
 
 const justRegistered = computed(() => route.query.registered === 'true')
 const justReset = computed(() => route.query.reset === 'true')
+
+onMounted(() => {
+  if (typeof route.query.email === 'string' && route.query.email) {
+    form.email = route.query.email
+  }
+})
 
 function validate() {
   fieldErrors.email = isValidEmail(form.email) ? '' : 'Enter a valid email address.'
@@ -40,11 +49,18 @@ async function handleSubmit() {
       return
     }
 
+    if (!authStore.hasWebConsoleAccess) {
+      router.push({ name: 'forbidden' })
+      return
+    }
+
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
     const home = authStore.isCompanyUser
-      ? authStore.canManagePolicies
-        ? { name: 'company-policies' }
-        : { name: 'company-dashboard' }
+      ? authStore.isDepartmentManager
+        ? { name: 'company-requests' }
+        : authStore.canManagePolicies
+          ? { name: 'company-policies' }
+          : { name: 'company-dashboard' }
       : { name: 'dashboard-overview' }
     router.push(redirect || home)
   } catch (err) {

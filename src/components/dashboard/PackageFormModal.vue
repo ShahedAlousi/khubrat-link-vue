@@ -29,8 +29,7 @@ const fieldErrors = reactive({ name: '', price: '', max_employees: '', max_uses_
 
 const planTypeOptions = [
   { value: 'free', label: 'Free' },
-  { value: 'paid', label: 'Paid' },
-  { value: 'trial', label: 'Trial' }
+  { value: 'paid', label: 'Paid' }
 ]
 
 const billingPeriodOptions = [

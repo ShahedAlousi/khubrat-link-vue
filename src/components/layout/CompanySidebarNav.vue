@@ -20,21 +20,30 @@ const navItems = computed(() => {
     { name: 'company-staff-management', label: 'Staff Management', icon: 'fa-users-gear' },
     { name: 'company-evaluations', label: 'Evaluations', icon: 'fa-award' },
     { name: 'company-attendance', label: 'Attendance', icon: 'fa-clipboard-user' },
-    { name: 'company-payroll', label: 'Payroll', icon: 'fa-money-check-dollar' }
+    { name: 'company-payroll', label: 'Payroll', icon: 'fa-money-check-dollar' },
+    { name: 'company-settings', label: 'Settings', icon: 'fa-gear' }
   ]
 
   return items.filter((item) => {
-    if (item.name === 'company-policies') return authStore.canManagePolicies
+    if (!authStore.canAccessCompanyRoute(item.name)) return false
+    if (item.name === 'company-policies') return authStore.canViewPolicies
     if (item.name === 'company-profile') return authStore.isGeneralManager
-    if (item.name === 'company-evaluations') return authStore.isHr // 👈 تصحيح الحالة إلى isHr
+    if (item.name === 'company-evaluations') return authStore.isHr
     if (item.name === 'company-requests') return authStore.canViewRequestDetails
     return true
   })
 })
 
-const adminName = computed(() => authStore.user?.name || authStore.user?.contact_name || 'Tenant Admin')
+const ROLE_LABELS = {
+  general_manager: 'Tenant Admin',
+  hr_manager: 'HR Manager',
+  department_manager: 'Department Manager'
+}
+
+const roleLabel = computed(() => ROLE_LABELS[authStore.userRole] || 'Tenant Admin')
+const adminName = computed(() => authStore.user?.name || authStore.user?.contact_name || roleLabel.value)
 const adminEmail = computed(() => authStore.user?.email || authStore.company?.email || '—')
-const adminInitials = computed(() => initials(adminName.value) || 'TA')
+const adminInitials = computed(() => initials(adminName.value) || initials(roleLabel.value))
 
 function toggleSidebar() {
   isCollapsed.value = !isCollapsed.value
@@ -93,7 +102,10 @@ async function handleLogout() {
     <div class="p-4 border-t border-white/10 bg-black/20">
       <div class="flex items-center" :class="isCollapsed ? 'justify-center' : 'gap-3'">
         <!-- دائر الحروف الأولى -->
-        <div class="w-10 h-10 rounded-full flex-shrink-0 bg-khubrat-goldDark flex items-center justify-center text-white font-bold text-sm">
+        <div
+          class="w-10 h-10 rounded-full flex-shrink-0 bg-khubrat-goldDark flex items-center justify-center text-white font-bold text-sm"
+          :title="`${adminName} — ${roleLabel}`"
+        >
           {{ adminInitials }}
         </div>
         
@@ -101,6 +113,7 @@ async function handleLogout() {
         <template v-if="!isCollapsed">
           <div class="min-w-0 flex-1">
             <p class="text-sm font-bold text-khubrat-goldLight truncate">{{ adminName }}</p>
+            <!-- <p class="text-[10px] font-semibold text-white/70 truncate">{{ roleLabel }}</p> -->
             <p class="text-[11px] text-white/50 truncate">{{ adminEmail }}</p>
           </div>
           <button

@@ -174,6 +174,37 @@ export const useAttendanceStore = defineStore('attendance', () => {
     }
   }
 
+  /**
+   * تسجيل حضور يدوي لموظف ليس لديه attendance_record بعد لهذا التاريخ
+   * (POST /management/attendance/register).
+   * @returns {Promise<boolean>}
+   */
+  async function registerRecord({ employeeId, workDate, checkInTime, checkOutTime, reason }) {
+    if (!employeeId || !workDate) {
+      errorMessage.value = 'Employee and work date are required to register attendance.'
+      return false
+    }
+    isAdjusting.value = true
+    try {
+      await attendanceService.registerAttendance({
+        employeeId,
+        workDate,
+        checkInTime,
+        checkOutTime,
+        reason,
+      })
+      await refreshAll()
+      return true
+    } catch (err) {
+      errorMessage.value =
+        err.message || 'Failed to register attendance. Please check the details and try again.'
+      console.error('[attendance store] registerRecord failed:', err)
+      return false
+    } finally {
+      isAdjusting.value = false
+    }
+  }
+
   /** تحديث الفلاتر (تاريخ/قسم/موظف) وإعادة الجلب تلقائياً من الصفحة الأولى */
   function setFilter(patch) {
     filters.value = { ...filters.value, ...patch, page: 1 }
@@ -244,6 +275,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
     fetchStats,
     refreshAll,
     adjustRecord,
+    registerRecord,
     setFilter,
     goToPage,
 

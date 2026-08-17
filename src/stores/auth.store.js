@@ -31,20 +31,37 @@ export const useAuthStore = defineStore('auth', () => {
   
   // السوبر آدمن الخاص بالمنصة
   const isPlatformAdmin = computed(() => userRole.value === 'super_admin')
-  
-  // موظفي الشركات (مدير عام، مدير الموارد البشرية، مدير قسم، موظف)
+
+  // أدوار لوحة الشركة على الويب (الموظف العادي لا يدخل هذه اللوحة)
   const isCompanyUser = computed(() => {
-    return ['general_manager', 'hr_manager', 'department_manager', 'employee'].includes(userRole.value)
+    return ['general_manager', 'hr_manager', 'department_manager'].includes(userRole.value)
   })
+
+  const isEmployee = computed(() => userRole.value === 'employee')
 
   // صلاحيات مخصصة داخل لوحة الشركة بناءً على طلبك
   const isGeneralManager = computed(() => userRole.value === 'general_manager')
   const isHrManager = computed(() => userRole.value === 'hr_manager')
+  const isDepartmentManager = computed(() => userRole.value === 'department_manager')
   // Alias for hr_manager role checks across the UI
   const isHr = computed(() => isHrManager.value)
   function hasRole(role) {
     return userRole.value === role
   }
+
+  // من يُسمح له بفتح واجهات المنصة/الشركة (غير صفحات المصادقة)
+  const hasWebConsoleAccess = computed(() => {
+    return isAuthenticated.value && !isEmployee.value && (isPlatformAdmin.value || isCompanyUser.value)
+  })
+
+  // مدير القسم يرى الطلبات وإدارة الموظفين فقط (موظفو قسمه لاحقاً)
+  // بالإضافة لصفحة الإعدادات لأنها شخصية (مظهر الواجهة والدعم الفني)
+  const DEPARTMENT_MANAGER_ROUTES = ['company-requests', 'company-staff-management', 'company-settings']
+
+  // Policy configuration: GM can edit; HR can view only (read-only UI).
+  const canViewPolicies = computed(() => {
+    return userRole.value === 'general_manager' || userRole.value === 'hr_manager'
+  })
 
   // Policy configuration is restricted to the general manager only
   const canManagePolicies = computed(() => userRole.value === 'general_manager')
@@ -53,6 +70,11 @@ export const useAuthStore = defineStore('auth', () => {
   const canViewRequestDetails = computed(() => {
     return userRole.value !== 'general_manager'
   })
+
+  function canAccessCompanyRoute(routeName) {
+    if (!isDepartmentManager.value) return true
+    return DEPARTMENT_MANAGER_ROUTES.includes(routeName)
+  }
 
   const companyId = computed(() => company.value?.id ?? null)
 
@@ -177,13 +199,18 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     mustChangePassword,
     isCompanyUser,
+    isEmployee,
     isPlatformAdmin,
     isGeneralManager,
     isHrManager,
+    isDepartmentManager,
     isHr,
     hasRole,
+    hasWebConsoleAccess,
     canManagePolicies,
+    canViewPolicies,
     canViewRequestDetails,
+    canAccessCompanyRoute,
     companyId,
     restoreSession,
     login,

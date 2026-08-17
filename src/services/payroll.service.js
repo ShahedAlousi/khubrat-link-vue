@@ -19,3 +19,20 @@ export const salaryRulesService = {
     return api.put(`/companies/${companyId}/salary-rules/${ruleId}`, payload).then((res) => res.data)
   }
 }
+
+export const advancePolicyService = {
+  /** GET /api/companies/{company}/advance-policy */
+  get(companyId) {
+    return api.get(`/companies/${companyId}/advance-policy`).then((res) => {
+      // الباك اند يعيد data = null في حال لم تُضبط السياسة بعد
+      return res.data?.data ?? null
+    })
+  },
+
+  /** PUT /api/companies/{company}/advance-policy (Create or Update) */
+  save(companyId, payload) {
+    return api.put(`/companies/${companyId}/advance-policy`, payload).then((res) => {
+      return res.data?.data ?? res.data
+    })
+  }
+}

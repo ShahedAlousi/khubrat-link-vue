@@ -3,15 +3,12 @@ import api from './api'
 export default {
   // GET /management/salaries with optional query params: month, year, status, employee_id, per_page, page
   list(params = {}) {
-    return api.get('/management/salaries', { params }).then((res) => {
-      // Follow project's convention: if payload nested under data.data return that, otherwise return res.data
-      return res.data?.data ?? res.data
-    })
+    return api.get('/management/salaries', { params }).then((res) => res.data.data)
   },
 
   // GET /management/salaries/{id}
   get(id) {
-    return api.get(`/management/salaries/${id}`).then((res) => res.data)
+    return api.get(`/management/salaries/${id}`).then((res) => res.data?.data ?? res.data)
   },
 
   // GET /management/salaries/employees/{employee}/history

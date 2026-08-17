@@ -28,6 +28,13 @@ const freezeOfferOpen = ref(false)
 const freezeOfferMessage = ref('')
 const flash = ref('')
 
+const canModifyDirectory = computed(
+  () => authStore.isGeneralManager || authStore.isHrManager
+)
+const tableColumnCount = computed(
+  () => 6 + (authStore.isGeneralManager ? 1 : 0) + (canModifyDirectory.value ? 1 : 0)
+)
+
 const addLabel = computed(() =>
   authStore.isGeneralManager ? '+ Add HR Staff' : '+ Add Employee'
 )
@@ -46,7 +53,11 @@ const filteredStaff = computed(() => {
 
 onMounted(async () => {
   try {
-    await Promise.all([staffStore.fetchDirectory(), staffStore.fetchDepartments()])
+    if (authStore.isDepartmentManager) {
+      await staffStore.fetchDirectory()
+    } else {
+      await Promise.all([staffStore.fetchDirectory(), staffStore.fetchDepartments()])
+    }
   } catch {
     // error surfaced via store.error
   }
@@ -193,6 +204,9 @@ function roleBadgeClass(staffType) {
           <template v-if="authStore.isGeneralManager">
             Viewing employees and HR staff. You can manage HR staff only.
           </template>
+          <template v-else-if="authStore.isDepartmentManager">
+            Viewing employees in your department. Profiles are read-only.
+          </template>
           <template v-else>
             Viewing regular employees. You can add, edit, freeze, or delete employees.
           </template>
@@ -200,7 +214,7 @@ function roleBadgeClass(staffType) {
       </div>
 
       <BaseButton
-        v-if="authStore.isGeneralManager || authStore.isHrManager"
+        v-if="canModifyDirectory"
         variant="gold"
         @click="openCreate"
       >
@@ -235,12 +249,14 @@ function roleBadgeClass(staffType) {
               <th class="px-4 py-3 font-bold">Start Date</th>
               <th class="px-4 py-3 font-bold">Base Salary</th>
               <th class="px-4 py-3 font-bold">Status</th>
-              <th class="px-4 py-3 font-bold text-right">Actions</th>
+              <th v-if="canModifyDirectory" class="px-4 py-3 font-bold text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="!filteredStaff.length">
-              <td colspan="8" class="px-4 py-10 text-center text-slate-400">No staff records found.</td>
+              <td :colspan="tableColumnCount" class="px-4 py-10 text-center text-slate-400">
+                No staff records found.
+              </td>
             </tr>
             <tr
               v-for="row in filteredStaff"
@@ -280,7 +296,7 @@ function roleBadgeClass(staffType) {
                   {{ row.is_active ? 'Active' : 'Inactive' }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-right" @click.stop>
+              <td v-if="canModifyDirectory" class="px-4 py-3 text-right" @click.stop>
                 <button
                   v-if="staffStore.canManage(row)"
                   class="text-slate-400 hover:text-rose-500 p-2 rounded-lg transition-colors"
@@ -310,6 +326,7 @@ function roleBadgeClass(staffType) {
     />
 
     <StaffFormDrawer
+      v-if="canModifyDirectory"
       ref="formDrawerRef"
       :open="formOpen"
       :mode="formMode"
@@ -322,7 +339,7 @@ function roleBadgeClass(staffType) {
     />
 
     <ConfirmModal
-      v-if="deleteConfirmOpen"
+      v-if="canModifyDirectory && deleteConfirmOpen"
       title="Delete Permanently"
       confirm-label="Yes, Delete"
       confirm-variant="danger"
@@ -338,7 +355,7 @@ function roleBadgeClass(staffType) {
     </ConfirmModal>
 
     <ConfirmModal
-      v-if="freezeOfferOpen"
+      v-if="canModifyDirectory && freezeOfferOpen"
       title="Deletion Not Available"
       confirm-label="Freeze Instead"
       confirm-variant="blue"

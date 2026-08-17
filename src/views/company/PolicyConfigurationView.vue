@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import AttendancePolicyPanel from '@/components/policies/AttendancePolicyPanel.vue'
@@ -10,6 +10,8 @@ import HolidaysPanel from '@/components/policies/HolidaysPanel.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+
+const readonly = computed(() => !authStore.canManagePolicies)
 
 const tabs = [
   { id: 'attendance', label: 'Attendance', icon: 'fa-business-time' },
@@ -22,27 +24,33 @@ const tabs = [
 const activeTab = ref('attendance')
 
 onMounted(() => {
-  if (!authStore.canManagePolicies) {
+  if (!authStore.canViewPolicies) {
     router.replace({ name: 'company-dashboard' })
   }
 })
 </script>
 
 <template>
-  <div v-if="authStore.canManagePolicies" class="space-y-6 max-w-7xl mx-auto">
-    <!-- Explanatory banner -->
+  <div v-if="authStore.canViewPolicies" class="space-y-6 max-w-7xl mx-auto">
     <div class="bg-gradient-to-r from-khubrat-blue to-blue-900 text-white p-6 rounded-2xl shadow-md border-b-4 border-khubrat-goldLight">
       <div class="space-y-1 max-w-3xl">
-        <h3 class="text-lg font-bold text-khubrat-goldLight">Tenant Operational Parameters</h3>
+        <h3 class="text-lg font-bold text-khubrat-goldLight">
+          {{ readonly ? 'Company Policy Overview' : 'Tenant Operational Parameters' }}
+        </h3>
         <p class="text-xs text-slate-200 leading-relaxed">
-          Establish core administrative policies for your enterprise. Modify attendance regulations, vacation
-          allocations, compensation criteria, performance appraisal scales, and national holiday configurations —
-          each section below saves independently to its own API endpoint.
+          <template v-if="readonly">
+            Review the company&apos;s configured attendance, leave, payroll, appraisal, and holiday policies.
+            This view is read-only — contact the general manager to request changes.
+          </template>
+          <template v-else>
+            Establish core administrative policies for your enterprise. Modify attendance regulations, vacation
+            allocations, compensation criteria, performance appraisal scales, and national holiday configurations —
+            each section below saves independently to its own API endpoint.
+          </template>
         </p>
       </div>
     </div>
 
-    <!-- Sub-tabs -->
     <div class="flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
       <button
         v-for="tab in tabs"
@@ -59,15 +67,12 @@ onMounted(() => {
       </button>
     </div>
 
-    <!-- Panels: kept mounted (v-show) rather than v-if, so the Leaflet map
-         inside AttendancePolicyPanel doesn't get destroyed/recreated (and
-         re-fetched data isn't lost) every time the tenant admin switches tabs. -->
     <div>
-      <AttendancePolicyPanel v-show="activeTab === 'attendance'" />
-      <LeaveTypesPanel v-show="activeTab === 'leaves'" />
-      <PayrollSettingsPanel v-show="activeTab === 'payroll'" />
-      <AppraisalsPanel v-show="activeTab === 'appraisals'" />
-      <HolidaysPanel v-show="activeTab === 'holidays'" />
+      <AttendancePolicyPanel v-show="activeTab === 'attendance'" :readonly="readonly" />
+      <LeaveTypesPanel v-show="activeTab === 'leaves'" :readonly="readonly" />
+      <PayrollSettingsPanel v-show="activeTab === 'payroll'" :readonly="readonly" />
+      <AppraisalsPanel v-show="activeTab === 'appraisals'" :readonly="readonly" />
+      <HolidaysPanel v-show="activeTab === 'holidays'" :readonly="readonly" />
     </div>
   </div>
 </template>

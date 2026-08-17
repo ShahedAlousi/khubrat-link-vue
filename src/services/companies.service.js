@@ -73,5 +73,24 @@ export const companiesService = {
   /** GET /api/companies/stats */
   stats() {
     return api.get('/companies/stats').then((res) => res.data.data)
+  },
+
+  /**
+   * GET /api/company/subscription/usage
+   * استهلاك الباقة للشركة الحالية: عدد الموظفين المستخدَم والأيام/الأشهر
+   * المتبقية من مدة الاشتراك. الحقول قد تعود null (باقة بلا سقف أو بلا مدة).
+   */
+  subscriptionUsage() {
+    return api.get('/company/subscription/usage').then((res) => res.data?.data ?? res.data)
+  },
+
+  /**
+   * POST /api/company/subscription/renew
+   * يفتح جلسة Stripe Checkout لتجديد اشتراك الشركة الحالية. الباقات المجانية
+   * لا تُرجع رابط دفع (يكتفي الباك اند بإرسال بريد التفعيل).
+   * @param {string} planId
+   */
+  renewSubscription(planId) {
+    return api.post('/company/subscription/renew', { plan_id: planId }).then((res) => res.data)
   }
 }

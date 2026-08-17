@@ -1,16 +1,18 @@
 <script setup>
 defineProps({
-  modelValue: { type: Boolean, default: false }
+  modelValue: { type: Boolean, default: false },
+  disabled: { type: Boolean, default: false }
 })
 
 defineEmits(['update:modelValue'])
 </script>
 
 <template>
-  <label class="relative inline-flex items-center cursor-pointer">
+  <label class="relative inline-flex items-center" :class="disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'">
     <input
       type="checkbox"
       :checked="modelValue"
+      :disabled="disabled"
       class="sr-only peer"
       @change="$emit('update:modelValue', $event.target.checked)"
     />

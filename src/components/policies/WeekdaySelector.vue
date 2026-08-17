@@ -3,7 +3,8 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
-  label: { type: String, default: 'Days' }
+  label: { type: String, default: 'Days' },
+  readonly: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -50,7 +51,11 @@ onBeforeUnmount(() => window.removeEventListener('click', handleOutsideClick))
     <span class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-2">
       {{ label }}
     </span>
+    <p v-if="readonly" class="text-sm font-semibold text-slate-800 dark:text-slate-100">
+      {{ selectedLabel() }}
+    </p>
     <button
+      v-else
       type="button"
       class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-xs font-bold text-left flex justify-between items-center dark:text-white transition-all"
       @click="open = !open"

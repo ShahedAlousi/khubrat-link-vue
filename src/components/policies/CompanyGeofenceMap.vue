@@ -2,21 +2,76 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
-  latitude: { type: Number, required: true },
-  longitude: { type: Number, required: true },
-  radius: { type: Number, required: true }
+  latitude: { type: [Number, String], default: null },
+  longitude: { type: [Number, String], default: null },
+  radius: { type: [Number, String], default: null },
+  readonly: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['update:latitude', 'update:longitude'])
+
+// Used only to center the map before the company has picked a location.
+const FALLBACK_CENTER = [33.5138, 36.2765]
+const DEFAULT_RADIUS = 150
 
 const mapEl = ref(null)
 let map = null
 let marker = null
 let circle = null
 
+function currentRadius() {
+  const value = Number(props.radius)
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_RADIUS
+}
+
+// Number(null) and Number('') both yield 0, which would silently place an
+// unconfigured company at (0, 0) in the middle of the ocean.
+function toCoordinate(value, limit) {
+  if (value === null || value === undefined || value === '') return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && Math.abs(parsed) <= limit ? parsed : null
+}
+
+function coordinates() {
+  const lat = toCoordinate(props.latitude, 90)
+  const lng = toCoordinate(props.longitude, 180)
+  return lat === null || lng === null ? null : [lat, lng]
+}
+
+function hasCoordinates() {
+  return coordinates() !== null
+}
+
+function renderAt(lat, lng) {
+  const L = window.L
+  if (!map || !L) return
+
+  if (marker) {
+    marker.setLatLng([lat, lng])
+  } else {
+    marker = L.marker([lat, lng], { draggable: !props.readonly }).addTo(map)
+    if (!props.readonly) {
+      marker.on('dragend', () => {
+        const position = marker.getLatLng()
+        placeAt(position.lat, position.lng)
+      })
+    }
+  }
+
+  if (circle) {
+    circle.setLatLng([lat, lng])
+  } else {
+    circle = L.circle([lat, lng], {
+      color: '#002173',
+      fillColor: '#FCD88A',
+      fillOpacity: 0.35,
+      radius: currentRadius()
+    }).addTo(map)
+  }
+}
+
 function placeAt(lat, lng) {
-  if (marker) marker.setLatLng([lat, lng])
-  if (circle) circle.setLatLng([lat, lng])
+  renderAt(lat, lng)
   emit('update:latitude', Number(lat.toFixed(6)))
   emit('update:longitude', Number(lng.toFixed(6)))
 }
@@ -31,30 +86,21 @@ onMounted(() => {
     return
   }
 
-  map = L.map(mapEl.value).setView([props.latitude, props.longitude], 15)
+  const saved = coordinates()
+  map = L.map(mapEl.value).setView(saved ?? FALLBACK_CENTER, saved ? 15 : 12)
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map)
 
-  marker = L.marker([props.latitude, props.longitude], { draggable: true }).addTo(map)
+  if (saved) renderAt(saved[0], saved[1])
 
-  circle = L.circle([props.latitude, props.longitude], {
-    color: '#002173',
-    fillColor: '#FCD88A',
-    fillOpacity: 0.35,
-    radius: props.radius
-  }).addTo(map)
-
-  marker.on('dragend', () => {
-    const position = marker.getLatLng()
-    placeAt(position.lat, position.lng)
-  })
-
-  map.on('click', (e) => {
-    placeAt(e.latlng.lat, e.latlng.lng)
-  })
+  if (!props.readonly) {
+    map.on('click', (e) => {
+      placeAt(e.latlng.lat, e.latlng.lng)
+    })
+  }
 
   // The container is inside a tab panel that may be hidden at first paint.
   setTimeout(() => map.invalidateSize(), 300)
@@ -63,8 +109,19 @@ onMounted(() => {
 // Keep the visual radius circle in sync with the number input elsewhere on the panel.
 watch(
   () => props.radius,
-  (newRadius) => {
-    if (circle) circle.setRadius(newRadius)
+  () => {
+    if (circle) circle.setRadius(currentRadius())
+  }
+)
+
+// The saved policy arrives after the map is mounted, so recenter once it does.
+watch(
+  () => [props.latitude, props.longitude],
+  () => {
+    const next = coordinates()
+    if (!map || !next) return
+    renderAt(next[0], next[1])
+    map.setView(next, map.getZoom())
   }
 )
 
@@ -79,5 +136,13 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="mapEl" class="w-full h-80 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner z-10"></div>
+  <div class="relative">
+    <div ref="mapEl" class="w-full h-80 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner z-10"></div>
+    <p v-if="!hasCoordinates() && !readonly" class="mt-2 text-[10px] font-bold text-slate-400">
+      No location saved yet — click anywhere on the map to set the company coordinates.
+    </p>
+    <p v-else-if="!hasCoordinates() && readonly" class="mt-2 text-[10px] font-bold text-slate-400">
+      No company location has been configured yet.
+    </p>
+  </div>
 </template>
