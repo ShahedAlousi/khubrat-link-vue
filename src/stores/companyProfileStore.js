@@ -27,8 +27,22 @@ export const useCompanyProfileStore = defineStore('companyProfile', () => {
     Boolean(profile.value.name?.trim() && profile.value.email?.trim())
   )
 
+  function extractProfilePayload(payload) {
+    if (!payload || typeof payload !== 'object') return {}
+
+    if (payload.id || payload.name || payload.email || payload.logo_url) {
+      return payload
+    }
+
+    if (payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
+      return extractProfilePayload(payload.data)
+    }
+
+    return payload
+  }
+
   function applyProfileData(data) {
-    const normalized = { ...emptyProfile(), ...data }
+    const normalized = { ...emptyProfile(), ...extractProfilePayload(data) }
     profile.value = normalized
     draftProfile.value = { ...normalized }
   }
@@ -37,8 +51,8 @@ export const useCompanyProfileStore = defineStore('companyProfile', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await companyProfileService.getProfile()
-      applyProfileData(response.data)
+      const body = await companyProfileService.getProfile()
+      applyProfileData(body)
       hasFetchedProfile.value = true
 
       if (!isProfileComplete.value) {
@@ -71,8 +85,8 @@ export const useCompanyProfileStore = defineStore('companyProfile', () => {
     error.value = null
     try {
       const payload = { ...draftProfile.value, logo: logoFile }
-      const response = await companyProfileService.updateProfile(payload)
-      applyProfileData(response.data)
+      const body = await companyProfileService.updateProfile(payload)
+      applyProfileData(body)
       isEditing.value = false
       return true
     } catch (err) {

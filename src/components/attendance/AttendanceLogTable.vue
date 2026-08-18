@@ -2,7 +2,7 @@
   AttendanceLogTable.vue
   ============================================================================-->
   <script setup>
-  import { ref, computed, onMounted } from 'vue'
+  import { ref, computed } from 'vue'
   import { useAttendanceStore } from '@/stores/attendance.store'
   import { buildIsoDateTime, buildLaravelDateTime, parseTimeForClock } from '@/services/attendanceService'
   import BaseSelect from '@/components/common/BaseSelect.vue'
@@ -20,11 +20,7 @@
   })
   
   const store = useAttendanceStore()
-  
-  onMounted(() => {
-    store.refreshAll()
-  })
-  
+
   // ------------------------------------------------------------------------
   // شريط الفلاتر
   // ------------------------------------------------------------------------

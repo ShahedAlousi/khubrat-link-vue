@@ -28,6 +28,12 @@ export function isValidHireDate(value) {
   return date.getTime() <= today.getTime()
 }
 
+/** Birth date is optional; when provided it must be a valid date not in the future. */
+export function isValidBirthDate(value) {
+  if (!value) return true
+  return isValidHireDate(value)
+}
+
 /**
  * Optional analytics year query param (OpenAPI: required false, type integer).
  * Empty / null / undefined is valid; when provided must be a whole year.

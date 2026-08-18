@@ -9,7 +9,7 @@ const props = defineProps({
   plans: { type: Array, default: () => [] }
 })
 
-const emit = defineEmits(['view', 'freeze', 'activate', 'delete'])
+const emit = defineEmits(['view', 'freeze', 'activate'])
 
 const search = ref('')
 const statusFilter = ref('all')
@@ -141,10 +141,10 @@ const statusBadgeClass = {
                   <button
                     v-if="companyStatus(co) === 'active'"
                     class="p-2 text-xs bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 rounded-lg transition-all"
-                    title="Freeze account"
+                    title="Deactivate account"
                     @click="emit('freeze', co)"
                   >
-                    <i class="fa-solid fa-snowflake"></i>
+                    <i class="fa-solid fa-user-slash"></i>
                   </button>
                   <button
                     v-else
@@ -153,13 +153,6 @@ const statusBadgeClass = {
                     @click="emit('activate', co)"
                   >
                     <i class="fa-solid fa-circle-check"></i>
-                  </button>
-                  <button
-                    class="p-2 text-xs bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-lg transition-all"
-                    title="Delete company"
-                    @click="emit('delete', co)"
-                  >
-                    <i class="fa-solid fa-trash-can"></i>
                   </button>
                 </div>
               </td>

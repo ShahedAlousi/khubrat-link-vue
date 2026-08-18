@@ -1,7 +1,7 @@
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import BaseButton from '@/components/common/BaseButton.vue'
-import { managementRequestsService } from '@/services/managementRequests.service'
+import { managementRequestsService, resolveAttachmentDisplayUrl } from '@/services/managementRequests.service'
 import { formatCurrency, formatDate, initials } from '@/utils/format'
 
 const props = defineProps({
@@ -32,7 +32,12 @@ const attachmentPath = computed(() => props.request?.attachment_url || null)
 
 const attachmentBusy = ref(false)
 const attachmentError = ref(null)
-const previewObjectUrl = ref(null)
+const previewFailed = ref(false)
+
+const attachmentHref = computed(() => {
+  const path = attachmentPath.value
+  return path ? resolveAttachmentDisplayUrl(path) : ''
+})
 
 // Overtime reviewers may approve fewer units than requested.
 const approvedUnits = ref(null)
@@ -104,46 +109,13 @@ function display(value) {
   return value === null || value === undefined || value === '' ? '—' : value
 }
 
-function revokePreview() {
-  if (previewObjectUrl.value) {
-    URL.revokeObjectURL(previewObjectUrl.value)
-    previewObjectUrl.value = null
-  }
-}
-
-function revokeLater(objectUrl) {
-  // Keep blob URL alive briefly so a newly opened tab can finish loading.
-  setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
-}
-
-async function loadImagePreview() {
-  revokePreview()
-  attachmentError.value = null
-
-  const meta = attachmentMeta.value
-  if (!props.open || !meta?.isImage || !meta.path) return
-
-  attachmentBusy.value = true
-  try {
-    const blob = await managementRequestsService.fetchAttachment(meta.path)
-    previewObjectUrl.value = URL.createObjectURL(blob)
-  } catch (err) {
-    attachmentError.value = err.message || 'Failed to load attachment preview.'
-  } finally {
-    attachmentBusy.value = false
-  }
-}
-
 watch(
   () => [props.open, props.request?.id, props.request?.attachment_url],
   () => {
-    if (props.open) loadImagePreview()
-    else {
-      revokePreview()
-      attachmentError.value = null
-    }
-  },
-  { immediate: true }
+    previewFailed.value = false
+    attachmentError.value = null
+    attachmentBusy.value = false
+  }
 )
 
 watch(
@@ -156,45 +128,59 @@ watch(
   { immediate: true }
 )
 
-onBeforeUnmount(() => {
-  revokePreview()
-})
-
 async function withAttachmentBlob(handler) {
   const meta = attachmentMeta.value
-  if (!meta?.path) return
+  const href = attachmentHref.value
+  if (!meta?.path && !href) return
 
   attachmentBusy.value = true
   attachmentError.value = null
   let objectUrl = null
 
   try {
-    const blob = await managementRequestsService.fetchAttachment(meta.path)
+    const blob = await managementRequestsService.fetchAttachment(meta.path || href)
     objectUrl = URL.createObjectURL(blob)
     handler(objectUrl, blob, meta)
   } catch (err) {
+    if (href) {
+      handler(href, null, meta)
+      return
+    }
     attachmentError.value = err.message || 'Failed to load attachment.'
   } finally {
-    if (objectUrl) revokeLater(objectUrl)
+    if (objectUrl) {
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
+    }
     attachmentBusy.value = false
   }
 }
 
 function openAttachment() {
+  const href = attachmentHref.value
+  if (href) {
+    window.open(href, '_blank', 'noopener,noreferrer')
+    return
+  }
   return withAttachmentBlob((objectUrl) => {
     window.open(objectUrl, '_blank', 'noopener,noreferrer')
   })
 }
 
 function downloadAttachment() {
-  return withAttachmentBlob((objectUrl, _blob, meta) => {
+  return withAttachmentBlob((objectUrl, blob, meta) => {
     const link = document.createElement('a')
     link.href = objectUrl
-    link.download = meta.fileName
+    if (blob) link.download = meta.fileName
+    else link.target = '_blank'
+    link.rel = 'noopener noreferrer'
     document.body.appendChild(link)
     link.click()
     link.remove()
   })
+}
+
+function onPreviewError() {
+  previewFailed.value = true
 }
 
 function handleApprove() {
@@ -613,29 +599,42 @@ function handleApprove() {
                   <div v-if="attachmentMeta.isImage" class="px-3 pb-3">
                     <button
                       type="button"
-                      class="block w-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-khubrat-goldLight/40 disabled:opacity-60"
+                      class="block w-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-khubrat-goldLight/40"
                       title="Open image"
-                      :disabled="attachmentBusy"
                       @click="openAttachment"
                     >
                       <img
-                        v-if="previewObjectUrl"
-                        :src="previewObjectUrl"
+                        v-if="attachmentHref && !previewFailed"
+                        :src="attachmentHref"
                         :alt="attachmentMeta.fileName"
                         class="w-full max-h-48 object-contain bg-slate-100/80 dark:bg-slate-950/40"
+                        @error="onPreviewError"
                       />
                       <div
                         v-else
                         class="flex items-center justify-center gap-2 h-28 text-[11px] text-slate-400"
                       >
-                        <i
-                          class="fa-solid"
-                          :class="attachmentBusy ? 'fa-spinner fa-spin' : 'fa-image'"
-                          aria-hidden="true"
-                        ></i>
-                        {{ attachmentBusy ? 'Loading preview…' : 'Preview unavailable' }}
+                        <i class="fa-solid fa-image" aria-hidden="true"></i>
+                        Preview unavailable — use View or Download
                       </div>
                     </button>
+                  </div>
+
+                  <div v-else-if="attachmentMeta.isPdf" class="px-3 pb-3">
+                    <iframe
+                      v-if="attachmentHref && !previewFailed"
+                      :src="attachmentHref"
+                      title="PDF preview"
+                      class="w-full h-56 rounded-lg border border-slate-200 dark:border-slate-700 bg-white"
+                      @error="onPreviewError"
+                    />
+                    <div
+                      v-else
+                      class="flex items-center justify-center gap-2 h-28 rounded-lg border border-dashed border-slate-200 dark:border-slate-700 text-[11px] text-slate-400"
+                    >
+                      <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
+                      Open the PDF with View or Download
+                    </div>
                   </div>
 
                   <p v-if="attachmentError" class="px-3 pb-3 text-[11px] text-rose-500">

@@ -23,6 +23,7 @@ export function unwrapHrManagerPayload(row) {
     job_title: employee?.job_title ?? row.job_title ?? null,
     base_salary: employee?.base_salary ?? row.base_salary ?? null,
     hire_date: employee?.hire_date ?? row.hire_date ?? null,
+    birth_date: employee?.birth_date ?? row.birth_date ?? null,
     employment_type: employee?.employment_type ?? row.employment_type ?? null,
     is_active: employee?.is_active ?? row.is_active ?? row.status === 'active',
     department_name: HR_DEPARTMENT_NAME

@@ -101,7 +101,7 @@ function status(detail) {
               class="!bg-amber-500 hover:!bg-amber-600 !text-white"
               @click="emit('freeze', detail)"
             >
-              <i class="fa-solid fa-snowflake"></i> Freeze
+              <i class="fa-solid fa-user-slash"></i> Freeze
             </BaseButton>
             <BaseButton v-else variant="ghost" class="!bg-emerald-500 hover:!bg-emerald-600 !text-white" @click="emit('activate', detail)">
               <i class="fa-solid fa-circle-check"></i> Reactivate

@@ -48,6 +48,10 @@ export const useAttendanceStore = defineStore('attendance', () => {
     const loadingQr = ref(false)
     let qrCountdownTimer = null // ليس ref لأنه لا يُعرض بالواجهة
 
+  const ATTENDANCE_POLL_MS = 30_000
+  let attendancePollTimer = null
+  let attendancePollInFlight = false
+
   // --------------------------------------------------------------------
   // Getters محسوبة (Computed)
   // --------------------------------------------------------------------
@@ -109,38 +113,67 @@ export const useAttendanceStore = defineStore('attendance', () => {
    * هذا هو مصدر بيانات "Daily Attendance Log" الآن (بدّلناه من GET
    * /management/attendance القديم لأنه كان يُخفي الغائبين/من لم يصل بعد).
    */
-  async function fetchRecords() {
-    loadingRecords.value = true
-    errorMessage.value = ''
+  async function fetchRecords(options = {}) {
+    const silent = Boolean(options.silent)
+    if (!silent) {
+      loadingRecords.value = true
+      errorMessage.value = ''
+    }
     try {
       const query = buildRosterQuery()
       const { records: list, meta: pageMeta } = await attendanceService.getAttendanceRoster(query)
       records.value = list
       meta.value = pageMeta
     } catch (err) {
-      errorMessage.value = 'Failed to load attendance records. Please try again.'
+      if (!silent) errorMessage.value = 'Failed to load attendance records. Please try again.'
       console.error('[attendance store] fetchRecords failed:', err)
     } finally {
-      loadingRecords.value = false
+      if (!silent) loadingRecords.value = false
     }
   }
 
   /** جلب الإحصائيات الجاهزة (present/late/absent/early_leave/not_arrived/on_leave/off_day) */
-  async function fetchStats() {
-    loadingStats.value = true
+  async function fetchStats(options = {}) {
+    const silent = Boolean(options.silent)
+    if (!silent) loadingStats.value = true
     try {
       const query = buildStatsQuery()
       stats.value = await attendanceService.getAttendanceStats(query)
     } catch (err) {
       console.error('[attendance store] fetchStats failed:', err)
     } finally {
-      loadingStats.value = false
+      if (!silent) loadingStats.value = false
     }
   }
 
   /** جلب السجلات والإحصائيات معاً -- يُستدعى عند فتح الصفحة أو تغيير الفلاتر */
-  async function refreshAll() {
-    await Promise.all([fetchRecords(), fetchStats()])
+  async function refreshAll(options = {}) {
+    await Promise.all([fetchRecords(options), fetchStats(options)])
+  }
+
+  /**
+   * تحديث تلقائي لبيانات الحضور كل 30 ثانية طالما صفحة التتبع مفتوحة.
+   * الاستدعاء الأول يظهر مؤشر التحميل؛ التحديثات التالية صامتة حتى لا تومض الواجهة.
+   */
+  function startAttendanceAutoRefresh() {
+    stopAttendanceAutoRefresh()
+    refreshAll()
+    attendancePollTimer = setInterval(() => {
+      if (attendancePollInFlight || isAdjusting.value) return
+      attendancePollInFlight = true
+      refreshAll({ silent: true }).finally(() => {
+        attendancePollInFlight = false
+      })
+    }, ATTENDANCE_POLL_MS)
+  }
+
+  /** إيقاف التحديث التلقائي -- يُستدعى عند مغادرة صفحة الحضور */
+  function stopAttendanceAutoRefresh() {
+    if (attendancePollTimer) {
+      clearInterval(attendancePollTimer)
+      attendancePollTimer = null
+    }
+    attendancePollInFlight = false
   }
 
   /**
@@ -274,6 +307,8 @@ export const useAttendanceStore = defineStore('attendance', () => {
     fetchRecords,
     fetchStats,
     refreshAll,
+    startAttendanceAutoRefresh,
+    stopAttendanceAutoRefresh,
     adjustRecord,
     registerRecord,
     setFilter,

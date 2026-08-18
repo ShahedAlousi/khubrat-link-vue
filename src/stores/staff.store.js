@@ -39,6 +39,7 @@ export function normalizeStaffRow(row, staffType) {
     job_title: employment.job_title ?? source.job_title ?? '',
     base_salary: asNumber(employment.base_salary ?? source.base_salary),
     hire_date: employment.hire_date ?? source.hire_date ?? '',
+    birth_date: user.birth_date ?? source.birth_date ?? employment.birth_date ?? '',
     employment_type: employment.employment_type ?? source.employment_type ?? 'full-time',
     is_active: employment.is_active ?? source.is_active ?? true,
     created_at: source.created_at ?? null,
@@ -79,6 +80,7 @@ function buildPayload(form) {
   if (form.marital_status) payload.marital_status = form.marital_status
   if (form.nationality) payload.nationality = form.nationality.trim()
   if (form.residence) payload.residence = form.residence.trim()
+  if (form.birth_date) payload.birth_date = String(form.birth_date).slice(0, 10)
 
   return payload
 }
@@ -306,6 +308,7 @@ export const useStaffStore = defineStore('staff', () => {
         job_title: row.job_title,
         base_salary: row.base_salary,
         hire_date: row.hire_date,
+        birth_date: row.birth_date,
         employment_type: row.employment_type,
         is_active: false,
         gender: row.gender,
@@ -354,6 +357,7 @@ export const useStaffStore = defineStore('staff', () => {
         job_title: row.job_title,
         base_salary: row.base_salary,
         hire_date: row.hire_date,
+        birth_date: row.birth_date,
         employment_type: row.employment_type,
         is_active: true,
         gender: row.gender,

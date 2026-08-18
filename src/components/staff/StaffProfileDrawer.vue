@@ -91,6 +91,12 @@ function display(value) {
               </dd>
             </div>
             <div>
+              <dt class="text-xs font-bold text-slate-400 uppercase">Birth Date</dt>
+              <dd class="font-semibold text-khubrat-blue dark:text-white mt-0.5">
+                {{ formatDate(profile.birth_date) }}
+              </dd>
+            </div>
+            <div>
               <dt class="text-xs font-bold text-slate-400 uppercase">Base Salary</dt>
               <dd class="font-semibold text-khubrat-blue dark:text-white mt-0.5">
                 {{ formatCurrency(profile.base_salary) }}

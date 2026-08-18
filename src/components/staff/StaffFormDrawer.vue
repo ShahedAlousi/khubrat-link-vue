@@ -7,7 +7,7 @@ import BaseAlert from '@/components/common/BaseAlert.vue'
 import ToggleSwitch from '@/components/policies/ToggleSwitch.vue'
 import { STAFF_TYPE } from '@/stores/staff.store'
 import { useDepartmentsStore } from '@/stores/department.store'
-import { isRequired, isValidEmail, isValidPhone, isValidHireDate } from '@/utils/validators'
+import { isRequired, isValidEmail, isValidPhone, isValidHireDate, isValidBirthDate } from '@/utils/validators'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -77,6 +77,7 @@ function emptyForm() {
     job_title: '',
     base_salary: '',
     hire_date: '',
+    birth_date: '',
     employment_type: 'full-time',
     is_active: true,
     gender: '',
@@ -96,6 +97,7 @@ function fillFromInitial(row) {
     job_title: row?.job_title ?? '',
     base_salary: row?.base_salary ?? '',
     hire_date: row?.hire_date ? String(row.hire_date).slice(0, 10) : '',
+    birth_date: row?.birth_date ? String(row.birth_date).slice(0, 10) : '',
     employment_type: row?.employment_type || 'full-time',
     is_active: row?.is_active ?? true,
     gender: row?.gender ?? '',
@@ -128,6 +130,9 @@ function validate() {
   }
   if (!isValidHireDate(form.hire_date)) {
     fieldErrors.hire_date = 'Hire date is required and cannot be in the future.'
+  }
+  if (!isValidBirthDate(form.birth_date)) {
+    fieldErrors.birth_date = 'Birth date must be a valid date and cannot be in the future.'
   }
   if (form.phone && !isValidPhone(form.phone)) {
     fieldErrors.phone = 'Phone must start with 09 and contain 10 digits.'
@@ -205,6 +210,12 @@ defineExpose({ setServerError })
             type="date"
             required
             :error="fieldErrors.hire_date"
+          />
+          <BaseInput
+            v-model="form.birth_date"
+            label="Birth Date"
+            type="date"
+            :error="fieldErrors.birth_date"
           />
           <BaseSelect
             v-model="form.employment_type"

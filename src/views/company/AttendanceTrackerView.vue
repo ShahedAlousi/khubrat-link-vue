@@ -1,19 +1,26 @@
 <!-- AttendanceTrackerView.vue -->
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import AttendanceStatsOverview from '@/components/attendance/AttendanceStatsOverview.vue'
 import AttendanceLogTable from '@/components/attendance/AttendanceLogTable.vue'
-import AttendanceQrKiosk from '@/components/attendance/AttendanceQrKiosk.vue' 
+import AttendanceQrKiosk from '@/components/attendance/AttendanceQrKiosk.vue'
 import { useDepartmentsStore } from '@/stores/department.store'
-// TODO: استبدلي هذا بالمصدر الفعلي لقائمة الأقسام (نفس ميزة Staff Management)
+import { useAttendanceStore } from '@/stores/attendance.store'
+
 const departments = ref([])
 const showQrKiosk = ref(false)
+const attendanceStore = useAttendanceStore()
 
 onMounted(async () => {
+  attendanceStore.startAttendanceAutoRefresh()
   const departmentStore = useDepartmentsStore()
-    await departmentStore.fetchDepartments()
-    departments.value = departmentStore.departments
+  await departmentStore.fetchDepartments()
+  departments.value = departmentStore.departments
+})
+
+onUnmounted(() => {
+  attendanceStore.stopAttendanceAutoRefresh()
 })
 </script>
 

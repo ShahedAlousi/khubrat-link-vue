@@ -84,18 +84,21 @@ export function toRelativeAttachmentPath(rawUrl) {
 }
 
 /**
- * Build an absolute storage URL on the same host as VITE_API_BASE_URL
- * so axios still applies auth/ngrok interceptors without prefixing `/api`.
- * @param {string} relativePath
- * @returns {string}
+ * Absolute storage URL on the API host (https + ngrok skip flag).
+ * Use for <img>/<iframe>/<a>; do not go through `/api`.
  */
-function resolveAttachmentRequestUrl(relativePath) {
-  const path = toRelativeAttachmentPath(relativePath) || relativePath
-  const apiBase = import.meta.env.VITE_API_BASE_URL || '/api'
+export function resolveAttachmentDisplayUrl(rawUrl) {
+  const path = toRelativeAttachmentPath(rawUrl)
+  if (!path) return ''
 
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '/api'
   try {
-    const base = new URL(apiBase, typeof window !== 'undefined' ? window.location.href : 'http://localhost')
-    return new URL(path, base.origin).href
+    const api = new URL(apiBase, typeof window !== 'undefined' ? window.location.href : 'http://localhost')
+    const resolved = new URL(path, api.origin)
+    if (resolved.hostname.includes('ngrok')) {
+      resolved.searchParams.set('ngrok-skip-browser-warning', 'true')
+    }
+    return resolved.href
   } catch {
     return path
   }
@@ -300,19 +303,41 @@ export const managementRequestsService = {
   },
 
   /**
-   * Fetch a leave supporting document through the shared `api` client
-   * so Bearer + ngrok headers are applied (unlike window.open / bare <a>).
-   * @param {string} attachmentPath relative path e.g. /storage/leave_attachments/file.pdf
+   * Fetch a leave supporting document as a Blob (for download).
+   * In Vite dev the request goes same-origin through `/storage` (proxied).
+   * @param {string} attachmentPath relative path or absolute storage URL
    * @returns {Promise<Blob>}
    */
   fetchAttachment(attachmentPath) {
-    const requestUrl = resolveAttachmentRequestUrl(attachmentPath)
+    const relative = toRelativeAttachmentPath(attachmentPath)
+    const isDev = import.meta.env.DEV
+    const requestUrl = isDev ? relative : resolveAttachmentDisplayUrl(attachmentPath)
+
     return api
       .get(requestUrl, {
+        ...(isDev && typeof window !== 'undefined' ? { baseURL: window.location.origin } : {}),
         responseType: 'blob',
         headers: { Accept: '*/*' }
       })
-      .then((res) => res.data)
+      .then(async (res) => {
+        const blob = res.data
+        if (!(blob instanceof Blob)) return blob
+
+        const type = (blob.type || '').toLowerCase()
+        if (!type.includes('text/html') && !type.includes('application/json')) return blob
+
+        let message = 'Failed to load the attachment file.'
+        try {
+          const text = await blob.text()
+          if (type.includes('json')) {
+            const json = JSON.parse(text)
+            if (json?.message) message = json.message
+          }
+        } catch {
+          // keep default message
+        }
+        return Promise.reject({ message })
+      })
   },
 
   /**

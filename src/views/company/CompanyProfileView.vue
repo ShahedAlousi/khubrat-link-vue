@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useCompanyProfileStore } from '@/stores/companyProfileStore'
 import BaseButton from '@/components/common/BaseButton.vue'
 import BaseInput from '@/components/common/BaseInput.vue'
@@ -13,6 +13,7 @@ const profileStore = useCompanyProfileStore()
 const logoInputRef = ref(null)
 const selectedLogoFile = ref(null)
 const logoPreviewUrl = ref(null)
+const persistedLogoBlobUrl = ref(null)
 const logoFilename = ref('')
 const flash = ref('')
 
@@ -24,15 +25,28 @@ const editHeading = computed(() =>
     : 'Initial Corporate Profile Setup'
 )
 
+const logoCacheKey = ref(0)
+
+function resolveLogoUrl(logoUrl, companyId) {
+  if (!logoUrl) return ''
+  return toMediaUrl(logoUrl, logoCacheKey.value || '', { companyId })
+}
+
 const displayLogoUrl = computed(() => {
   if (logoPreviewUrl.value) return logoPreviewUrl.value
-  if (profileStore.profile.logo_url) return toMediaUrl(profileStore.profile.logo_url)
+  if (persistedLogoBlobUrl.value) return persistedLogoBlobUrl.value
+  if (profileStore.profile.logo_url) {
+    return resolveLogoUrl(profileStore.profile.logo_url, profileStore.profile.id)
+  }
   return fallbackLogoUrl(profileStore.profile.name)
 })
 
 const editLogoUrl = computed(() => {
   if (logoPreviewUrl.value) return logoPreviewUrl.value
-  if (profileStore.profile.logo_url) return toMediaUrl(profileStore.profile.logo_url)
+  if (persistedLogoBlobUrl.value) return persistedLogoBlobUrl.value
+  const savedLogo = profileStore.draftProfile.logo_url || profileStore.profile.logo_url
+  const companyId = profileStore.draftProfile.id || profileStore.profile.id
+  if (savedLogo) return resolveLogoUrl(savedLogo, companyId)
   return fallbackLogoUrl(profileStore.draftProfile.name)
 })
 
@@ -45,6 +59,24 @@ function fallbackLogoUrl(name) {
 function display(value, fallback = 'Not specified') {
   return value === null || value === undefined || value === '' ? fallback : value
 }
+
+function setPersistedLogoBlob(file) {
+  if (!file) return
+  if (persistedLogoBlobUrl.value) URL.revokeObjectURL(persistedLogoBlobUrl.value)
+  persistedLogoBlobUrl.value = URL.createObjectURL(file)
+}
+
+function clearPersistedLogoBlob() {
+  if (persistedLogoBlobUrl.value) {
+    URL.revokeObjectURL(persistedLogoBlobUrl.value)
+    persistedLogoBlobUrl.value = null
+  }
+}
+
+onBeforeUnmount(() => {
+  if (logoPreviewUrl.value) URL.revokeObjectURL(logoPreviewUrl.value)
+  clearPersistedLogoBlob()
+})
 
 onMounted(async () => {
   try {
@@ -68,10 +100,21 @@ watch(
 function resetLogoSelection(clearPreview = true) {
   selectedLogoFile.value = null
   if (logoInputRef.value) logoInputRef.value.value = ''
-  if (clearPreview) logoPreviewUrl.value = null
+  if (clearPreview && logoPreviewUrl.value) {
+    URL.revokeObjectURL(logoPreviewUrl.value)
+    logoPreviewUrl.value = null
+  }
   logoFilename.value = profileStore.profile.logo_url
     ? 'Current logo loaded. Choose a file to replace it.'
     : 'Omit file to keep current saved corporate logo.'
+}
+
+function handleLogoError(event, name) {
+  if (persistedLogoBlobUrl.value) {
+    event.target.src = persistedLogoBlobUrl.value
+    return
+  }
+  event.target.src = fallbackLogoUrl(name)
 }
 
 function triggerLogoUpload() {
@@ -133,7 +176,10 @@ async function handleSubmit() {
   if (!validateForm()) return
 
   try {
-    await profileStore.saveProfile(selectedLogoFile.value)
+    const uploadedFile = selectedLogoFile.value
+    await profileStore.saveProfile(uploadedFile)
+    logoCacheKey.value = Date.now()
+    if (uploadedFile) setPersistedLogoBlob(uploadedFile)
     resetLogoSelection(true)
     flash.value = 'Company profile updated successfully.'
   } catch (err) {
@@ -188,7 +234,7 @@ function handleCancel() {
                   alt="Company Logo"
                   referrerpolicy="no-referrer"
                   class="max-w-full max-h-full object-contain rounded-xl"
-                  @error="($event.target.src = fallbackLogoUrl(profileStore.profile.name))"
+                  @error="handleLogoError($event, profileStore.profile.name)"
                 />
               </div>
 
@@ -335,7 +381,7 @@ function handleCancel() {
                   alt="Logo Preview"
                   referrerpolicy="no-referrer"
                   class="max-w-full max-h-full object-contain rounded-lg"
-                  @error="($event.target.src = fallbackLogoUrl(profileStore.draftProfile.name))"
+                  @error="handleLogoError($event, profileStore.draftProfile.name)"
                 />
               </div>
 
