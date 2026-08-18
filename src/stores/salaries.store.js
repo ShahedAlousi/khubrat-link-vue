@@ -58,6 +58,24 @@ export const useSalariesStore = defineStore('salaries', () => {
     return res
   }
 
+  const employeeHistory = ref([])
+  const employeeHistoryLoading = ref(false)
+
+  async function fetchEmployeeHistory(employeeId) {
+    employeeHistoryLoading.value = true
+    employeeHistory.value = []
+    try {
+      const rows = await salariesService.employeeHistory(employeeId)
+      employeeHistory.value = Array.isArray(rows) ? rows : []
+      return employeeHistory.value
+    } catch (err) {
+      employeeHistory.value = []
+      throw err
+    } finally {
+      employeeHistoryLoading.value = false
+    }
+  }
+
   function openDrawer(id) {
     drawerId.value = id
     drawerOpen.value = true
@@ -78,6 +96,9 @@ export const useSalariesStore = defineStore('salaries', () => {
     generateDrafts,
     markSalaryPaid,
     addSalaryAdjustment,
+    employeeHistory,
+    employeeHistoryLoading,
+    fetchEmployeeHistory,
     openDrawer,
     closeDrawer
   }

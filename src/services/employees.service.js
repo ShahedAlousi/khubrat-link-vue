@@ -1,11 +1,36 @@
 import api from './api'
 import { t } from '@/i18n/helpers'
+import {
+  toRelativeAttachmentPath,
+  resolveAttachmentDisplayUrl
+} from '@/services/managementRequests.service'
 
 /** Normalize list payloads that may be a bare array or a Laravel paginator. */
 function unwrapList(payload) {
   if (Array.isArray(payload)) return payload
   if (Array.isArray(payload?.data)) return payload.data
   return []
+}
+
+function fileNameFromStorageUrl(url, fallback) {
+  try {
+    const path = new URL(url, window.location.origin).pathname
+    const base = path.split('/').filter(Boolean).pop()
+    return base || fallback
+  } catch {
+    return fallback
+  }
+}
+
+function triggerBrowserDownload(blob, filename) {
+  const url = window.URL.createObjectURL(new Blob([blob]))
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
 }
 
 async function parseApiError(err) {
@@ -65,6 +90,14 @@ export const employeesService = {
   },
 
   /**
+   * GET /api/hr/employees/{employee}/profile-overview
+   * @param {string} employeeId
+   */
+  profileOverview(employeeId) {
+    return api.get(`/hr/employees/${employeeId}/profile-overview`).then((res) => res.data?.data ?? res.data)
+  },
+
+  /**
    * POST /api/hr/employees
    * @param {object} payload
    */
@@ -121,6 +154,55 @@ export const employeesService = {
         link.click()
         link.remove()
         window.URL.revokeObjectURL(url)
+      })
+      .catch((err) => parseApiError(err).then((normalized) => Promise.reject(normalized)))
+  },
+
+  /**
+   * Download a file from Laravel public storage (identity photo, certificate, …).
+   * In dev, routes through Vite `/storage` proxy (same-origin) to avoid CORS.
+   * @param {string} rawUrl
+   * @param {string} [fallbackFilename]
+   */
+  downloadStorageFile(rawUrl, fallbackFilename = 'document') {
+    const relative = toRelativeAttachmentPath(rawUrl)
+    if (!relative) {
+      return Promise.reject({ message: t('common.tryAgain') })
+    }
+
+    const filename = fileNameFromStorageUrl(rawUrl, fallbackFilename)
+    const isDev = import.meta.env.DEV
+    const requestUrl = isDev ? relative : resolveAttachmentDisplayUrl(rawUrl)
+
+    return api
+      .get(requestUrl, {
+        ...(isDev && typeof window !== 'undefined' ? { baseURL: window.location.origin } : {}),
+        responseType: 'blob',
+        headers: { Accept: '*/*' }
+      })
+      .then(async (res) => {
+        const blob = res.data
+        if (!(blob instanceof Blob)) {
+          triggerBrowserDownload(blob, filename)
+          return
+        }
+
+        const type = (blob.type || '').toLowerCase()
+        if (type.includes('text/html') || type.includes('application/json')) {
+          let message = t('common.tryAgain')
+          try {
+            const text = await blob.text()
+            if (type.includes('json')) {
+              const json = JSON.parse(text)
+              if (json?.message) message = json.message
+            }
+          } catch {
+            // keep default message
+          }
+          return Promise.reject({ message })
+        }
+
+        triggerBrowserDownload(blob, filename)
       })
       .catch((err) => parseApiError(err).then((normalized) => Promise.reject(normalized)))
   },

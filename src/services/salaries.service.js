@@ -1,5 +1,23 @@
 import api from './api'
 
+function unwrapSalaryHistory(payload) {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  if (Array.isArray(payload?.history)) return payload.history
+  if (Array.isArray(payload?.salaries)) return payload.salaries
+  if (Array.isArray(payload?.records)) return payload.records
+
+  const nested = payload?.data
+  if (nested && typeof nested === 'object') {
+    if (Array.isArray(nested.data)) return nested.data
+    if (Array.isArray(nested.history)) return nested.history
+    if (Array.isArray(nested.salaries)) return nested.salaries
+    if (Array.isArray(nested.records)) return nested.records
+  }
+
+  return []
+}
+
 export default {
   // GET /management/salaries with optional query params: month, year, status, employee_id, per_page, page
   list(params = {}) {
@@ -13,7 +31,9 @@ export default {
 
   // GET /management/salaries/employees/{employee}/history
   employeeHistory(employeeId) {
-    return api.get(`/management/salaries/employees/${employeeId}/history`).then((res) => res.data)
+    return api
+      .get(`/management/salaries/employees/${employeeId}/history`)
+      .then((res) => unwrapSalaryHistory(res.data))
   },
 
   // GET /management/salaries/by-month?month=&year=&per_page=

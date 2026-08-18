@@ -187,6 +187,12 @@ const routes = [
         meta: { titleKey: 'nav.company.staff' }
       },
       {
+        path: 'employee-profiles',
+        name: 'company-employee-profiles',
+        component: () => import('@/views/company/EmployeeProfilesView.vue'),
+        meta: { titleKey: 'nav.company.employeeProfiles', denyDepartmentManager: true }
+      },
+      {
         path: 'evaluations',
         name: 'company-evaluations',
         component: () => import('@/views/company/EvaluationHubView.vue'),

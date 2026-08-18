@@ -546,16 +546,16 @@ function handleApprove() {
                       </svg>
                     </div>
 
-                    <div class="min-w-0 flex-1">
+                    <!-- <div class="min-w-0 flex-1">
                       <p class="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
                         {{ attachmentMeta.fileName }}
                       </p>
                       <p class="text-[10px] text-slate-400 mt-0.5">{{ attachmentMeta.kindLabel }}</p>
-                    </div>
+                    </div> -->
 
                     <!-- Compact gray view / download actions -->
                     <div class="flex items-center gap-0.5 shrink-0">
-                      <button
+                      <!-- <button
                         type="button"
                         class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/70 dark:hover:text-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
                         :title="$t('common.viewFile')"
@@ -577,7 +577,7 @@ function handleApprove() {
                           <circle cx="12" cy="12" r="3" />
                         </svg>
                         <i v-else class="fa-solid fa-spinner fa-spin text-sm" aria-hidden="true"></i>
-                      </button>
+                      </button> -->
                       <button
                         type="button"
                         class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/70 dark:hover:text-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
@@ -605,7 +605,7 @@ function handleApprove() {
                     </div>
                   </div>
 
-                  <div v-if="attachmentMeta.isImage" class="px-3 pb-3">
+                  <!-- <div v-if="attachmentMeta.isImage" class="px-3 pb-3">
                     <button
                       type="button"
                       class="block w-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-khubrat-goldLight/40"
@@ -644,7 +644,7 @@ function handleApprove() {
                       <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
                       {{ $t('requests.openPdf') }}
                     </div>
-                  </div>
+                  </div> -->
 
                   <p v-if="attachmentError" class="px-3 pb-3 text-[11px] text-rose-500">
                     {{ attachmentError }}

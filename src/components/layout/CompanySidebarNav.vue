@@ -20,6 +20,7 @@ const navItems = computed(() => {
     { name: 'company-policies', label: t('nav.company.policies'), icon: 'fa-sliders' },
     { name: 'company-requests', label: t('nav.company.requests'), icon: 'fa-envelope-open-text' },
     { name: 'company-staff-management', label: t('nav.company.staff'), icon: 'fa-users-gear' },
+    { name: 'company-employee-profiles', label: t('nav.company.employeeProfiles'), icon: 'fa-address-card' },
     { name: 'company-evaluations', label: t('nav.company.evaluations'), icon: 'fa-award' },
     { name: 'company-attendance', label: t('nav.company.attendance'), icon: 'fa-clipboard-user' },
     { name: 'company-payroll', label: t('nav.company.payroll'), icon: 'fa-money-check-dollar' },
@@ -30,6 +31,7 @@ const navItems = computed(() => {
     if (!authStore.canAccessCompanyRoute(item.name)) return false
     if (item.name === 'company-policies') return authStore.canViewPolicies
     if (item.name === 'company-profile') return authStore.isGeneralManager
+    if (item.name === 'company-employee-profiles') return authStore.isGeneralManager || authStore.isHrManager
     if (item.name === 'company-evaluations') return authStore.isHr
     if (item.name === 'company-requests') return authStore.canViewRequestDetails
     return true
