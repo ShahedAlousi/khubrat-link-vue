@@ -26,7 +26,7 @@ const resolvedType = computed(() => {
 </script>
 
 <template>
-  <div class="space-y-1.5 text-left">
+  <div class="space-y-1.5 text-start">
     <!-- تعديل: لون العنوان الجانبي (Label) ليصبح باللون الأزرق الداكن المتناسق مع الهوية البصرية وشعار الشركة -->
     <label
       v-if="label"
@@ -57,7 +57,7 @@ const resolvedType = computed(() => {
         v-if="isPassword"
         type="button"
         tabindex="-1"
-        class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-300 dark:hover:text-slate-100"
+        class="absolute end-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-300 dark:hover:text-slate-100"
         @click="showPassword = !showPassword"
       >
         <i class="fa-solid" :class="showPassword ? 'fa-eye-slash' : 'fa-eye'"></i>

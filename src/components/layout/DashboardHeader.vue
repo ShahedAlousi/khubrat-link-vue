@@ -1,14 +1,17 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useTheme } from '@/composables/useTheme'
 import { useCompaniesStore } from '@/stores/companies.store'
+import LanguageSwitcher from '@/components/common/LanguageSwitcher.vue'
 
 const route = useRoute()
+const { t } = useI18n()
 const { theme, toggleTheme } = useTheme()
 const companiesStore = useCompaniesStore()
 
-const pageTitle = computed(() => route.meta?.title || 'Dashboard')
+const pageTitle = computed(() => t(route.meta?.titleKey || 'nav.admin.overview'))
 
 const activeCount = computed(() => {
   const distribution = companiesStore.stats?.status_distribution
@@ -30,23 +33,18 @@ const activeCount = computed(() => {
         class="hidden md:flex items-center gap-2 bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold"
       >
         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-        <span class="text-slate-600 dark:text-slate-200">{{ activeCount }} Active Companies</span>
+        <span class="text-slate-600 dark:text-slate-200">{{ $t('settings.activeCompanies', { n: activeCount }) }}</span>
       </div>
 
       <button
         class="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 transition-all duration-150"
-        title="Toggle Theme Mode"
+        :title="$t('settings.toggleTheme')"
         @click="toggleTheme"
       >
         <i class="fa-solid" :class="theme === 'dark' ? 'fa-sun' : 'fa-moon'"></i>
       </button>
 
-      <div
-        class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-200"
-      >
-        <i class="fa-solid fa-globe"></i>
-        <span>EN</span>
-      </div>
+      <LanguageSwitcher variant="compact" />
     </div>
   </header>
 </template>

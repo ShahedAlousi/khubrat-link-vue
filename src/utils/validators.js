@@ -1,5 +1,7 @@
 // دوال تحقق من صحة المدخلات (إيميل صحيح، كلمة مرور قوية).
 
+import { t } from '@/i18n/helpers'
+
 export function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim())
 }
@@ -79,13 +81,13 @@ export function validateLeaveActionPayload(payload = {}) {
   const rejectionReason = String(payload.rejection_reason ?? '').trim()
 
   if (!isValidLeaveAction(action)) {
-    errors.action = 'Action must be approve or reject.'
+    errors.action = t('validation.leaveAction')
   }
   if (!isValidLeaveRoleContext(roleContext)) {
-    errors.role_context = 'Role context must be manager or hr.'
+    errors.role_context = t('validation.leaveRoleContext')
   }
   if (action === 'reject' && !isRequired(rejectionReason)) {
-    errors.rejection_reason = 'Rejection reason is required.'
+    errors.rejection_reason = t('validation.rejectionReasonRequired')
   }
 
   return errors

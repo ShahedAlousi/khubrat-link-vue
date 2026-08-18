@@ -1,8 +1,9 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth.store'
 import { useStaffStore, STAFF_TYPE } from '@/stores/staff.store'
-import { HR_DEPARTMENT_NAME } from '@/stores/hrManagers.store'
+import { translateStatus } from '@/i18n/helpers'
 import BaseButton from '@/components/common/BaseButton.vue'
 import BaseAlert from '@/components/common/BaseAlert.vue'
 import BaseInput from '@/components/common/BaseInput.vue'
@@ -12,6 +13,7 @@ import StaffProfileDrawer from '@/components/staff/StaffProfileDrawer.vue'
 import StaffFormDrawer from '@/components/staff/StaffFormDrawer.vue'
 import { formatCurrency, formatDate } from '@/utils/format'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const staffStore = useStaffStore()
 
@@ -37,7 +39,7 @@ const tableColumnCount = computed(
 )
 
 const addLabel = computed(() =>
-  authStore.isGeneralManager ? '+ Add HR Staff' : '+ Add Employee'
+  authStore.isGeneralManager ? t('staff.addHr') : t('staff.addEmployee')
 )
 
 const filteredStaff = computed(() => {
@@ -102,12 +104,12 @@ async function handleFormSubmit(form) {
   try {
     if (formMode.value === 'edit' && formInitial.value) {
       await staffStore.updateStaff(formInitial.value, form)
-      flash.value = 'Profile updated successfully.'
+      flash.value = t('staff.profileUpdated')
     } else {
       await staffStore.createStaff(formStaffType.value, form)
       flash.value = formStaffType.value === STAFF_TYPE.HR
-        ? 'HR staff member created successfully.'
-        : 'Employee created successfully.'
+        ? t('staff.hrCreated')
+        : t('staff.employeeCreated')
     }
     formOpen.value = false
     if (profileOpen.value && staffStore.selected) {
@@ -132,7 +134,7 @@ async function confirmDelete() {
     deleteConfirmOpen.value = false
 
     if (result.status === 'deleted') {
-      flash.value = 'Record permanently deleted.'
+      flash.value = t('staff.deleted')
       deleteTarget.value = null
       if (profileOpen.value && !staffStore.selected) profileOpen.value = false
       return
@@ -140,8 +142,7 @@ async function confirmDelete() {
 
     if (result.status === 'blocked') {
       freezeOfferMessage.value =
-        result.message ||
-        'Permanent deletion is not available because this person has related records in the system.'
+        result.message || t('staff.deleteBlocked')
       freezeOfferOpen.value = true
     }
   } catch {
@@ -156,7 +157,7 @@ async function confirmFreezeInstead() {
     await staffStore.freezeStaff(target)
     freezeOfferOpen.value = false
     deleteTarget.value = null
-    flash.value = 'Account frozen successfully. Permanent deletion was not possible.'
+    flash.value = t('staff.frozenInstead')
   } catch {
     // store.error
   }
@@ -172,7 +173,7 @@ async function handleFreeze() {
   if (!profile) return
   try {
     await staffStore.freezeStaff(profile)
-    flash.value = 'Account deactivated successfully.'
+    flash.value = t('staff.deactivated')
   } catch {
     // store.error
   }
@@ -183,7 +184,7 @@ async function handleActivate() {
   if (!profile) return
   try {
     await staffStore.activateStaff(profile)
-    flash.value = 'Account activated successfully.'
+    flash.value = t('staff.activated')
   } catch {
     // store.error
   }
@@ -196,8 +197,8 @@ function roleBadgeClass(staffType) {
 }
 
 function departmentLabel(row) {
-  if (row.staffType === STAFF_TYPE.HR) return HR_DEPARTMENT_NAME
-  return row.department_name || '—'
+  if (row.staffType === STAFF_TYPE.HR) return t('staff.humanResources')
+  return row.department_name || t('common.emDash')
 }
 </script>
 
@@ -205,16 +206,16 @@ function departmentLabel(row) {
   <div class="space-y-5">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div>
-        <h3 class="text-lg font-bold text-khubrat-blue dark:text-white">Staff Directory</h3>
+        <h3 class="text-lg font-bold text-khubrat-blue dark:text-white">{{ $t('staff.directory') }}</h3>
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
           <template v-if="authStore.isGeneralManager">
-            Viewing employees and HR staff. You can manage HR staff only.
+            {{ $t('staff.viewingHr') }}
           </template>
           <template v-else-if="authStore.isDepartmentManager">
-            Viewing employees in your department. Profiles are read-only.
+            {{ $t('staff.viewingDept') }}
           </template>
           <template v-else>
-            Viewing regular employees. You can add, edit, freeze, or delete employees.
+            {{ $t('staff.viewingEmployees') }}
           </template>
         </p>
       </div>
@@ -230,12 +231,12 @@ function departmentLabel(row) {
 
     <BaseAlert v-if="flash" variant="success">
       {{ flash }}
-      <button class="ml-2 underline text-xs" @click="flash = ''">Dismiss</button>
+      <button class="ms-2 underline text-xs" @click="flash = ''">{{ $t('common.dismiss') }}</button>
     </BaseAlert>
     <BaseAlert v-if="staffStore.error" variant="error">{{ staffStore.error }}</BaseAlert>
 
     <div class="max-w-sm">
-      <BaseInput v-model="search" placeholder="Search by name, title, or department…" />
+      <BaseInput v-model="search" :placeholder="$t('staff.searchStaff')" />
     </div>
 
     <LoadingSpinner v-if="staffStore.loading" />
@@ -245,23 +246,23 @@ function departmentLabel(row) {
       class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm"
     >
       <div class="overflow-x-auto">
-        <table class="w-full text-sm text-left">
+        <table class="w-full text-sm text-start">
           <thead class="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase text-slate-500">
             <tr>
-              <th class="px-4 py-3 font-bold">Name</th>
-              <th v-if="authStore.isGeneralManager" class="px-4 py-3 font-bold">Role</th>
-              <th class="px-4 py-3 font-bold">Department</th>
-              <th class="px-4 py-3 font-bold">Job Title</th>
-              <th class="px-4 py-3 font-bold">Start Date</th>
-              <th class="px-4 py-3 font-bold">Base Salary</th>
-              <th class="px-4 py-3 font-bold">Status</th>
-              <th v-if="canModifyDirectory" class="px-4 py-3 font-bold text-right">Actions</th>
+              <th class="px-4 py-3 font-bold">{{ $t('staff.name') }}</th>
+              <th v-if="authStore.isGeneralManager" class="px-4 py-3 font-bold">{{ $t('staff.role') }}</th>
+              <th class="px-4 py-3 font-bold">{{ $t('staff.department') }}</th>
+              <th class="px-4 py-3 font-bold">{{ $t('staff.jobTitle') }}</th>
+              <th class="px-4 py-3 font-bold">{{ $t('staff.startDate') }}</th>
+              <th class="px-4 py-3 font-bold">{{ $t('staff.baseSalary') }}</th>
+              <th class="px-4 py-3 font-bold">{{ $t('staff.status') }}</th>
+              <th v-if="canModifyDirectory" class="px-4 py-3 font-bold text-end">{{ $t('staff.actions') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="!filteredStaff.length">
               <td :colspan="tableColumnCount" class="px-4 py-10 text-center text-slate-400">
-                No staff records found.
+                {{ $t('staff.noRecords') }}
               </td>
             </tr>
             <tr
@@ -273,7 +274,7 @@ function departmentLabel(row) {
               @click="openProfile(row)"
             >
               <td class="px-4 py-3">
-                <p class="font-bold text-khubrat-blue dark:text-white">{{ row.full_name || '—' }}</p>
+                <p class="font-bold text-khubrat-blue dark:text-white">{{ row.full_name || $t('common.emDash') }}</p>
                 <p class="text-[11px] text-slate-400">{{ row.email }}</p>
               </td>
               <td v-if="authStore.isGeneralManager" class="px-4 py-3">
@@ -281,11 +282,11 @@ function departmentLabel(row) {
                   class="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold"
                   :class="roleBadgeClass(row.staffType)"
                 >
-                  {{ row.staffType === STAFF_TYPE.HR ? 'HR' : 'Employee' }}
+                  {{ row.staffType === STAFF_TYPE.HR ? $t('staff.hr') : $t('staff.employee') }}
                 </span>
               </td>
               <td class="px-4 py-3 text-slate-600 dark:text-slate-300">{{ departmentLabel(row) }}</td>
-              <td class="px-4 py-3 text-slate-600 dark:text-slate-300">{{ row.job_title || '—' }}</td>
+              <td class="px-4 py-3 text-slate-600 dark:text-slate-300">{{ row.job_title || $t('common.emDash') }}</td>
               <td class="px-4 py-3 text-slate-600 dark:text-slate-300">{{ formatDate(row.hire_date) }}</td>
               <td class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-200">
                 {{ formatCurrency(row.base_salary) }}
@@ -299,14 +300,14 @@ function departmentLabel(row) {
                       : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
                   "
                 >
-                  {{ row.is_active ? 'Active' : 'Inactive' }}
+                  {{ translateStatus(row.is_active ? 'active' : 'inactive') }}
                 </span>
               </td>
-              <td v-if="canModifyDirectory" class="px-4 py-3 text-right" @click.stop>
+              <td v-if="canModifyDirectory" class="px-4 py-3 text-end" @click.stop>
                 <button
                   v-if="staffStore.canManage(row)"
                   class="text-slate-400 hover:text-rose-500 p-2 rounded-lg transition-colors"
-                  title="Delete"
+                  :title="$t('common.delete')"
                   @click="askDelete(row)"
                 >
                   <i class="fa-solid fa-trash"></i>
@@ -346,24 +347,22 @@ function departmentLabel(row) {
 
     <ConfirmModal
       v-if="canModifyDirectory && deleteConfirmOpen"
-      title="Delete Permanently"
-      confirm-label="Yes, Delete"
+      :title="$t('staff.deletePermanently')"
+      :confirm-label="$t('staff.yesDelete')"
       confirm-variant="danger"
       :loading="staffStore.deleting"
       @confirm="confirmDelete"
       @cancel="deleteConfirmOpen = false; deleteTarget = null"
     >
       <p class="text-sm text-slate-600 dark:text-slate-300">
-        This will permanently delete
-        <strong>{{ deleteTarget?.full_name }}</strong>
-        and their linked user account. Are you sure?
+        {{ $t('staff.deleteConfirm', { name: deleteTarget?.full_name }) }}
       </p>
     </ConfirmModal>
 
     <ConfirmModal
       v-if="canModifyDirectory && freezeOfferOpen"
-      title="Deletion Not Available"
-      confirm-label="Freeze Instead"
+      :title="$t('staff.deletionNotAvailable')"
+      :confirm-label="$t('staff.freezeInstead')"
       confirm-variant="blue"
       :loading="staffStore.saving"
       @confirm="confirmFreezeInstead"
@@ -371,7 +370,7 @@ function departmentLabel(row) {
     >
       <p class="text-sm text-slate-600 dark:text-slate-300 mb-2">{{ freezeOfferMessage }}</p>
       <p class="text-sm text-slate-600 dark:text-slate-300">
-        Would you like to freeze this account instead, or cancel the action?
+        {{ $t('staff.freezeInsteadHint') }}
       </p>
     </ConfirmModal>
   </div>

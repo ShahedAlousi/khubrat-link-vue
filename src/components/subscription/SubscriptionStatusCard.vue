@@ -1,11 +1,14 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useCompaniesStore } from '@/stores/companies.store'
 import { useAuthStore } from '@/stores/auth.store'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import { translateStatus } from '@/i18n/helpers'
 
 const companiesStore = useCompaniesStore()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 const loadError = ref('')
 
@@ -14,7 +17,7 @@ onMounted(async () => {
   try {
     await companiesStore.fetchSubscriptionUsage()
   } catch (err) {
-    loadError.value = err.message || 'Unable to load your subscription details right now.'
+    loadError.value = err.message || t('subscription.loadFailed')
   }
 })
 
@@ -73,26 +76,26 @@ const toneClasses = {
 }
 
 const statusLabel = computed(() => {
-  if (isFrozen.value) return 'Frozen'
-  if (isExpired.value) return 'Expired'
-  if (needsRenewal.value) return 'Expiring Soon'
-  if (hasNoPeriod.value) return 'No Expiry Date'
-  return 'Active'
+  if (isFrozen.value) return translateStatus('frozen')
+  if (isExpired.value) return translateStatus('expired')
+  if (needsRenewal.value) return translateStatus('expiring_soon')
+  if (hasNoPeriod.value) return translateStatus('no_expiry')
+  return translateStatus('active')
 })
 
 const headline = computed(() => {
-  if (isFrozen.value) return 'Your company workspace is frozen'
-  if (isExpired.value) return 'Your subscription has expired'
-  if (daysRemaining.value === 0) return 'Your subscription expires today'
-  if (needsRenewal.value) return `Only ${daysRemaining.value} days left in your subscription`
+  if (isFrozen.value) return t('subscription.frozen')
+  if (isExpired.value) return t('subscription.expired')
+  if (daysRemaining.value === 0) return t('subscription.expiresToday')
+  if (needsRenewal.value) return t('subscription.daysLeft', { n: daysRemaining.value })
   return ''
 })
 
 const renewalMessage = computed(() => {
   if (isFrozen.value) {
-    return 'Renew your subscription to reactivate the workspace and restore access for your team.'
+    return t('subscription.renewFrozen')
   }
-  return 'Renew now to keep your workspace, employees and payroll data active without interruption.'
+  return t('subscription.renewSoon')
 })
 
 /** لون صندوق التجديد: أحمر للتجميد/الانتهاء، كهرماني قبل الانتهاء */
@@ -107,7 +110,7 @@ const isCriticalRenewal = computed(() => isFrozen.value || isExpired.value)
     <div class="flex items-center justify-between">
       <h4 class="text-md font-bold text-khubrat-blue dark:text-white flex items-center gap-2">
         <i class="fa-solid fa-gem text-khubrat-goldDark dark:text-khubrat-goldLight"></i>
-        Subscription Status
+        {{ $t('subscription.status') }}
       </h4>
       <span class="px-3 py-1 rounded-lg text-[11px] font-black uppercase tracking-wide" :class="toneClasses[statusTone].badge">
         {{ statusLabel }}
@@ -131,15 +134,15 @@ const isCriticalRenewal = computed(() => isFrozen.value || isExpired.value)
         <!-- الأيام المتبقية -->
         <div class="flex items-end justify-between gap-4">
           <div>
-            <p class="text-xs text-slate-400 font-semibold">Days remaining</p>
+            <p class="text-xs text-slate-400 font-semibold">{{ $t('subscription.daysRemaining') }}</p>
             <p class="text-4xl font-black leading-tight" :class="toneClasses[statusTone].value">
               <span v-if="isExpired">0</span>
               <span v-else-if="daysRemaining !== null">{{ daysRemaining }}</span>
-              <span v-else>&mdash;</span>
+              <span v-else>{{ $t('common.emDash') }}</span>
             </p>
           </div>
           <p v-if="monthsRemaining !== null" class="text-xs text-slate-400 font-semibold pb-2">
-            ≈ {{ monthsRemaining }} month(s) left
+            {{ $t('subscription.monthsLeft', { n: monthsRemaining }) }}
           </p>
         </div>
 
@@ -148,18 +151,18 @@ const isCriticalRenewal = computed(() => isFrozen.value || isExpired.value)
             <div class="h-full rounded-full transition-all" :class="toneClasses[statusTone].bar" :style="{ width: `${elapsedPercent}%` }"></div>
           </div>
           <p class="text-[11px] text-slate-400">
-            {{ period.days_elapsed }} of {{ period.total_days }} days used
+            {{ $t('subscription.daysUsed', { elapsed: period.days_elapsed, total: period.total_days }) }}
           </p>
         </div>
 
         <p v-else-if="hasNoPeriod" class="text-xs text-slate-400">
-          This plan has no fixed expiry date, so there is nothing to renew right now.
+          {{ $t('subscription.noExpiryHint') }}
         </p>
 
         <!-- استهلاك الموظفين -->
         <div class="border-t border-slate-100 dark:border-slate-700 pt-4 space-y-2">
           <div class="flex items-center justify-between">
-            <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Employees used</p>
+            <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $t('subscription.employeesUsed') }}</p>
             <p class="text-sm font-black text-slate-700 dark:text-slate-200">
               {{ employees.used ?? 0 }}<span class="text-slate-400 font-bold"> / {{ employees.max ?? '∞' }}</span>
             </p>
@@ -168,9 +171,11 @@ const isCriticalRenewal = computed(() => isFrozen.value || isExpired.value)
             <div class="h-full rounded-full bg-khubrat-blue dark:bg-khubrat-goldLight transition-all" :style="{ width: `${employeesPercent}%` }"></div>
           </div>
           <p class="text-[11px] text-slate-400">
-            {{ employees.active ?? 0 }} active employees
             <template v-if="employees.remaining !== null && employees.remaining !== undefined">
-              &middot; {{ employees.remaining }} seats still available
+              {{ $t('subscription.seatsHint', { used: employees.active ?? 0, available: employees.remaining }) }}
+            </template>
+            <template v-else>
+              {{ $t('common.employeesCount', { n: employees.active ?? 0 }) }}
             </template>
           </p>
         </div>
@@ -202,11 +207,11 @@ const isCriticalRenewal = computed(() => isFrozen.value || isExpired.value)
           class="w-full inline-flex items-center justify-center gap-2 rounded-xl font-black text-sm px-5 py-3.5 bg-gradient-to-r from-[#bd8a39] to-[#e3b76a] text-slate-900 shadow-md hover:brightness-105 active:scale-[0.99] transition-all animate-pulse-slow"
         >
           <i class="fa-solid fa-rotate-right"></i>
-          Renew Subscription Now
+          {{ $t('subscription.renewNow') }}
         </router-link>
 
         <p v-else class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-          Only the general manager can renew the company subscription.
+          {{ $t('subscription.onlyGm') }}
         </p>
       </div>
     </template>

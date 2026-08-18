@@ -1,5 +1,6 @@
 <script setup>
 import { computed, reactive, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BaseInput from '@/components/common/BaseInput.vue'
 import BaseSelect from '@/components/common/BaseSelect.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
@@ -18,6 +19,7 @@ const props = defineProps({
   saving: { type: Boolean, default: false }
 })
 
+const { t } = useI18n()
 const emit = defineEmits(['close', 'submit'])
 
 const departmentsStore = useDepartmentsStore()
@@ -27,8 +29,10 @@ const fieldErrors = reactive({})
 const formError = reactive({ message: '' })
 
 const title = computed(() => {
-  const kind = props.staffType === STAFF_TYPE.HR ? 'HR Staff' : 'Employee'
-  return props.mode === 'edit' ? `Edit ${kind}` : `Add ${kind}`
+  if (props.staffType === STAFF_TYPE.HR) {
+    return props.mode === 'edit' ? t('staff.editHrTitle') : t('staff.addHrTitle')
+  }
+  return props.mode === 'edit' ? t('staff.editEmployeeTitle') : t('staff.addEmployeeTitle')
 })
 
 // The prop holds the list the parent loaded when the page opened; once the
@@ -49,23 +53,23 @@ async function refreshDepartments() {
   }
 }
 
-const genderOptions = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' }
-]
+const genderOptions = computed(() => [
+  { value: 'male', label: t('staff.male') },
+  { value: 'female', label: t('staff.female') }
+])
 
-const maritalOptions = [
-  { value: 'single', label: 'Single' },
-  { value: 'married', label: 'Married' },
-  { value: 'divorced', label: 'Divorced' },
-  { value: 'widowed', label: 'Widowed' }
-]
+const maritalOptions = computed(() => [
+  { value: 'single', label: t('staff.single') },
+  { value: 'married', label: t('staff.married') },
+  { value: 'divorced', label: t('staff.divorced') },
+  { value: 'widowed', label: t('staff.widowed') }
+])
 
-const employmentOptions = [
-  { value: 'full-time', label: 'Full-time' },
-  { value: 'part-time', label: 'Part-time' },
-  { value: 'contract', label: 'Contract' }
-]
+const employmentOptions = computed(() => [
+  { value: 'full-time', label: t('staff.fullTime') },
+  { value: 'part-time', label: t('staff.partTime') },
+  { value: 'contract', label: t('staff.contract') }
+])
 
 function emptyForm() {
   return {
@@ -121,21 +125,21 @@ watch(
 function validate() {
   Object.keys(fieldErrors).forEach((k) => delete fieldErrors[k])
 
-  if (!isRequired(form.full_name)) fieldErrors.full_name = 'Full name is required.'
-  if (!isValidEmail(form.email)) fieldErrors.email = 'Enter a valid email address.'
-  if (!isRequired(form.department_id)) fieldErrors.department_id = 'Department is required.'
-  if (!isRequired(form.job_title)) fieldErrors.job_title = 'Job title is required.'
+  if (!isRequired(form.full_name)) fieldErrors.full_name = t('validation.fullNameRequired')
+  if (!isValidEmail(form.email)) fieldErrors.email = t('validation.email')
+  if (!isRequired(form.department_id)) fieldErrors.department_id = t('validation.departmentRequired')
+  if (!isRequired(form.job_title)) fieldErrors.job_title = t('validation.jobTitleRequired')
   if (!isRequired(form.base_salary) || Number(form.base_salary) < 0) {
-    fieldErrors.base_salary = 'Base salary is required.'
+    fieldErrors.base_salary = t('validation.salaryRequired')
   }
   if (!isValidHireDate(form.hire_date)) {
-    fieldErrors.hire_date = 'Hire date is required and cannot be in the future.'
+    fieldErrors.hire_date = t('validation.hireDateInvalid')
   }
   if (!isValidBirthDate(form.birth_date)) {
-    fieldErrors.birth_date = 'Birth date must be a valid date and cannot be in the future.'
+    fieldErrors.birth_date = t('validation.birthDateInvalid')
   }
   if (form.phone && !isValidPhone(form.phone)) {
-    fieldErrors.phone = 'Phone must start with 09 and contain 10 digits.'
+    fieldErrors.phone = t('validation.phoneFormat')
   }
 
   return Object.keys(fieldErrors).length === 0
@@ -148,7 +152,7 @@ function handleSubmit() {
 }
 
 function setServerError(message, errors = null) {
-  formError.message = message || 'Something went wrong.'
+  formError.message = message || t('common.somethingWentWrong')
   if (errors && typeof errors === 'object') {
     Object.entries(errors).forEach(([key, value]) => {
       fieldErrors[key] = Array.isArray(value) ? value[0] : String(value)
@@ -164,12 +168,12 @@ defineExpose({ setServerError })
     <div class="fixed inset-0 bg-black/40" @click="emit('close')" />
 
     <aside
-      class="ml-auto relative w-full max-w-lg bg-white dark:bg-slate-800 h-full shadow-2xl overflow-y-auto border-l border-slate-200 dark:border-slate-700"
+      class="ms-auto relative w-full max-w-lg bg-white dark:bg-slate-800 h-full shadow-2xl overflow-y-auto border-s border-slate-200 dark:border-slate-700"
     >
       <div class="sticky top-0 z-10 bg-khubrat-blue text-white px-6 py-5 flex items-center justify-between">
         <div>
           <h3 class="text-lg font-bold text-khubrat-goldLight">{{ title }}</h3>
-          <p class="text-xs text-white/70 mt-0.5">Required fields are marked with an asterisk.</p>
+          <p class="text-xs text-white/70 mt-0.5">{{ $t('staff.requiredHint') }}</p>
         </div>
         <button class="text-white/70 hover:text-white" @click="emit('close')">
           <i class="fa-solid fa-xmark text-lg"></i>
@@ -180,72 +184,72 @@ defineExpose({ setServerError })
         <BaseAlert v-if="formError.message" variant="error">{{ formError.message }}</BaseAlert>
 
         <BaseAlert v-if="mode === 'create'" variant="info">
-          Optional fields can be left blank and updated later from the profile sidebar.
+          {{ $t('staff.optionalFieldsHint') }}
         </BaseAlert>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <BaseInput v-model="form.full_name" label="Full Name" required :error="fieldErrors.full_name" />
-          <BaseInput v-model="form.email" label="Email" type="email" required :error="fieldErrors.email" />
-          <BaseInput v-model="form.phone" label="Phone" placeholder="09xxxxxxxx" :error="fieldErrors.phone" />
+          <BaseInput v-model="form.full_name" :label="$t('staff.fullName')" required :error="fieldErrors.full_name" />
+          <BaseInput v-model="form.email" :label="$t('staff.email')" type="email" required :error="fieldErrors.email" />
+          <BaseInput v-model="form.phone" :label="$t('staff.phone')" placeholder="09xxxxxxxx" :error="fieldErrors.phone" />
           <BaseSelect
             v-model="form.department_id"
-            label="Department"
+            :label="$t('staff.department')"
             required
             :options="departmentOptions"
             :error="fieldErrors.department_id"
             @mousedown="refreshDepartments"
             @keydown.enter="refreshDepartments"
           />
-          <BaseInput v-model="form.job_title" label="Job Title" required :error="fieldErrors.job_title" />
+          <BaseInput v-model="form.job_title" :label="$t('staff.jobTitle')" required :error="fieldErrors.job_title" />
           <BaseInput
             v-model="form.base_salary"
-            label="Base Salary"
+            :label="$t('staff.baseSalary')"
             type="number"
             required
             :error="fieldErrors.base_salary"
           />
           <BaseInput
             v-model="form.hire_date"
-            label="Hire Date"
+            :label="$t('staff.hireDate')"
             type="date"
             required
             :error="fieldErrors.hire_date"
           />
           <BaseInput
             v-model="form.birth_date"
-            label="Birth Date"
+            :label="$t('staff.birthDate')"
             type="date"
             :error="fieldErrors.birth_date"
           />
           <BaseSelect
             v-model="form.employment_type"
-            label="Employment Type"
+            :label="$t('staff.employmentType')"
             :options="employmentOptions"
           />
-          <BaseInput v-model="form.education" label="Education" />
-          <BaseSelect v-model="form.gender" label="Gender" :options="genderOptions" placeholder="Optional" />
+          <BaseInput v-model="form.education" :label="$t('staff.education')" />
+          <BaseSelect v-model="form.gender" :label="$t('staff.gender')" :options="genderOptions" :placeholder="$t('common.optional')" />
           <BaseSelect
             v-model="form.marital_status"
-            label="Marital Status"
+            :label="$t('staff.maritalStatus')"
             :options="maritalOptions"
-            placeholder="Optional"
+            :placeholder="$t('common.optional')"
           />
-          <BaseInput v-model="form.nationality" label="Nationality" />
-          <BaseInput v-model="form.residence" label="Residence" />
+          <BaseInput v-model="form.nationality" :label="$t('staff.nationality')" />
+          <BaseInput v-model="form.residence" :label="$t('staff.residence')" />
         </div>
 
         <div class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3">
           <div>
-            <p class="text-sm font-bold text-khubrat-blue dark:text-white">Active Account</p>
-            <p class="text-xs text-slate-500">Inactive accounts cannot sign in.</p>
+            <p class="text-sm font-bold text-khubrat-blue dark:text-white">{{ $t('staff.activeAccount') }}</p>
+            <p class="text-xs text-slate-500">{{ $t('staff.inactiveHint') }}</p>
           </div>
           <ToggleSwitch v-model="form.is_active" />
         </div>
 
         <div class="flex justify-end gap-3 pt-2">
-          <BaseButton variant="ghost" @click="emit('close')">Cancel</BaseButton>
+          <BaseButton variant="ghost" @click="emit('close')">{{ $t('common.cancel') }}</BaseButton>
           <BaseButton type="submit" variant="gold" :loading="saving">
-            {{ mode === 'edit' ? 'Save Changes' : 'Create' }}
+            {{ mode === 'edit' ? $t('common.saveChanges') : $t('common.create') }}
           </BaseButton>
         </div>
       </form>

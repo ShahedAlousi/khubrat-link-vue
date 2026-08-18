@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   holidays: { type: Array, default: () => [] }, // { name, start_date, end_date, repeats_annually }
@@ -8,18 +9,25 @@ const props = defineProps({
 })
 
 // يُبعث مع نطاق التاريخ المحدد (يوم واحد أو عدة أيام عبر السحب)
+const { t, tm } = useI18n()
 const emit = defineEmits(['select-range'])
 
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-]
+
+const weekdayShort = computed(() => {
+  const labels = tm('weekdays.short')
+  return Array.isArray(labels) ? labels : DAY_NAMES.map((_, i) => t(`weekdays.short[${i}]`))
+})
+
+const monthNames = computed(() => {
+  const labels = tm('months.long')
+  return Array.isArray(labels) ? labels : Array.from({ length: 12 }, (_, i) => t(`months.long[${i}]`))
+})
 
 const currentMonth = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
 
 // نص عنوان الشهر/السنة الحالي المعروض أعلى التقويم
-const monthLabel = computed(() => `${MONTH_NAMES[currentMonth.value.getMonth()]} ${currentMonth.value.getFullYear()}`)
+const monthLabel = computed(() => `${monthNames.value[currentMonth.value.getMonth()]} ${currentMonth.value.getFullYear()}`)
 
 // ينتقل شهرًا للأمام أو للخلف حسب الاتجاه الممرَّر (-1 / 1)
 function navigateMonth(direction) {
@@ -93,10 +101,10 @@ const weeks = computed(() => {
 function cellTooltip(cell) {
   if (!cell) return ''
   if (cell.holiday && cell.isRestDay) {
-    return `${cell.holiday.name} — ملاحظة: هذا اليوم يوافق أيضًا يوم الراحة الأسبوعية`
+    return t('policies.restDayAlso', { name: cell.holiday.name })
   }
   if (cell.holiday) return cell.holiday.name
-  if (cell.isRestDay) return 'Standard Weekly Rest Day'
+  if (cell.isRestDay) return t('policies.restDayTooltip')
   return ''
 }
 
@@ -169,16 +177,16 @@ onBeforeUnmount(() => window.removeEventListener('mouseup', finishDrag))
         </button>
       </div>
       <div class="flex gap-4 text-[10px] font-bold">
-        <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500"></span> Weekly Rest</div>
-        <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-600"></span> Recurring</div>
-        <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-600"></span> One-off</div>
+        <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500"></span> {{ $t('policies.weeklyRestLegend') }}</div>
+        <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-600"></span> {{ $t('policies.repeatsAnnually') }}</div>
+        <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-600"></span> {{ $t('policies.oneOff') }}</div>
       </div>
     </div>
 
     <!-- select-none يمنع تظليل النص الافتراضي للمتصفح أثناء السحب فوق الشبكة -->
     <div class="p-4 rounded-2xl border-2 border-solid border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 shadow-inner select-none">
       <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-black text-slate-900 dark:text-slate-100 tracking-wider mb-2">
-        <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
+        <div v-for="(day, index) in weekdayShort" :key="index">{{ day }}</div>
       </div>
       <div class="grid grid-cols-7 gap-1">
         <div

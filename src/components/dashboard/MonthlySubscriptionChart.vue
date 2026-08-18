@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Line } from 'vue-chartjs'
 
 const props = defineProps({
@@ -7,11 +8,13 @@ const props = defineProps({
   analytics: { type: Array, default: () => [] }
 })
 
+const { t } = useI18n()
+
 const chartData = computed(() => ({
   labels: props.analytics.map((row) => row.month),
   datasets: [
     {
-      label: 'New Subscriptions',
+      label: t('dashboard.newSubscriptions'),
       data: props.analytics.map((row) => row.count),
       borderColor: '#002173',
       backgroundColor: 'rgba(0, 33, 115, 0.12)',
@@ -24,7 +27,7 @@ const chartData = computed(() => ({
   ]
 }))
 
-const chartOptions = {
+const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
@@ -33,13 +36,13 @@ const chartOptions = {
   scales: {
     y: { beginAtZero: true, ticks: { precision: 0 } }
   }
-}
+}))
 </script>
 
 <template>
   <div class="h-80 relative">
     <p v-if="!analytics.length" class="absolute inset-0 flex items-center justify-center text-xs font-bold text-slate-400">
-      No analytics data yet.
+      {{ $t('dashboard.noAnalytics') }}
     </p>
     <Line v-else :data="chartData" :options="chartOptions" />
   </div>

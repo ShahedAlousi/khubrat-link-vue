@@ -1,5 +1,6 @@
 <script setup>
 import { computed, reactive, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BaseInput from '@/components/common/BaseInput.vue'
 import BaseSelect from '@/components/common/BaseSelect.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
@@ -16,6 +17,7 @@ const props = defineProps({
   saving: { type: Boolean, default: false }
 })
 
+const { t } = useI18n()
 const emit = defineEmits(['close', 'submit'])
 
 const NONE_MANAGER = '__none__'
@@ -29,10 +31,10 @@ const form = reactive({
 const fieldErrors = reactive({})
 const formError = reactive({ message: '' })
 
-const title = computed(() => (props.mode === 'edit' ? 'Edit Department' : 'Add Department'))
+const title = computed(() => (props.mode === 'edit' ? t('staff.editDepartment') : t('staff.addDepartmentTitle')))
 
 const managerSelectOptions = computed(() => [
-  { value: NONE_MANAGER, label: 'No manager assigned' },
+  { value: NONE_MANAGER, label: t('staff.noManager') },
   ...props.employeeOptions
 ])
 
@@ -63,7 +65,7 @@ watch(
 
 function validate() {
   Object.keys(fieldErrors).forEach((k) => delete fieldErrors[k])
-  if (!isRequired(form.name)) fieldErrors.name = 'Department name is required.'
+  if (!isRequired(form.name)) fieldErrors.name = t('staff.departmentNameRequired')
   return Object.keys(fieldErrors).length === 0
 }
 
@@ -78,7 +80,7 @@ function handleSubmit() {
 }
 
 function setServerError(message, errors = null) {
-  formError.message = message || 'Something went wrong.'
+  formError.message = message || t('common.somethingWentWrong')
   if (errors && typeof errors === 'object') {
     Object.entries(errors).forEach(([key, value]) => {
       fieldErrors[key] = Array.isArray(value) ? value[0] : String(value)
@@ -94,12 +96,12 @@ defineExpose({ setServerError })
     <div class="fixed inset-0 bg-black/40" @click="emit('close')" />
 
     <aside
-      class="ml-auto relative w-full max-w-md bg-white dark:bg-slate-800 h-full shadow-2xl overflow-y-auto border-l border-slate-200 dark:border-slate-700"
+      class="ms-auto relative w-full max-w-md bg-white dark:bg-slate-800 h-full shadow-2xl overflow-y-auto border-s border-slate-200 dark:border-slate-700"
     >
       <div class="sticky top-0 z-10 bg-khubrat-blue text-white px-6 py-5 flex items-center justify-between">
         <div>
           <h3 class="text-lg font-bold text-khubrat-goldLight">{{ title }}</h3>
-          <p class="text-xs text-white/70 mt-0.5">Configure department details and status.</p>
+          <p class="text-xs text-white/70 mt-0.5">{{ $t('staff.configureDepartment') }}</p>
         </div>
         <button class="text-white/70 hover:text-white" @click="emit('close')">
           <i class="fa-solid fa-xmark text-lg"></i>
@@ -110,14 +112,13 @@ defineExpose({ setServerError })
         <BaseAlert v-if="formError.message" variant="error">{{ formError.message }}</BaseAlert>
 
         <BaseAlert v-if="mode === 'create'" variant="info">
-          Create the department first without a manager. After you add employees to this department,
-          return here to assign a department manager from that list.
+          {{ $t('staff.createDepartmentFirst') }}
         </BaseAlert>
 
         <BaseInput
           v-model="form.name"
-          label="Department Name"
-          placeholder="e.g. Information Technology"
+          :label="$t('staff.departmentName')"
+          :placeholder="$t('staff.departmentNamePlaceholder')"
           required
           :error="fieldErrors.name"
         />
@@ -126,8 +127,8 @@ defineExpose({ setServerError })
           class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3"
         >
           <div>
-            <p class="text-sm font-bold text-khubrat-blue dark:text-white">Active Status</p>
-            <p class="text-xs text-slate-500">Inactive departments stay hidden from new assignments.</p>
+            <p class="text-sm font-bold text-khubrat-blue dark:text-white">{{ $t('staff.activeStatus') }}</p>
+            <p class="text-xs text-slate-500">{{ $t('staff.inactiveDepartmentsHint') }}</p>
           </div>
           <ToggleSwitch v-model="form.is_active" />
         </div>
@@ -135,24 +136,23 @@ defineExpose({ setServerError })
         <div v-if="mode === 'edit'" class="space-y-2">
           <BaseSelect
             v-model="form.manager_id"
-            label="Department Manager"
+            :label="$t('staff.departmentManager')"
             :options="managerSelectOptions"
-            :placeholder="employeesLoading ? 'Loading employees…' : 'Select a manager (optional)'"
+            :placeholder="employeesLoading ? $t('staff.loadingEmployees') : $t('staff.selectManager')"
             :error="fieldErrors.manager_id"
           />
           <p class="text-[11px] text-slate-500 leading-relaxed">
-            Only active employees who already belong to this department can be selected.
-            Changing the manager demotes the previous manager automatically.
+            {{ $t('staff.managerHint') }}
           </p>
           <p v-if="!employeesLoading && !employeeOptions.length" class="text-[11px] text-amber-600 dark:text-amber-400">
-            No employees in this department yet. Add employees first, then assign a manager.
+            {{ $t('staff.noEmployeesInDepartment') }}
           </p>
         </div>
 
         <div class="flex justify-end gap-3 pt-2">
-          <BaseButton variant="ghost" @click="emit('close')">Cancel</BaseButton>
+          <BaseButton variant="ghost" @click="emit('close')">{{ $t('common.cancel') }}</BaseButton>
           <BaseButton type="submit" variant="gold" :loading="saving">
-            {{ mode === 'edit' ? 'Save Changes' : 'Create Department' }}
+            {{ mode === 'edit' ? $t('common.saveChanges') : $t('staff.createDepartment') }}
           </BaseButton>
         </div>
       </form>

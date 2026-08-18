@@ -4,7 +4,8 @@ import { employeesService } from '@/services/employees.service'
 import { hrManagersService } from '@/services/hrManagers.service'
 import { departmentsService } from '@/services/departments.service'
 import { useAuthStore } from '@/stores/auth.store'
-import { HR_DEPARTMENT_NAME, unwrapHrManagerPayload } from '@/stores/hrManagers.store'
+import { unwrapHrManagerPayload } from '@/stores/hrManagers.store'
+import { t } from '@/i18n/helpers'
 
 export const STAFF_TYPE = {
   HR: 'HR',
@@ -53,9 +54,9 @@ export function normalizeStaffRow(row, staffType) {
     nationality: user.nationality ?? source.nationality ?? null,
     residence: user.residence ?? source.residence ?? null,
     department_name: isHr
-      ? HR_DEPARTMENT_NAME
+      ? t('staff.humanResources')
       : (department?.name ?? source.department_name ?? ''),
-    department: isHr ? { name: HR_DEPARTMENT_NAME } : department,
+    department: isHr ? { name: t('staff.humanResources') } : department,
     user,
     document: source.document ?? null,
     staffType
@@ -131,7 +132,7 @@ export const useStaffStore = defineStore('staff', () => {
     error.value = null
     try {
       if (authStore.isGeneralManager) {
-        if (!companyId.value) throw new Error('Company context is missing.')
+        if (!companyId.value) throw new Error(t('staff.missingCompany'))
 
         const [employees, hrManagers] = await Promise.all([
           employeesService.list(),
@@ -174,7 +175,7 @@ export const useStaffStore = defineStore('staff', () => {
     try {
       let raw
       if (row.staffType === STAFF_TYPE.HR) {
-        if (!companyId.value) throw new Error('Company context is missing.')
+        if (!companyId.value) throw new Error(t('staff.missingCompany'))
         raw = await hrManagersService.get(companyId.value, row.id)
         // Some APIs nest under hr_manager
         raw = raw?.hr_manager ?? raw
@@ -208,7 +209,7 @@ export const useStaffStore = defineStore('staff', () => {
       const payload = buildPayload(form)
       let result
       if (staffType === STAFF_TYPE.HR) {
-        if (!companyId.value) throw new Error('Company context is missing.')
+        if (!companyId.value) throw new Error(t('staff.missingCompany'))
         result = await hrManagersService.create(companyId.value, payload)
       } else {
         result = await employeesService.create(payload)
@@ -224,14 +225,14 @@ export const useStaffStore = defineStore('staff', () => {
   }
 
   async function updateStaff(row, form) {
-    if (!row?.id) throw new Error('Staff record is required.')
+    if (!row?.id) throw new Error(t('staff.staffRequired'))
     saving.value = true
     error.value = null
     try {
       const payload = buildPayload(form)
       let result
       if (row.staffType === STAFF_TYPE.HR) {
-        if (!companyId.value) throw new Error('Company context is missing.')
+        if (!companyId.value) throw new Error(t('staff.missingCompany'))
         result = await hrManagersService.update(companyId.value, row.id, payload)
       } else {
         result = await employeesService.update(row.id, payload)
@@ -254,12 +255,12 @@ export const useStaffStore = defineStore('staff', () => {
    * @returns {Promise<{ status: 'deleted'|'blocked', message?: string, error?: object }>}
    */
   async function deleteStaff(row) {
-    if (!row?.id) throw new Error('Staff record is required.')
+    if (!row?.id) throw new Error(t('staff.staffRequired'))
     deleting.value = true
     error.value = null
     try {
       if (row.staffType === STAFF_TYPE.HR) {
-        if (!companyId.value) throw new Error('Company context is missing.')
+        if (!companyId.value) throw new Error(t('staff.missingCompany'))
         await hrManagersService.remove(companyId.value, row.id)
       } else {
         await employeesService.remove(row.id)
@@ -282,7 +283,7 @@ export const useStaffStore = defineStore('staff', () => {
           status: 'blocked',
           message:
             err.message ||
-            'Permanent deletion is not available because this person has related records.',
+            t('staff.deleteBlocked'),
           error: err
         }
       }
@@ -295,7 +296,7 @@ export const useStaffStore = defineStore('staff', () => {
 
   /** Freeze via full update (is_active: false). For HR also call deactivate when available. */
   async function freezeStaff(row) {
-    if (!row?.id) throw new Error('Staff record is required.')
+    if (!row?.id) throw new Error(t('staff.staffRequired'))
     saving.value = true
     error.value = null
     try {
@@ -318,7 +319,7 @@ export const useStaffStore = defineStore('staff', () => {
       }
 
       if (row.staffType === STAFF_TYPE.HR) {
-        if (!companyId.value) throw new Error('Company context is missing.')
+        if (!companyId.value) throw new Error(t('staff.missingCompany'))
         await hrManagersService.update(companyId.value, row.id, buildPayload(form))
         try {
           await hrManagersService.deactivate(companyId.value, row.id)
@@ -344,7 +345,7 @@ export const useStaffStore = defineStore('staff', () => {
 
   /** Reactivate via full update (is_active: true). */
   async function activateStaff(row) {
-    if (!row?.id) throw new Error('Staff record is required.')
+    if (!row?.id) throw new Error(t('staff.staffRequired'))
     saving.value = true
     error.value = null
     try {
@@ -367,7 +368,7 @@ export const useStaffStore = defineStore('staff', () => {
       }
 
       if (row.staffType === STAFF_TYPE.HR) {
-        if (!companyId.value) throw new Error('Company context is missing.')
+        if (!companyId.value) throw new Error(t('staff.missingCompany'))
         await hrManagersService.update(companyId.value, row.id, buildPayload(form))
         try {
           await hrManagersService.activate(companyId.value, row.id)

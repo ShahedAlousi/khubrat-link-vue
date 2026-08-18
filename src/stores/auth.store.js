@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { authService } from '@/services/auth.service'
 import { tokenStorage, clearApiAuth } from '@/services/api'
+import { syncLocaleForUser } from '@/i18n/runtime'
 import router from '@/router'
 
 const USER_KEY = 'khubrat_user'
@@ -120,6 +121,7 @@ export const useAuthStore = defineStore('auth', () => {
       company.value = data.company
       token.value = data.token
       persistSession()
+      syncLocaleForUser(user.value?.id)
       return data
     } catch (err) {
       error.value = err.message

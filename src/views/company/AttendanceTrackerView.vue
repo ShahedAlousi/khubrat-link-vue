@@ -29,7 +29,7 @@ onUnmounted(() => {
     <!-- جديد: شريط عنوان + زر واضح لإظهار الـ QR -->
     <div class="flex items-center justify-between">
       <div>
-        <p class="text-xs text-slate-400">Daily presence overview and clock-in QR management.</p>
+        <p class="text-xs text-slate-400">{{ $t('attendance.subtitle') }}</p>
       </div>
       <button
         type="button"
@@ -37,7 +37,7 @@ onUnmounted(() => {
         @click="showQrKiosk = true"
       >
         <i class="fa-solid fa-qrcode text-sm"></i>
-        Show Attendance QR Code
+        {{ $t('attendance.showQr') }}
       </button>
     </div>    
     <AttendanceStatsOverview />

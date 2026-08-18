@@ -6,6 +6,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import * as attendanceService from '@/services/attendanceService'
+import { t } from '@/i18n/helpers'
 
 export const useAttendanceStore = defineStore('attendance', () => {
 
@@ -125,7 +126,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
       records.value = list
       meta.value = pageMeta
     } catch (err) {
-      if (!silent) errorMessage.value = 'Failed to load attendance records. Please try again.'
+      if (!silent) errorMessage.value = t('attendance.loadFailed')
       console.error('[attendance store] fetchRecords failed:', err)
     } finally {
       if (!silent) loadingRecords.value = false
@@ -186,7 +187,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
   async function adjustRecord(attendanceRecordId, { newCheckIn, newCheckOut, reason }) {
     if (!attendanceRecordId) {
       // موظف بدون سجل فعلي (not_arrived / on_leave) -- لا يوجد id لإرساله بالمسار
-      errorMessage.value = 'This employee has no attendance record yet for this date.'
+      errorMessage.value = t('attendance.noRecord')
       return false
     }
     isAdjusting.value = true
@@ -199,7 +200,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
       await refreshAll()
       return true
     } catch (err) {
-      errorMessage.value = 'Failed to save the override. Please check the details and try again.'
+      errorMessage.value = t('attendance.saveOverrideFailed')
       console.error('[attendance store] adjustRecord failed:', err)
       return false
     } finally {
@@ -214,7 +215,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
    */
   async function registerRecord({ employeeId, workDate, checkInTime, checkOutTime, reason }) {
     if (!employeeId || !workDate) {
-      errorMessage.value = 'Employee and work date are required to register attendance.'
+      errorMessage.value = t('attendance.employeeDateRequired')
       return false
     }
     isAdjusting.value = true
@@ -230,7 +231,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
       return true
     } catch (err) {
       errorMessage.value =
-        err.message || 'Failed to register attendance. Please check the details and try again.'
+        err.message || t('attendance.registerFailed')
       console.error('[attendance store] registerRecord failed:', err)
       return false
     } finally {

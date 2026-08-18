@@ -1,6 +1,7 @@
 import { reactive, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { evaluationPolicyService } from '@/services/evaluationPolicy.service'
+import { t } from '@/i18n/helpers'
 
 const DEFAULT_POLICY = {
   weekly_review_period: 'monthly',
@@ -59,7 +60,7 @@ export const useEvaluationPolicyStore = defineStore('evaluationPolicy', () => {
       applyPolicyData(data)
       return data
     } catch (err) {
-      error.value = err.response?.data?.message || err.message || 'Failed to load evaluation policy.'
+      error.value = err.response?.data?.message || err.message || t('policies.loadEvalFailed')
       console.error('[EvaluationPolicy] Fetch failed:', err)
       throw err
     } finally {
@@ -84,7 +85,7 @@ export const useEvaluationPolicyStore = defineStore('evaluationPolicy', () => {
       console.log('[EvaluationPolicy] Save succeeded:', result)
       return result
     } catch (err) {
-      error.value = err.response?.data?.message || err.message || 'Failed to save evaluation policy.'
+      error.value = err.response?.data?.message || err.message || t('policies.saveEvalFailed')
       console.error('[EvaluationPolicy] Save failed:', err)
       throw err
     } finally {

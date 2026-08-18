@@ -7,48 +7,48 @@
         <BaseSelect
           v-model="filters.month"
           :options="monthOptions"
-          placeholder="Month"
+          :placeholder="$t('payroll.month')"
           class="w-40"
         />
         <BaseSelect
           v-model="filters.year"
           :options="yearOptions"
-          placeholder="Year"
+          :placeholder="$t('payroll.year')"
           class="w-28"
         />
         <BaseSelect
           v-model="filters.status"
           :options="statusOptions"
-          placeholder="Status"
+          :placeholder="$t('common.status')"
           class="w-40"
         />
         <BaseInput
           v-model="filters.employee_query"
-          placeholder="Search employee..."
+          :placeholder="$t('payroll.searchEmployee')"
           @keyup.enter="fetchSalaries"
           class="w-64"
         />
-        <BaseButton @click="fetchSalaries">Filter</BaseButton>
-        <BaseButton variant="outline" @click="generateDrafts">Generate Drafts</BaseButton>
+        <BaseButton @click="fetchSalaries">{{ $t('common.filter') }}</BaseButton>
+        <BaseButton variant="outline" @click="generateDrafts">{{ $t('payroll.generateDrafts') }}</BaseButton>
       </div>
     </div>
 
     <!-- Stat cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
       <div class="p-4 bg-white dark:bg-gray-800 rounded shadow">
-        <div class="text-sm text-gray-500 dark:text-gray-300">Total Records</div>
+        <div class="text-sm text-gray-500 dark:text-gray-300">{{ $t('payroll.totalRecords') }}</div>
         <div class="text-2xl font-semibold">{{ stats.totalRecords }}</div>
       </div>
       <div class="p-4 bg-white dark:bg-gray-800 rounded shadow">
-        <div class="text-sm text-gray-500 dark:text-gray-300">Total Net Salary</div>
+        <div class="text-sm text-gray-500 dark:text-gray-300">{{ $t('payroll.totalNet') }}</div>
         <div class="text-2xl font-semibold">{{ formatCurrency(stats.totalNet) }}</div>
       </div>
       <div class="p-4 bg-white dark:bg-gray-800 rounded shadow">
-        <div class="text-sm text-gray-500 dark:text-gray-300">Total Paid</div>
+        <div class="text-sm text-gray-500 dark:text-gray-300">{{ $t('payroll.totalPaid') }}</div>
         <div class="text-2xl font-semibold">{{ formatCurrency(stats.totalPaid) }}</div>
       </div>
       <div class="p-4 bg-white dark:bg-gray-800 rounded shadow">
-        <div class="text-sm text-gray-500 dark:text-gray-300">Total Pending</div>
+        <div class="text-sm text-gray-500 dark:text-gray-300">{{ $t('payroll.totalPending') }}</div>
         <div class="text-2xl font-semibold">{{ formatCurrency(stats.totalPending) }}</div>
       </div>
     </div>
@@ -58,43 +58,43 @@
       <table class="min-w-full table-auto">
         <thead>
           <tr class="bg-gray-50 dark:bg-gray-900">
-            <th class="px-4 py-3 text-left text-sm font-medium">Employee</th>
-            <th class="px-4 py-3 text-left text-sm font-medium">Period</th>
-            <th class="px-4 py-3 text-right text-sm font-medium">Base</th>
-            <th class="px-4 py-3 text-right text-sm font-medium">Additions</th>
-            <th class="px-4 py-3 text-right text-sm font-medium">Deductions</th>
-            <th class="px-4 py-3 text-right text-sm font-medium">Net</th>
-            <th class="px-4 py-3 text-center text-sm font-medium">Status</th>
-            <th class="px-4 py-3 text-right text-sm font-medium">Actions</th>
+            <th class="px-4 py-3 text-start text-sm font-medium">{{ $t('payroll.employee') }}</th>
+            <th class="px-4 py-3 text-start text-sm font-medium">{{ $t('payroll.period') }}</th>
+            <th class="px-4 py-3 text-end text-sm font-medium">{{ $t('payroll.base') }}</th>
+            <th class="px-4 py-3 text-end text-sm font-medium">{{ $t('payroll.additions') }}</th>
+            <th class="px-4 py-3 text-end text-sm font-medium">{{ $t('payroll.deductions') }}</th>
+            <th class="px-4 py-3 text-end text-sm font-medium">{{ $t('payroll.net') }}</th>
+            <th class="px-4 py-3 text-center text-sm font-medium">{{ $t('common.status') }}</th>
+            <th class="px-4 py-3 text-end text-sm font-medium">{{ $t('payroll.actions') }}</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="record in salaries" :key="record.id" class="border-t hover:bg-gray-50 dark:hover:bg-gray-900">
             <td class="px-4 py-3">{{ record.employee_name }}</td>
             <td class="px-4 py-3">{{ record.period }}</td>
-            <td class="px-4 py-3 text-right">{{ formatCurrency(record.base_salary) }}</td>
+            <td class="px-4 py-3 text-end">{{ formatCurrency(record.base_salary) }}</td>
             <!-- Additions (Green) -->
-            <td class="px-4 py-3 text-right text-emerald-600 dark:text-emerald-400 font-medium">
+            <td class="px-4 py-3 text-end text-emerald-600 dark:text-emerald-400 font-medium">
               {{ formatCurrency(record.total_additions) }}
             </td>
             <!-- Deductions (Red) -->
-            <td class="px-4 py-3 text-right text-rose-600 dark:text-rose-400 font-medium">
+            <td class="px-4 py-3 text-end text-rose-600 dark:text-rose-400 font-medium">
               {{ formatCurrency(record.total_deductions) }}
             </td>
-            <td class="px-4 py-3 text-right font-semibold">{{ formatCurrency(record.net_salary) }}</td>
+            <td class="px-4 py-3 text-end font-semibold">{{ formatCurrency(record.net_salary) }}</td>
             <td class="px-4 py-3 text-center">
               <span
                 class="px-2 py-1 rounded text-xs"
                 :class="record.is_received ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'"
               >
-                {{ record.is_received ? 'Paid' : 'Pending' }}
+                {{ record.is_received ? $t('status.paid') : $t('status.pending') }}
               </span>
             </td>
-            <td class="px-4 py-3 text-right">
+            <td class="px-4 py-3 text-end">
               <div class="flex items-center justify-end space-x-2">
-                <BaseButton size="sm" @click="openDrawer(record)">View</BaseButton>
+                <BaseButton size="sm" @click="openDrawer(record)">{{ $t('common.view') }}</BaseButton>
                 <BaseButton size="sm" variant="primary" :disabled="record.is_received" @click="markPaid(record)">
-                  Mark Paid
+                  {{ $t('payroll.markPaid') }}
                 </BaseButton>
               </div>
             </td>
@@ -104,10 +104,10 @@
 
       <!-- Pagination (simple) -->
       <div class="p-4 flex items-center justify-between">
-        <div class="text-sm text-gray-500">Page {{ pagination.current_page }} / {{ pagination.last_page }}</div>
+        <div class="text-sm text-gray-500">{{ $t('common.pageOf', { page: pagination.current_page, last: pagination.last_page }) }}</div>
         <div class="space-x-2">
-          <BaseButton size="sm" @click="changePage(pagination.current_page - 1)" :disabled="!pagination.prev_page_url">Previous</BaseButton>
-          <BaseButton size="sm" @click="changePage(pagination.current_page + 1)" :disabled="!pagination.next_page_url">Next</BaseButton>
+          <BaseButton size="sm" @click="changePage(pagination.current_page - 1)" :disabled="!pagination.prev_page_url">{{ $t('common.previous') }}</BaseButton>
+          <BaseButton size="sm" @click="changePage(pagination.current_page + 1)" :disabled="!pagination.next_page_url">{{ $t('common.next') }}</BaseButton>
         </div>
       </div>
     </div>
@@ -124,9 +124,10 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useTheme } from '@/composables/useTheme'
 import { useSalariesStore } from '@/stores/salaries.store'
-import salariesService from '@/services/salaries.service'
+import { formatCurrency as formatMoneyValue } from '@/utils/format'
 import BaseInput from '@/components/common/BaseInput.vue'
 import BaseSelect from '@/components/common/BaseSelect.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
@@ -136,6 +137,7 @@ export default {
   components: { BaseInput, BaseSelect, BaseButton, PayrollDrawer },
   setup() {
     const { theme } = useTheme()
+    const { t, tm, locale } = useI18n()
     const store = useSalariesStore()
 
     const filters = ref({
@@ -146,15 +148,22 @@ export default {
       per_page: 20
     })
 
-    const monthOptions = Array.from({ length: 12 }).map((_, i) => ({ label: `${i + 1}`, value: i + 1 }))
+    const monthNames = computed(() => {
+      void locale.value
+      const names = tm('months.long')
+      return Array.isArray(names) ? names : []
+    })
+    const monthOptions = computed(() =>
+      monthNames.value.map((label, i) => ({ label, value: i + 1 }))
+    )
     const currentYear = new Date().getFullYear()
     const yearOptions = Array.from({ length: 5 }).map((_, i) => ({ label: `${currentYear - i}`, value: currentYear - i }))
-    const statusOptions = [
-      { label: 'All', value: null },
-      { label: 'Paid', value: 'paid' },
-      { label: 'Draft', value: 'draft' },
-      { label: 'Pending', value: 'pending' }
-    ]
+    const statusOptions = computed(() => [
+      { label: t('common.all'), value: null },
+      { label: t('status.paid'), value: 'paid' },
+      { label: t('status.draft'), value: 'draft' },
+      { label: t('status.pending'), value: 'pending' }
+    ])
 
     const fetchSalaries = async (page = 1) => {
       await store.fetchSalaries({ ...filters.value, page })
@@ -195,8 +204,8 @@ export default {
     const stats = computed(() => store.stats)
 
     const formatCurrency = (v) => {
-      if (v == null) return '-'
-      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v)
+      if (v == null) return t('common.emDash')
+      return formatMoneyValue(v)
     }
 
     return {

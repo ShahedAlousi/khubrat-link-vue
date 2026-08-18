@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { t } from '@/i18n/helpers'
 
 const TOKEN_KEY = 'khubrat_token'
 
@@ -44,7 +45,7 @@ api.interceptors.response.use(
 
     const normalized = {
       status,
-      message: payload?.message || error.message || 'Something went wrong. Please try again.',
+      message: payload?.message || error.message || t('common.tryAgain'),
       errors: payload?.errors || null,
       raw: error
     }

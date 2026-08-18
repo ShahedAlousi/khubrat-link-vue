@@ -86,20 +86,20 @@ async function confirmDelete() {
   <section class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
-        <h3 class="text-lg font-bold text-khubrat-blue dark:text-white">Active Subscription Packages</h3>
+        <h3 class="text-lg font-bold text-khubrat-blue dark:text-white">{{ $t('dashboard.packagesTitle') }}</h3>
         <p class="text-xs text-slate-400">
-          Configure parameters, pricing limits, and user seats constraints for the SaaS sales model
+          {{ $t('dashboard.packagesSubtitle') }}
         </p>
       </div>
       <BaseButton variant="blue" @click="openCreate">
         <i class="fa-solid fa-plus"></i>
-        Create New Package
+        {{ $t('dashboard.createPackage') }}
       </BaseButton>
     </div>
 
     <BaseAlert v-if="actionError" variant="error">{{ actionError }}</BaseAlert>
 
-    <LoadingSpinner v-if="plansStore.loading && !plansStore.plans.length" label="Loading packages…" />
+    <LoadingSpinner v-if="plansStore.loading && !plansStore.plans.length" :label="$t('dashboard.loadingPackages')" />
 
     <BaseAlert v-else-if="plansStore.error && !plansStore.plans.length" variant="error">
       {{ plansStore.error }}
@@ -107,7 +107,7 @@ async function confirmDelete() {
 
     <div v-else-if="!plansStore.plans.length" class="text-center text-sm text-slate-400 py-16">
       <i class="fa-solid fa-cubes text-3xl mb-3 block"></i>
-      No packages yet. Create your first subscription plan to get started.
+      {{ $t('dashboard.noPackages') }}
     </div>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -125,17 +125,18 @@ async function confirmDelete() {
 
     <ConfirmModal
       v-if="deleteTarget"
-      title="Delete Package Plan"
-      confirm-label="Delete Permanently"
+      :title="$t('dashboard.deletePackage')"
+      :confirm-label="$t('dashboard.deletePermanently')"
       confirm-variant="danger"
       :loading="deleteLoading"
       @confirm="confirmDelete"
       @cancel="deleteTarget = null"
     >
-      <p class="text-sm text-slate-600 dark:text-slate-300">
-        Permanently delete <strong>{{ deleteTarget?.name }}</strong
-        >? Existing subscribers won't be deleted but will need to be reassigned to another plan.
-      </p>
+      <i18n-t keypath="dashboard.deletePackageConfirm" tag="p" class="text-sm text-slate-600 dark:text-slate-300">
+        <template #name>
+          <strong>{{ deleteTarget?.name }}</strong>
+        </template>
+      </i18n-t>
     </ConfirmModal>
   </section>
 </template>

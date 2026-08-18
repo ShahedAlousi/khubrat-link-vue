@@ -95,16 +95,16 @@ async function handleCreate(payload) {
   <section class="space-y-4">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
-        <h3 class="text-lg font-bold text-khubrat-blue dark:text-white">Subscribed Business Entities</h3>
+        <h3 class="text-lg font-bold text-khubrat-blue dark:text-white">{{ $t('dashboard.companiesTitle') }}</h3>
         <p class="text-xs text-slate-400">
-          Inspect payments, active contracts, subscription logs, freeze and manage individual corporate users
+          {{ $t('dashboard.companiesSubtitle') }}
         </p>
       </div>
     </div>
 
     <BaseAlert v-if="actionError" variant="error">{{ actionError }}</BaseAlert>
 
-    <LoadingSpinner v-if="companiesStore.loading && !companiesStore.companies.length" label="Loading companies…" />
+    <LoadingSpinner v-if="companiesStore.loading && !companiesStore.companies.length" :label="$t('dashboard.loadingCompanies')" />
 
     <BaseAlert v-else-if="companiesStore.error && !companiesStore.companies.length" variant="error">
       {{ companiesStore.error }}

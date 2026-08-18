@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import PolicyReadonlyValue from './PolicyReadonlyValue.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
@@ -11,6 +12,7 @@ const props = defineProps({
   readonly: { type: Boolean, default: false }
 })
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const evaluationPolicyStore = useEvaluationPolicyStore()
 
@@ -41,7 +43,7 @@ async function handleSave() {
     syncFormFromStore()
     saveSuccess.value = true
   } catch (err) {
-    saveError.value = err.message || evaluationPolicyStore.error
+    saveError.value = err.message || evaluationPolicyStore.error || t('policies.saveEvalFailed')
   }
 }
 </script>
@@ -50,32 +52,32 @@ async function handleSave() {
   <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-700 pb-4">
       <div class="space-y-1">
-        <h4 class="text-md font-bold text-khubrat-blue dark:text-khubrat-goldLight">Performance Appraisal Integration</h4>
+        <h4 class="text-md font-bold text-khubrat-blue dark:text-khubrat-goldLight">{{ $t('policies.appraisalsTitle') }}</h4>
         <p class="text-xs text-slate-400">
-          Establish direct structural linkages between manager reviews and base payroll parameters.
+          {{ $t('policies.appraisalsHint') }}
         </p>
       </div>
       <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
-        <span class="text-xs font-bold">Link Appraisals to Payroll?</span>
+        <span class="text-xs font-bold">{{ $t('policies.linkAppraisals') }}</span>
         <span v-if="readonly" class="text-sm font-semibold text-slate-800 dark:text-slate-100">
-          {{ form.apply_review_to_salary ? 'Yes' : 'No' }}
+          {{ form.apply_review_to_salary ? $t('common.yes') : $t('common.no') }}
         </span>
         <ToggleSwitch v-else v-model="form.apply_review_to_salary" />
       </div>
     </div>
 
-    <BaseAlert v-if="saveSuccess" variant="success">Evaluation policy saved successfully.</BaseAlert>
+    <BaseAlert v-if="saveSuccess" variant="success">{{ $t('policies.evalSaved') }}</BaseAlert>
     <BaseAlert v-if="saveError" variant="error">{{ saveError }}</BaseAlert>
 
     <PolicyReadonlyValue
       v-if="readonly"
-      label="Peer Reviews per Employee"
-      :value="form.peer_reviews_count ?? '—'"
-      hint="Number of coworkers each employee must evaluate during a review cycle."
+      :label="$t('policies.peerReviews')"
+      :value="form.peer_reviews_count ?? $t('common.emDash')"
+      :hint="$t('policies.peerHint')"
     />
 
     <div v-else class="space-y-2 max-w-sm">
-      <label class="text-xs font-bold text-slate-500 dark:text-slate-300">Peer Reviews per Employee</label>
+      <label class="text-xs font-bold text-slate-500 dark:text-slate-300">{{ $t('policies.peerReviews') }}</label>
       <div class="flex items-center">
         <input
           v-model.number="form.peer_reviews_count"
@@ -84,10 +86,10 @@ async function handleSave() {
           step="1"
           class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-l-xl px-4 py-3 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight dark:text-white transition-all"
         />
-        <span class="bg-slate-100 dark:bg-slate-700 border-t border-b border-r border-slate-200 dark:border-slate-700 px-4 py-3 rounded-r-xl text-xs font-bold text-slate-400 whitespace-nowrap">peers</span>
+        <span class="bg-slate-100 dark:bg-slate-700 border-t border-b border-r border-slate-200 dark:border-slate-700 px-4 py-3 rounded-r-xl text-xs font-bold text-slate-400 whitespace-nowrap">{{ $t('policies.peers') }}</span>
       </div>
       <p class="text-[10px] text-slate-400">
-        Number of coworkers each employee must evaluate during a review cycle.
+        {{ $t('policies.peerHint') }}
       </p>
     </div>
 
@@ -96,9 +98,9 @@ async function handleSave() {
       class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2"
       :class="!form.apply_review_to_salary ? 'opacity-40' : ''"
     >
-      <PolicyReadonlyValue label="&quot;Excellent&quot; Appraisal Salary Increase (%)" :value="`${form.excellent_adjustment_percent ?? '—'}%`" />
-      <PolicyReadonlyValue label="&quot;Good&quot; Appraisal Salary Increase (%)" :value="`${form.good_adjustment_percent ?? '—'}%`" />
-      <PolicyReadonlyValue label="&quot;Poor&quot; Appraisal Salary Deduction (%)" :value="`${form.poor_adjustment_percent ?? '—'}%`" />
+      <PolicyReadonlyValue :label="$t('policies.excellentIncrease')" :value="`${form.excellent_adjustment_percent ?? $t('common.emDash')}%`" />
+      <PolicyReadonlyValue :label="$t('policies.goodIncrease')" :value="`${form.good_adjustment_percent ?? $t('common.emDash')}%`" />
+      <PolicyReadonlyValue :label="$t('policies.poorDeduction')" :value="`${form.poor_adjustment_percent ?? $t('common.emDash')}%`" />
     </div>
 
     <div
@@ -107,7 +109,7 @@ async function handleSave() {
       :class="!form.apply_review_to_salary ? 'opacity-40 pointer-events-none' : ''"
     >
       <div class="space-y-2">
-        <label class="text-xs font-bold text-slate-500 dark:text-slate-300">"Excellent" Appraisal Salary Increase (%)</label>
+        <label class="text-xs font-bold text-slate-500 dark:text-slate-300">{{ $t('policies.excellentIncrease') }}</label>
         <div class="flex items-center">
           <input
             v-model.number="form.excellent_adjustment_percent"
@@ -117,11 +119,11 @@ async function handleSave() {
           />
           <span class="bg-slate-100 dark:bg-slate-700 border-t border-b border-r border-slate-200 dark:border-slate-700 px-4 py-3 rounded-r-xl text-xs font-bold text-slate-400">%</span>
         </div>
-        <p class="text-[10px] text-slate-400">Salary increase reward multiplier applied on monthly base wage.</p>
+        <p class="text-[10px] text-slate-400">{{ $t('policies.excellentHint') }}</p>
       </div>
 
       <div class="space-y-2">
-        <label class="text-xs font-bold text-slate-500 dark:text-slate-300">"Good" Appraisal Salary Increase (%)</label>
+        <label class="text-xs font-bold text-slate-500 dark:text-slate-300">{{ $t('policies.goodIncrease') }}</label>
         <div class="flex items-center">
           <input
             v-model.number="form.good_adjustment_percent"
@@ -131,11 +133,11 @@ async function handleSave() {
           />
           <span class="bg-slate-100 dark:bg-slate-700 border-t border-b border-r border-slate-200 dark:border-slate-700 px-4 py-3 rounded-r-xl text-xs font-bold text-slate-400">%</span>
         </div>
-        <p class="text-[10px] text-slate-400">Regular salary bump incentive.</p>
+        <p class="text-[10px] text-slate-400">{{ $t('policies.goodHint') }}</p>
       </div>
 
       <div class="space-y-2">
-        <label class="text-xs font-bold text-slate-500 dark:text-slate-300">"Poor" Appraisal Salary Deduction (%)</label>
+        <label class="text-xs font-bold text-slate-500 dark:text-slate-300">{{ $t('policies.poorDeduction') }}</label>
         <div class="flex items-center">
           <input
             v-model.number="form.poor_adjustment_percent"
@@ -145,18 +147,17 @@ async function handleSave() {
           />
           <span class="bg-slate-100 dark:bg-slate-700 border-t border-b border-r border-slate-200 dark:border-slate-700 px-4 py-3 rounded-r-xl text-xs font-bold text-slate-400">%</span>
         </div>
-        <p class="text-[10px] text-slate-400">Base salary adjustment deduction scale applied.</p>
+        <p class="text-[10px] text-slate-400">{{ $t('policies.poorHint') }}</p>
       </div>
     </div>
 
     <p class="text-[11px] text-slate-400 italic border-t border-slate-100 dark:border-slate-700 pt-4">
-      Note: salary percentage fields remain as a UI placeholder; the evaluation-policy API currently persists
-      apply_review_to_salary, review weights, and peer_reviews_count.
+      {{ $t('policies.evalNote') }}
     </p>
 
     <BaseButton v-if="!readonly" variant="gold" :loading="evaluationPolicyStore.saving" @click="handleSave">
       <i class="fa-solid fa-floppy-disk"></i>
-      Save Evaluation Policy
+      {{ $t('policies.saveEval') }}
     </BaseButton>
   </div>
 </template>

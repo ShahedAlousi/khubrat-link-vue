@@ -117,25 +117,25 @@ const routes = [
         path: '',
         name: 'dashboard-overview',
         component: () => import('@/views/dashboard/DashboardOverviewView.vue'),
-        meta: { title: 'Overview Dashboard' }
+        meta: { titleKey: 'nav.admin.overview' }
       },
       {
         path: 'packages',
         name: 'dashboard-packages',
         component: () => import('@/views/dashboard/PackagesView.vue'),
-        meta: { title: 'HR Packages Plan' }
+        meta: { titleKey: 'nav.admin.packages' }
       },
       {
         path: 'companies',
         name: 'dashboard-companies',
         component: () => import('@/views/dashboard/CompaniesListView.vue'),
-        meta: { title: 'Subscribed Companies' }
+        meta: { titleKey: 'nav.admin.companies' }
       },
       {
         path: 'settings',
         name: 'dashboard-settings',
         component: () => import('@/views/dashboard/SettingsView.vue'),
-        meta: { title: 'Platform Settings' }
+        meta: { titleKey: 'nav.admin.settings' }
       }
     ]
   },
@@ -160,61 +160,61 @@ const routes = [
         path: 'dashboard',
         name: 'company-dashboard',
         component: () => import('@/views/company/CompanyDashboardView.vue'),
-        meta: { title: 'Dashboard', denyDepartmentManager: true }
+        meta: { titleKey: 'nav.company.dashboard', denyDepartmentManager: true }
       },
       {
         path: 'profile',
         name: 'company-profile',
         component: () => import('@/views/company/CompanyProfileView.vue'),
-        meta: { title: 'Company Profile', requiresGeneralManager: true }
+        meta: { titleKey: 'nav.company.profile', requiresGeneralManager: true }
       },
       {
         path: 'policies',
         name: 'company-policies',
         component: () => import('@/views/company/PolicyConfigurationView.vue'),
-        meta: { title: 'Company Policy Configuration', requiresPolicyViewer: true }
+        meta: { titleKey: 'nav.company.policyFull', requiresPolicyViewer: true }
       },
       {
         path: 'requests',
         name: 'company-requests',
         component: () => import('@/views/company/RequestsManagementView.vue'),
-        meta: { title: 'Requests', requiresRequestViewer: true }
+        meta: { titleKey: 'nav.company.requests', requiresRequestViewer: true }
       },
       {
         path: 'staff',
         name: 'company-staff-management',
         component: () => import('@/views/company/StaffManagementView.vue'),
-        meta: { title: 'Staff Management' }
+        meta: { titleKey: 'nav.company.staff' }
       },
       {
         path: 'evaluations',
         name: 'company-evaluations',
         component: () => import('@/views/company/EvaluationHubView.vue'),
-        meta: { title: 'Evaluations Hub', requiresHr: true }
+        meta: { titleKey: 'nav.company.evaluationsHub', requiresHr: true }
       },
       {
         path: 'attendance',
         name: 'company-attendance',
         component: () => import('@/views/company/AttendanceTrackerView.vue'),
-        meta: { title: 'Attendance Tracker', denyDepartmentManager: true }
+        meta: { titleKey: 'nav.company.attendanceTracker', denyDepartmentManager: true }
       },
       {
         path: 'payroll',
         name: 'company-payroll',
         component: () => import('@/views/company/PayrollManagementView.vue'),
-        meta: { title: 'Payroll Management', denyDepartmentManager: true }
+        meta: { titleKey: 'nav.company.payrollManagement', denyDepartmentManager: true }
       },
       {
         path: 'settings',
         name: 'company-settings',
         component: () => import('@/views/company/CompanySettingsView.vue'),
-        meta: { title: 'Settings' }
+        meta: { titleKey: 'nav.company.settings' }
       },
       {
         path: 'subscription/renew',
         name: 'company-subscription-renew',
         component: () => import('@/views/company/RenewSubscriptionView.vue'),
-        meta: { title: 'Renew Subscription', requiresGeneralManager: true }
+        meta: { titleKey: 'nav.company.renew', requiresGeneralManager: true }
       }
     ]
   },

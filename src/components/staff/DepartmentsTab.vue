@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth.store'
 import { useDepartmentsStore } from '@/stores/department.store'
 import BaseButton from '@/components/common/BaseButton.vue'
@@ -9,6 +10,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import ConfirmModal from '@/components/common/ConfirmModal.vue'
 import DepartmentFormDrawer from '@/components/staff/DepartmentFormDrawer.vue'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const departmentsStore = useDepartmentsStore()
 
@@ -31,7 +33,7 @@ const filteredDepartments = computed(() => {
   const rows = departmentsStore.sortedDepartments
   if (!q) return rows
   return rows.filter((row) => {
-    const haystack = [row.name, row.manager_name, row.is_active ? 'active' : 'inactive']
+    const haystack = [row.name, row.manager_name, row.is_active ? t('status.active') : t('status.inactive')]
       .join(' ')
       .toLowerCase()
     return haystack.includes(q)
@@ -74,10 +76,10 @@ async function handleFormSubmit(form) {
   try {
     if (formMode.value === 'edit' && formInitial.value?.id) {
       await departmentsStore.updateDepartment(formInitial.value.id, form)
-      flash.value = 'Department updated successfully.'
+      flash.value = t('staff.departmentUpdated')
     } else {
       await departmentsStore.createDepartment(form)
-      flash.value = 'Department created successfully. Add employees, then assign a manager.'
+      flash.value = t('staff.departmentCreated')
     }
     formOpen.value = false
     formInitial.value = null
@@ -100,15 +102,14 @@ async function confirmDelete() {
     deleteConfirmOpen.value = false
 
     if (result.status === 'deleted') {
-      flash.value = 'Department deleted successfully.'
+      flash.value = t('staff.departmentDeleted')
       deleteTarget.value = null
       return
     }
 
     if (result.status === 'blocked') {
       blockedMessage.value =
-        result.message ||
-        'The department must be free of employees before deletion. Reassign employees via Employee Management first.'
+        result.message || t('staff.mustBeEmpty')
       blockedOpen.value = true
     }
   } catch {
@@ -126,30 +127,30 @@ function closeBlocked() {
   <div class="space-y-5">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div>
-        <h3 class="text-lg font-bold text-khubrat-blue dark:text-white">Departments</h3>
+        <h3 class="text-lg font-bold text-khubrat-blue dark:text-white">{{ $t('staff.departmentsTitle') }}</h3>
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
           <template v-if="canManage">
-            Create departments, assign managers from department employees, and manage status.
+            {{ $t('staff.departmentsHint') }}
           </template>
           <template v-else>
-            View company departments, their status, and assigned managers.
+            {{ $t('staff.departmentsViewHint') }}
           </template>
         </p>
       </div>
 
       <BaseButton v-if="canManage" variant="gold" @click="openCreate">
-        + Add Department
+        {{ $t('staff.addDepartment') }}
       </BaseButton>
     </div>
 
     <BaseAlert v-if="flash" variant="success">
       {{ flash }}
-      <button class="ml-2 underline text-xs" @click="flash = ''">Dismiss</button>
+      <button class="ms-2 underline text-xs" @click="flash = ''">{{ $t('common.dismiss') }}</button>
     </BaseAlert>
     <BaseAlert v-if="departmentsStore.error" variant="error">{{ departmentsStore.error }}</BaseAlert>
 
     <div class="max-w-sm">
-      <BaseInput v-model="search" placeholder="Search departments or managers…" />
+      <BaseInput v-model="search" :placeholder="$t('staff.searchDepartments')" />
     </div>
 
     <LoadingSpinner v-if="departmentsStore.loading" />
@@ -159,19 +160,19 @@ function closeBlocked() {
       class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm"
     >
       <div class="overflow-x-auto">
-        <table class="w-full text-sm text-left">
+        <table class="w-full text-sm text-start">
           <thead class="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase text-slate-500">
             <tr>
-              <th class="px-4 py-3 font-bold">Department</th>
-              <th class="px-4 py-3 font-bold">Manager</th>
-              <th class="px-4 py-3 font-bold">Status</th>
-              <th v-if="canManage" class="px-4 py-3 font-bold text-right">Actions</th>
+              <th class="px-4 py-3 font-bold">{{ $t('staff.department') }}</th>
+              <th class="px-4 py-3 font-bold">{{ $t('staff.manager') }}</th>
+              <th class="px-4 py-3 font-bold">{{ $t('staff.status') }}</th>
+              <th v-if="canManage" class="px-4 py-3 font-bold text-end">{{ $t('staff.actions') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="!filteredDepartments.length">
               <td :colspan="canManage ? 4 : 3" class="px-4 py-10 text-center text-slate-400">
-                No departments found.
+                {{ $t('staff.noDepartments') }}
               </td>
             </tr>
             <tr
@@ -184,7 +185,7 @@ function closeBlocked() {
               </td>
               <td class="px-4 py-3 text-slate-600 dark:text-slate-300">
                 <template v-if="row.manager_name">{{ row.manager_name }}</template>
-                <span v-else class="text-slate-400 italic">Not assigned</span>
+                <span v-else class="text-slate-400 italic">{{ $t('common.notAssigned') }}</span>
               </td>
               <td class="px-4 py-3">
                 <span
@@ -195,20 +196,20 @@ function closeBlocked() {
                       : 'bg-slate-100 text-slate-500'
                   "
                 >
-                  {{ row.is_active ? 'Active' : 'Inactive' }}
+                  {{ row.is_active ? $t('status.active') : $t('status.inactive') }}
                 </span>
               </td>
-              <td v-if="canManage" class="px-4 py-3 text-right whitespace-nowrap">
+              <td v-if="canManage" class="px-4 py-3 text-end whitespace-nowrap">
                 <button
                   class="text-slate-400 hover:text-khubrat-blue dark:hover:text-khubrat-goldLight p-2 rounded-lg transition-colors"
-                  title="Edit"
+                  :title="$t('common.edit')"
                   @click="openEdit(row)"
                 >
                   <i class="fa-solid fa-pen"></i>
                 </button>
                 <button
                   class="text-slate-400 hover:text-rose-500 p-2 rounded-lg transition-colors"
-                  title="Delete"
+                  :title="$t('common.delete')"
                   @click="askDelete(row)"
                 >
                   <i class="fa-solid fa-trash"></i>
@@ -234,27 +235,25 @@ function closeBlocked() {
 
     <ConfirmModal
       v-if="deleteConfirmOpen"
-      title="Delete Department"
-      confirm-label="Yes, Delete"
+      :title="$t('staff.deleteDepartment')"
+      :confirm-label="$t('staff.yesDelete')"
       confirm-variant="danger"
       :loading="departmentsStore.deleting"
       @confirm="confirmDelete"
       @cancel="deleteConfirmOpen = false; deleteTarget = null"
     >
       <p class="text-sm text-slate-600 dark:text-slate-300 mb-2">
-        You are about to permanently delete
-        <strong>{{ deleteTarget?.name }}</strong>.
+        {{ $t('staff.deleteDepartmentConfirm', { name: deleteTarget?.name }) }}
       </p>
       <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-        The department must be free of employees before deletion. Reassign employees via Employee
-        Management first.
+        {{ $t('staff.mustBeEmpty') }}
       </p>
     </ConfirmModal>
 
     <ConfirmModal
       v-if="blockedOpen"
-      title="Cannot Delete Department"
-      confirm-label="Got It"
+      :title="$t('staff.cannotDeleteDepartment')"
+      :confirm-label="$t('common.gotIt')"
       confirm-variant="blue"
       @confirm="closeBlocked"
       @cancel="closeBlocked"

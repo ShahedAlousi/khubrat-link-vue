@@ -1,5 +1,6 @@
 <script setup>
 import { formatDate } from '@/utils/format'
+import { translateStatus } from '@/i18n/helpers'
 
 defineProps({
   // Array of { id, name, created_at, status, package } from /api/companies/stats
@@ -15,21 +16,21 @@ const statusBadge = {
 
 <template>
   <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-    <h4 class="text-md font-bold text-khubrat-blue dark:text-white mb-4">Latest Registered Platforms</h4>
+    <h4 class="text-md font-bold text-khubrat-blue dark:text-white mb-4">{{ $t('dashboard.latestPlatforms') }}</h4>
 
     <div v-if="!platforms.length" class="text-center text-xs font-semibold text-slate-400 py-8">
       <i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>
-      No companies registered yet.
+      {{ $t('dashboard.noCompaniesYet') }}
     </div>
 
     <div v-else class="overflow-x-auto">
-      <table class="w-full text-left text-xs">
+      <table class="w-full text-start text-xs">
         <thead>
           <tr class="text-slate-400 border-b border-slate-100 dark:border-slate-700">
-            <th class="pb-3">Company</th>
-            <th class="pb-3">Registered on</th>
-            <th class="pb-3">Package</th>
-            <th class="pb-3">Status</th>
+            <th class="pb-3">{{ $t('dashboard.company') }}</th>
+            <th class="pb-3">{{ $t('dashboard.registeredOn') }}</th>
+            <th class="pb-3">{{ $t('dashboard.package') }}</th>
+            <th class="pb-3">{{ $t('dashboard.status') }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-50 dark:divide-slate-700/60">
@@ -38,7 +39,7 @@ const statusBadge = {
             <td class="py-3 text-slate-500 dark:text-slate-400 font-semibold">{{ formatDate(platform.created_at) }}</td>
             <td class="py-3">
               <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold">
-                {{ platform.package || '—' }}
+                {{ platform.package || $t('common.emDash') }}
               </span>
             </td>
             <td class="py-3">
@@ -46,7 +47,7 @@ const statusBadge = {
                 class="px-2.5 py-1 text-[10px] font-black rounded-lg"
                 :class="statusBadge[platform.status] || statusBadge.active"
               >
-                {{ platform.status }}
+                {{ translateStatus(platform.status) }}
               </span>
             </td>
           </tr>

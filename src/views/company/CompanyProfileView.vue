@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useCompanyProfileStore } from '@/stores/companyProfileStore'
 import BaseButton from '@/components/common/BaseButton.vue'
 import BaseInput from '@/components/common/BaseInput.vue'
@@ -8,6 +9,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { isRequired, isValidEmail } from '@/utils/validators'
 import { toMediaUrl } from '@/utils/format'
 
+const { t } = useI18n()
 const profileStore = useCompanyProfileStore()
 
 const logoInputRef = ref(null)
@@ -20,9 +22,7 @@ const flash = ref('')
 const fieldErrors = reactive({})
 
 const editHeading = computed(() =>
-  profileStore.isProfileComplete
-    ? 'Edit Corporate Profile Information'
-    : 'Initial Corporate Profile Setup'
+  profileStore.isProfileComplete ? t('profile.editTitle') : t('profile.setupTitle')
 )
 
 const logoCacheKey = ref(0)
@@ -56,8 +56,10 @@ function fallbackLogoUrl(name) {
   return `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(name || 'Khubrat')}`
 }
 
-function display(value, fallback = 'Not specified') {
-  return value === null || value === undefined || value === '' ? fallback : value
+function display(value, fallback) {
+  return value === null || value === undefined || value === ''
+    ? (fallback ?? t('common.notSpecified'))
+    : value
 }
 
 function setPersistedLogoBlob(file) {
@@ -105,8 +107,8 @@ function resetLogoSelection(clearPreview = true) {
     logoPreviewUrl.value = null
   }
   logoFilename.value = profileStore.profile.logo_url
-    ? 'Current logo loaded. Choose a file to replace it.'
-    : 'Omit file to keep current saved corporate logo.'
+    ? t('profile.currentLogoLoaded')
+    : t('profile.omitFile')
 }
 
 function handleLogoError(event, name) {
@@ -127,19 +129,22 @@ function handleLogoChange(event) {
 
   const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
   if (!allowed.includes(file.type)) {
-    profileStore.error = 'Logo must be a JPG, PNG, or WEBP image.'
+    profileStore.error = t('validation.logoType')
     event.target.value = ''
     return
   }
 
   if (file.size > 4 * 1024 * 1024) {
-    profileStore.error = 'Logo file size exceeds the maximum limit of 4MB.'
+    profileStore.error = t('validation.logoSize')
     event.target.value = ''
     return
   }
 
   selectedLogoFile.value = file
-  logoFilename.value = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`
+  logoFilename.value = t('profile.selectedFile', {
+    file: file.name,
+    size: (file.size / 1024).toFixed(1)
+  })
   logoPreviewUrl.value = URL.createObjectURL(file)
   profileStore.error = null
 }
@@ -151,20 +156,20 @@ function clearLogoSelection() {
     logoPreviewUrl.value = null
   }
   if (logoInputRef.value) logoInputRef.value.value = ''
-  logoFilename.value = 'Logo file selection cleared.'
+  logoFilename.value = t('profile.logoCleared')
 }
 
 function validateForm() {
   Object.keys(fieldErrors).forEach((k) => delete fieldErrors[k])
   const draft = profileStore.draftProfile
 
-  if (!isRequired(draft.name)) fieldErrors.name = 'Company name is required.'
-  if (!isValidEmail(draft.email)) fieldErrors.email = 'Enter a valid email address.'
-  if (!isRequired(draft.phone)) fieldErrors.phone = 'Phone number is required.'
-  if (!isRequired(draft.address)) fieldErrors.address = 'Address is required.'
+  if (!isRequired(draft.name)) fieldErrors.name = t('validation.companyNameRequired')
+  if (!isValidEmail(draft.email)) fieldErrors.email = t('validation.email')
+  if (!isRequired(draft.phone)) fieldErrors.phone = t('validation.phoneRequired')
+  if (!isRequired(draft.address)) fieldErrors.address = t('validation.addressRequired')
 
   if (draft.about && draft.about.length > 3000) {
-    fieldErrors.about = 'About section cannot exceed 3000 characters.'
+    fieldErrors.about = t('validation.aboutMax')
   }
 
   return Object.keys(fieldErrors).length === 0
@@ -181,7 +186,7 @@ async function handleSubmit() {
     logoCacheKey.value = Date.now()
     if (uploadedFile) setPersistedLogoBlob(uploadedFile)
     resetLogoSelection(true)
-    flash.value = 'Company profile updated successfully.'
+    flash.value = t('profile.updated')
   } catch (err) {
     if (err.errors && typeof err.errors === 'object') {
       Object.entries(err.errors).forEach(([key, value]) => {
@@ -194,7 +199,7 @@ async function handleSubmit() {
 function handleCancel() {
   const cancelled = profileStore.cancelEdit()
   if (!cancelled) {
-    profileStore.error = 'Please fill in and save the initial profile information.'
+    profileStore.error = t('profile.fillInitial')
     return
   }
   resetLogoSelection(true)
@@ -206,7 +211,7 @@ function handleCancel() {
   <div class="space-y-6 max-w-6xl mx-auto">
     <BaseAlert v-if="flash" variant="success">
       {{ flash }}
-      <button class="ml-2 underline text-xs" @click="flash = ''">Dismiss</button>
+      <button class="ms-2 underline text-xs" @click="flash = ''">{{ $t('common.dismiss') }}</button>
     </BaseAlert>
     <BaseAlert v-if="profileStore.error" variant="error">{{ profileStore.error }}</BaseAlert>
 
@@ -225,13 +230,13 @@ function handleCancel() {
           <div
             class="relative z-10 flex flex-col md:flex-row items-center md:items-start justify-between gap-6"
           >
-            <div class="flex flex-col md:flex-row items-center md:items-center gap-6 text-center md:text-left">
+            <div class="flex flex-col md:flex-row items-center md:items-center gap-6 text-center md:text-start">
               <div
                 class="w-28 h-28 rounded-2xl bg-white dark:bg-slate-800 p-2 border-2 border-khubrat-goldLight shadow-lg flex items-center justify-center shrink-0 overflow-hidden"
               >
                 <img
                   :src="displayLogoUrl"
-                  alt="Company Logo"
+                  :alt="$t('profile.logoAlt')"
                   referrerpolicy="no-referrer"
                   class="max-w-full max-h-full object-contain rounded-xl"
                   @error="handleLogoError($event, profileStore.profile.name)"
@@ -241,22 +246,22 @@ function handleCancel() {
               <div class="space-y-1.5">
                 <div class="flex flex-wrap items-center justify-center md:justify-start gap-3">
                   <h3 class="text-2xl font-black text-khubrat-goldLight">
-                    {{ display(profileStore.profile.name, 'Company Name Unset') }}
+                    {{ display(profileStore.profile.name, $t('profile.nameUnset')) }}
                   </h3>
                   <span
                     class="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1.5"
                   >
-                    <i class="fa-solid fa-circle-check"></i> Verified Tenant
+                    <i class="fa-solid fa-circle-check"></i> {{ $t('profile.verifiedTenant') }}
                   </span>
                 </div>
                 <p class="text-xs text-slate-200 font-semibold italic">
-                  {{ display(profileStore.profile.tagline, 'No tagline provided') }}
+                  {{ display(profileStore.profile.tagline, $t('profile.noTagline')) }}
                 </p>
                 <p class="text-[11px] text-white/50 flex items-center justify-center md:justify-start gap-2 pt-1">
                   <i class="fa-solid fa-fingerprint text-khubrat-goldLight"></i>
                   <span>
-                    Tenant ID:
-                    <span class="font-mono text-slate-300">{{ profileStore.profile.id || 'N/A' }}</span>
+                    {{ $t('profile.tenantId') }}
+                    <span class="font-mono text-slate-300">{{ profileStore.profile.id || $t('common.nA') }}</span>
                   </span>
                 </p>
               </div>
@@ -264,7 +269,7 @@ function handleCancel() {
 
             <BaseButton variant="gold" class="shrink-0 !rounded-2xl" @click="profileStore.enableEditMode()">
               <i class="fa-solid fa-pen-to-square"></i>
-              Edit Profile Information
+              {{ $t('profile.editProfile') }}
             </BaseButton>
           </div>
         </div>
@@ -279,11 +284,11 @@ function handleCancel() {
               <i class="fa-solid fa-envelope"></i>
             </div>
             <div class="space-y-1 min-w-0">
-              <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Official Email</span>
+              <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider">{{ $t('profile.officialEmail') }}</span>
               <h5 class="text-xs font-bold text-slate-800 dark:text-white truncate">
                 {{ display(profileStore.profile.email) }}
               </h5>
-              <p class="text-[10px] text-slate-400">Primary corporate contact email</p>
+              <p class="text-[10px] text-slate-400">{{ $t('profile.officialEmailHint') }}</p>
             </div>
           </div>
 
@@ -296,11 +301,11 @@ function handleCancel() {
               <i class="fa-solid fa-phone"></i>
             </div>
             <div class="space-y-1 min-w-0">
-              <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Phone Number</span>
+              <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider">{{ $t('onboarding.phone') }}</span>
               <h5 class="text-xs font-bold text-slate-800 dark:text-white truncate">
                 {{ display(profileStore.profile.phone) }}
               </h5>
-              <p class="text-[10px] text-slate-400">Direct support hotline</p>
+              <p class="text-[10px] text-slate-400">{{ $t('profile.phoneHint') }}</p>
             </div>
           </div>
 
@@ -314,12 +319,12 @@ function handleCancel() {
             </div>
             <div class="space-y-1 min-w-0">
               <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                Headquarters Address
+                {{ $t('profile.hqAddress') }}
               </span>
               <h5 class="text-xs font-bold text-slate-800 dark:text-white truncate">
                 {{ display(profileStore.profile.address) }}
               </h5>
-              <p class="text-[10px] text-slate-400">Physical registered location</p>
+              <p class="text-[10px] text-slate-400">{{ $t('profile.hqHint') }}</p>
             </div>
           </div>
         </div>
@@ -330,11 +335,11 @@ function handleCancel() {
           <div class="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-700">
             <i class="fa-solid fa-building-user text-khubrat-blue dark:text-khubrat-goldLight text-lg"></i>
             <h4 class="text-sm font-black text-khubrat-blue dark:text-khubrat-goldLight uppercase tracking-wider">
-              About The Company
+              {{ $t('profile.about') }}
             </h4>
           </div>
           <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
-            {{ display(profileStore.profile.about, 'No detailed description added yet.') }}
+            {{ display(profileStore.profile.about, $t('profile.noDescription')) }}
           </p>
         </div>
       </div>
@@ -353,13 +358,13 @@ function handleCancel() {
               <span>{{ editHeading }}</span>
             </h3>
             <p class="text-xs text-slate-400 mt-1">
-              General Manager authorization required. Changes take effect immediately across all system modules.
+              {{ $t('profile.gmAuth') }}
             </p>
           </div>
           <span
             class="px-3 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-xl text-xs font-bold flex items-center gap-1.5"
           >
-            <i class="fa-solid fa-user-shield"></i> GM Restricted Access
+            <i class="fa-solid fa-user-shield"></i> {{ $t('profile.gmRestricted') }}
           </span>
         </div>
 
@@ -367,8 +372,8 @@ function handleCancel() {
           <!-- Logo Upload -->
           <div class="space-y-2">
             <label class="text-xs font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <span>Company Logo</span>
-              <span class="text-[10px] text-slate-400 font-normal">(jpg, png, webp — Max 4MB)</span>
+              <span>{{ $t('profile.companyLogo') }}</span>
+              <span class="text-[10px] text-slate-400 font-normal">{{ $t('profile.logoHint') }}</span>
             </label>
             <div
               class="flex flex-col sm:flex-row items-center gap-6 p-6 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50 hover:border-khubrat-goldDark transition-all"
@@ -378,28 +383,28 @@ function handleCancel() {
               >
                 <img
                   :src="editLogoUrl"
-                  alt="Logo Preview"
+                  :alt="$t('profile.logoPreview')"
                   referrerpolicy="no-referrer"
                   class="max-w-full max-h-full object-contain rounded-lg"
                   @error="handleLogoError($event, profileStore.draftProfile.name)"
                 />
               </div>
 
-              <div class="flex-1 space-y-2 text-center sm:text-left">
+              <div class="flex-1 space-y-2 text-center sm:text-start">
                 <div class="flex flex-wrap items-center justify-center sm:justify-start gap-3">
                   <button
                     type="button"
                     class="px-4 py-2 bg-khubrat-blue dark:bg-khubrat-goldLight text-white dark:text-khubrat-blue rounded-xl text-xs font-bold hover:opacity-90 transition-all flex items-center gap-2"
                     @click="triggerLogoUpload"
                   >
-                    <i class="fa-solid fa-cloud-arrow-up"></i> Upload New Logo
+                    <i class="fa-solid fa-cloud-arrow-up"></i> {{ $t('profile.uploadLogo') }}
                   </button>
                   <button
                     type="button"
                     class="px-3 py-2 text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition-all"
                     @click="clearLogoSelection"
                   >
-                    Remove Selection
+                    {{ $t('profile.removeSelection') }}
                   </button>
                 </div>
                 <input
@@ -417,15 +422,15 @@ function handleCancel() {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <BaseInput
               v-model="profileStore.draftProfile.name"
-              label="Company Name"
-              placeholder="e.g. Khubrat HR Solutions"
+              :label="$t('onboarding.companyName')"
+              :placeholder="$t('profile.namePlaceholder')"
               required
               :error="fieldErrors.name"
             />
             <BaseInput
               v-model="profileStore.draftProfile.tagline"
-              label="Company Tagline / Slogan"
-              placeholder="e.g. Your Certified Digital Empowerment Partner"
+              :label="$t('profile.tagline')"
+              :placeholder="$t('profile.taglinePlaceholder')"
               :error="fieldErrors.tagline"
             />
           </div>
@@ -433,7 +438,7 @@ function handleCancel() {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <BaseInput
               v-model="profileStore.draftProfile.email"
-              label="Official Email Address"
+              :label="$t('profile.officialEmailAddress')"
               type="email"
               placeholder="info@company.com"
               required
@@ -441,7 +446,7 @@ function handleCancel() {
             />
             <BaseInput
               v-model="profileStore.draftProfile.phone"
-              label="Phone Number"
+              :label="$t('onboarding.phone')"
               placeholder="+963111222333"
               required
               :error="fieldErrors.phone"
@@ -450,8 +455,8 @@ function handleCancel() {
 
           <BaseInput
             v-model="profileStore.draftProfile.address"
-            label="Headquarters Physical Address"
-            placeholder="e.g. Damascus, Al-Rawda District"
+            :label="$t('profile.hqPhysical')"
+            :placeholder="$t('profile.addressPlaceholder')"
             required
             :error="fieldErrors.address"
           />
@@ -459,15 +464,15 @@ function handleCancel() {
           <div class="space-y-1.5">
             <div class="flex justify-between items-center">
               <label class="text-xs font-extrabold text-slate-700 dark:text-slate-300">
-                About The Company / Brief Overview
+                {{ $t('profile.about') }} / {{ $t('profile.briefOverview') }}
               </label>
-              <span class="text-[10px] text-slate-400 font-bold">{{ aboutCharCount }} / 3000 characters</span>
+              <span class="text-[10px] text-slate-400 font-bold">{{ $t('common.charactersCount', { n: aboutCharCount, max: 3000 }) }}</span>
             </div>
             <textarea
               v-model="profileStore.draftProfile.about"
               rows="4"
               maxlength="3000"
-              placeholder="Write a summary about your company's sector, mission, and operational domain..."
+              :placeholder="$t('profile.aboutPlaceholder')"
               class="w-full bg-white dark:bg-slate-900 border rounded-xl px-4 py-3 text-sm transition-all duration-150 outline-none border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white hover:border-[#bd8a39] hover:ring-4 hover:ring-[#bd8a39]/20 focus:border-[#bd8a39] focus:ring-4 focus:ring-[#bd8a39]/30"
               :class="fieldErrors.about ? 'border-rose-500' : ''"
             ></textarea>
@@ -481,11 +486,11 @@ function handleCancel() {
               variant="ghost"
               @click="handleCancel"
             >
-              Cancel
+              {{ $t('common.cancel') }}
             </BaseButton>
             <BaseButton type="submit" variant="blue" :loading="profileStore.isSaving">
               <i class="fa-solid fa-floppy-disk"></i>
-              Save Profile Changes
+              {{ $t('profile.saveProfile') }}
             </BaseButton>
           </div>
         </form>

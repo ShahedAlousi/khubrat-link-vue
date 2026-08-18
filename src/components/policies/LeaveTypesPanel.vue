@@ -1,9 +1,11 @@
 <script setup>
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ToggleSwitch from './ToggleSwitch.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import BaseAlert from '@/components/common/BaseAlert.vue'
+import { translateLeaveTypeName, translateLeaveTypeTerms } from '@/i18n/helpers'
 import { useAuthStore } from '@/stores/auth.store'
 import {
   useLeaveTypesStore,
@@ -15,6 +17,7 @@ const props = defineProps({
   readonly: { type: Boolean, default: false }
 })
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const leaveTypesStore = useLeaveTypesStore()
 
@@ -24,11 +27,11 @@ const actionError = ref('')
 const saveSuccess = ref(false)
 
 function unitLabel(row) {
-  return row?.allocation_unit === 'hours' ? 'hours' : 'days'
+  return row?.allocation_unit === 'hours' ? t('policies.hours') : t('policies.days')
 }
 
 function proofLabel(required) {
-  return required ? 'Required' : 'Not required'
+  return required ? t('common.required') : t('common.notRequired')
 }
 
 // يبني صف جدول واحد: يأخذ البيانات الحقيقية من الـ API لو الفئة موجودة مسبقًا، وإلا يستخدم القيم الافتراضية
@@ -100,37 +103,35 @@ async function handleSaveAll() {
   <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
     <div class="p-3.5 bg-blue-50/50 dark:bg-slate-900/40 rounded-xl border border-blue-100 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
       <span class="font-extrabold text-khubrat-blue dark:text-khubrat-goldLight">
-        <i class="fa-solid fa-circle-info mr-1"></i> Policy Note:
+        <i class="fa-solid fa-circle-info me-1"></i> {{ $t('policies.policyNote') }}
       </span>
-      The maximum limits below are per occurrence (days or hours for Hourly Leave). Proof documents are
-      <span class="font-extrabold">not required by default</span> — enable the proof switch on any leave type
-      if employees must attach supporting documentation when requesting it.
+      {{ $t('policies.leaveNote') }}
     </div>
 
-    <BaseAlert v-if="saveSuccess" variant="success">Leave policies saved successfully.</BaseAlert>
+    <BaseAlert v-if="saveSuccess" variant="success">{{ $t('policies.leaveSaved') }}</BaseAlert>
     <BaseAlert v-if="actionError" variant="error">{{ actionError }}</BaseAlert>
 
-    <LoadingSpinner v-if="leaveTypesStore.loading && !rows.length" label="Loading leave types…" />
+    <LoadingSpinner v-if="leaveTypesStore.loading && !rows.length" :label="$t('policies.loadingLeave')" />
 
     <template v-else>
       <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs border-collapse">
+        <table class="w-full text-start text-xs border-collapse">
           <thead>
             <tr class="text-slate-800 dark:text-slate-100 border-b-2 border-slate-200 dark:border-slate-700 font-extrabold text-[13px]">
-              <th class="pb-3 pl-4">Leave Category</th>
-              <th class="pb-3 px-3 text-center">Require Proof</th>
-              <th class="pb-3 text-center">Status Switch</th>
-              <th class="pb-3 text-right pr-6">Maximum Limit</th>
+              <th class="pb-3 ps-4">{{ $t('policies.leaveCategory') }}</th>
+              <th class="pb-3 px-3 text-center">{{ $t('policies.requireProof') }}</th>
+              <th class="pb-3 text-center">{{ $t('policies.statusSwitch') }}</th>
+              <th class="pb-3 text-end pe-6">{{ $t('policies.maximumLimit') }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-200 dark:divide-slate-700 font-semibold text-slate-700 dark:text-slate-300">
             <tr v-for="row in rows" :key="row.name" class="hover:bg-amber-500/5 dark:hover:bg-khubrat-goldDark/10 transition-colors">
-              <td class="py-4 pl-4 border-l-4 border-khubrat-blue dark:border-khubrat-goldLight">
+              <td class="py-4 ps-4 border-s-4 border-khubrat-blue dark:border-khubrat-goldLight">
                 <p class="font-black text-khubrat-blue dark:text-khubrat-goldLight text-sm tracking-wide">
-                  <i v-if="row.allocation_unit === 'hours'" class="fa-solid fa-clock mr-1.5 text-khubrat-goldDark dark:text-khubrat-goldLight"></i>
-                  {{ row.name }}
+                  <i v-if="row.allocation_unit === 'hours'" class="fa-solid fa-clock me-1.5 text-khubrat-goldDark dark:text-khubrat-goldLight"></i>
+                  {{ translateLeaveTypeName(row.name) }}
                 </p>
-                <p class="text-[11px] text-slate-400 font-medium mt-0.5 max-w-xs">{{ row.terms }}</p>
+                <p class="text-[11px] text-slate-400 font-medium mt-0.5 max-w-xs">{{ translateLeaveTypeTerms(row.name, row.terms) }}</p>
               </td>
               <td class="py-4 px-3 text-center">
                 <div class="flex flex-col items-center gap-1">
@@ -158,15 +159,15 @@ async function handleSaveAll() {
                   class="text-xs font-bold"
                   :class="row.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'"
                 >
-                  {{ row.is_active ? 'Active' : 'Inactive' }}
+                  {{ row.is_active ? $t('status.active') : $t('status.inactive') }}
                 </span>
                 <ToggleSwitch v-else :model-value="row.is_active" @update:model-value="handleToggle(row)" />
               </td>
-              <td class="py-4 text-right pr-6">
+              <td class="py-4 text-end pe-6">
                 <div class="inline-flex flex-col items-end gap-0.5">
                   <div class="inline-flex items-center justify-end gap-1.5">
                     <span v-if="readonly" class="text-sm font-bold text-slate-800 dark:text-slate-100">
-                      {{ row.allocation_value ?? '—' }}
+                      {{ row.allocation_value ?? $t('common.emDash') }}
                     </span>
                     <input
                       v-else
@@ -174,14 +175,14 @@ async function handleSaveAll() {
                       type="number"
                       min="0"
                       step="1"
-                      :title="row.allocation_unit === 'hours' ? 'Hours available to request' : 'Maximum days limit'"
-                      :placeholder="row.allocation_unit === 'hours' ? 'Hours' : 'Days'"
+                      :title="row.allocation_unit === 'hours' ? $t('policies.hoursAvailable') : $t('policies.maxDays')"
+                      :placeholder="row.allocation_unit === 'hours' ? $t('policies.hours') : $t('policies.days')"
                       class="w-20 text-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg py-1.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight dark:text-white"
                     />
-                    <span class="text-[10px] font-bold text-slate-400 uppercase w-10 text-left">{{ unitLabel(row) }}</span>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase w-10 text-start">{{ unitLabel(row) }}</span>
                   </div>
                   <span v-if="row.allocation_unit === 'hours'" class="text-[10px] text-slate-400 font-medium">
-                    Hours available to request
+                    {{ $t('policies.hoursAvailable') }}
                   </span>
                 </div>
               </td>
@@ -195,13 +196,13 @@ async function handleSaveAll() {
         <div class="flex items-start gap-3">
           <i class="fa-solid fa-gift text-khubrat-goldDark dark:text-khubrat-goldLight text-lg mt-0.5"></i>
           <div>
-            <p class="text-sm font-black text-khubrat-blue dark:text-khubrat-goldLight">{{ freeDaysRow.name }}</p>
-            <p class="text-[11px] text-slate-400 max-w-xl">{{ freeDaysRow.terms }}</p>
+            <p class="text-sm font-black text-khubrat-blue dark:text-khubrat-goldLight">{{ translateLeaveTypeName(freeDaysRow.name) }}</p>
+            <p class="text-[11px] text-slate-400 max-w-xl">{{ translateLeaveTypeTerms(freeDaysRow.name, freeDaysRow.terms) }}</p>
           </div>
         </div>
         <div class="flex items-center gap-4 flex-shrink-0 flex-wrap justify-end">
           <div class="flex flex-col items-center gap-1">
-            <span class="text-[10px] font-bold text-slate-400 uppercase">Require Proof</span>
+            <span class="text-[10px] font-bold text-slate-400 uppercase">{{ $t('policies.requireProof') }}</span>
             <span
               v-if="readonly"
               class="text-xs font-bold"
@@ -224,11 +225,11 @@ async function handleSaveAll() {
             class="text-xs font-bold"
             :class="freeDaysRow.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'"
           >
-            {{ freeDaysRow.is_active ? 'Active' : 'Inactive' }}
+            {{ freeDaysRow.is_active ? $t('status.active') : $t('status.inactive') }}
           </span>
           <ToggleSwitch v-else :model-value="freeDaysRow.is_active" @update:model-value="handleToggle(freeDaysRow)" />
           <span v-if="readonly" class="text-sm font-bold text-slate-800 dark:text-slate-100">
-            {{ freeDaysRow.allocation_value ?? '—' }} {{ unitLabel(freeDaysRow) }}
+            {{ freeDaysRow.allocation_value ?? $t('common.emDash') }} {{ unitLabel(freeDaysRow) }}
           </span>
           <div v-else class="inline-flex items-center gap-1.5">
             <input
@@ -244,7 +245,7 @@ async function handleSaveAll() {
 
       <BaseButton v-if="!readonly" variant="gold" :loading="leaveTypesStore.saving" @click="handleSaveAll">
         <i class="fa-solid fa-floppy-disk"></i>
-        Save Leave Policies
+        {{ $t('policies.saveLeave') }}
       </BaseButton>
     </template>
   </div>

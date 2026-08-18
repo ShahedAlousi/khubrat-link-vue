@@ -30,10 +30,10 @@ onUnmounted(() => {
     <!-- Section Header -->
     <header class="border-b border-slate-200 dark:border-slate-800 pb-3">
       <h2 class="text-base font-bold text-slate-800 dark:text-slate-100">
-        Workforce & Headcount Analytics
+        {{ $t('companyDashboard.workforceTitle') }}
       </h2>
       <p class="text-xs text-slate-400 mt-0.5">
-        Real-time tracking of employee headcount, verification status, and turnover metrics.
+        {{ $t('companyDashboard.workforceHint') }}
       </p>
     </header>
 

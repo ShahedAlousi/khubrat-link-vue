@@ -1,14 +1,18 @@
 <script setup>
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BaseButton from './BaseButton.vue'
 
-defineProps({
+const props = defineProps({
   title: { type: String, required: true },
-  confirmLabel: { type: String, default: 'Confirm' },
+  confirmLabel: { type: String, default: '' },
   confirmVariant: { type: String, default: 'blue' },
   loading: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['confirm', 'cancel'])
+const { t } = useI18n()
+const resolvedConfirm = computed(() => props.confirmLabel || t('common.confirm'))
 </script>
 
 <template>
@@ -23,9 +27,9 @@ const emit = defineEmits(['confirm', 'cancel'])
       <div class="p-6 space-y-4">
         <slot />
         <div class="flex justify-end gap-3 pt-2">
-          <BaseButton variant="ghost" @click="emit('cancel')">Cancel</BaseButton>
+          <BaseButton variant="ghost" @click="emit('cancel')">{{ $t('common.cancel') }}</BaseButton>
           <BaseButton :variant="confirmVariant" :loading="loading" @click="emit('confirm')">
-            {{ confirmLabel }}
+            {{ resolvedConfirm }}
           </BaseButton>
         </div>
       </div>

@@ -1,8 +1,11 @@
 // دوال لتنسيق النصوص أو الأرقام (مثلاً تحويل التاريخ لشكل مقروء).
 
+import { currentIntlLocale } from '@/i18n/helpers'
+import { t } from '@/i18n/helpers'
+
 export function formatCurrency(value) {
   const number = Number(value ?? 0)
-  return number.toLocaleString('en-US', {
+  return number.toLocaleString(currentIntlLocale(), {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
@@ -11,10 +14,10 @@ export function formatCurrency(value) {
 }
 
 export function formatDate(value) {
-  if (!value) return '—'
+  if (!value) return t('common.emDash')
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  return date.toLocaleDateString(currentIntlLocale(), { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 export function initials(name) {

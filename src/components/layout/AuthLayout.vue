@@ -1,11 +1,12 @@
 <!-- // AuthLayout.vue -->
 <script setup>
 import logo from '@/assets/full_logo.png'
+import LanguageSwitcher from '@/components/common/LanguageSwitcher.vue'
 
 defineProps({
   title: { type: String, default: '' },
   subtitle: { type: String, default: '' },
-  maxWidth: { type: String, default: 'max-w-md' }, // جعل المقاس الأقصى متناسقاً بدقة ومريحاً بصرياً
+  maxWidth: { type: String, default: 'max-w-md' },
   backLabel: { type: String, default: '' }
 })
 
@@ -17,12 +18,15 @@ function handleBack() {
 </script>
 
 <template>
-  <!-- تعديل الخلفية: تم إلغاء استدعاء الصورة واستبدالها بمتدرج ناعم أزرق داكن ملكي يعكس النمط العصري المستهدف -->
   <div
     class="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden"
     style="background: radial-gradient(circle at center, #0a2d6c 0%, #031436 100%);"
   >
-    <div class="relative w-full flex justify-center">
+    <div class="absolute top-6 inset-x-0 z-20 flex justify-center px-4">
+      <LanguageSwitcher variant="auth" />
+    </div>
+
+    <div class="relative w-full flex justify-center pt-20">
       <div class="w-full" :class="maxWidth">
         <button
           v-if="backLabel"
@@ -30,16 +34,13 @@ function handleBack() {
           type="button"
           @click="handleBack"
         >
-          <i class="fa-solid fa-arrow-left"></i>
+          <i class="fa-solid fa-arrow-left rtl:rotate-180"></i>
           {{ backLabel }}
         </button>
 
-        <!-- الحاوية المركزية: تم تحويلها إلى اللون الأبيض الكامل المصمت (bg-white) بظلال ناعمة قوية ومطابقة تماماً للصورة المعروضة -->
-        <div
-          class="relative rounded-3xl p-8 sm:p-10 bg-white shadow-2xl"
-        >
+        <div class="relative rounded-3xl p-8 sm:p-10 bg-white shadow-2xl">
           <div v-if="title" class="text-center mb-6">
-            <img :src="logo" alt="Khubrat Link" class="mx-auto mb-4 h-24 object-contain" />
+            <img :src="logo" :alt="$t('auth.logoAlt')" class="mx-auto mb-4 h-24 object-contain" />
             <h1 class="text-2xl sm:text-3xl font-bold text-[#061c3f] tracking-tight">
               {{ title }}
             </h1>
@@ -56,6 +57,3 @@ function handleBack() {
     </div>
   </div>
 </template>
-
-<style scoped>
-</style>

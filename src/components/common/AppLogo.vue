@@ -39,7 +39,7 @@ const sizeMap = {
     >
       <img 
         :src="logoImg" 
-        alt="Khubrat Link Logo" 
+        :alt="$t('auth.logoAlt')" 
         class="w-full h-full object-contain"
       />
     </div>
@@ -58,7 +58,7 @@ const sizeMap = {
         class="text-xs tracking-widest font-semibold"
         :class="props.variant === 'sidebar' ? 'text-white/60' : 'text-slate-500'"
       >
-        HR PLATFORM
+        {{ $t('auth.hrPlatform') }}
       </span>
     </div>
   </div>

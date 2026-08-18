@@ -1,9 +1,11 @@
 <script setup>
 import { computed } from 'vue'
 import { Bar } from 'vue-chartjs'
+import { useI18n } from 'vue-i18n'
 import { useHrAnalyticsStore } from '@/stores/hrAnalytics.store'
 
 const store = useHrAnalyticsStore()
+const { t } = useI18n()
 
 // نرتب تنازلياً بالفرونت (بغض النظر عن ترتيب الباك اند) عشان نضمن الأعلى استهلاكاً أولاً
 const sortedDepartments = computed(() => {
@@ -17,7 +19,7 @@ const chartData = computed(() => {
     labels: departments.map((d) => d.department_name),
     datasets: [
       {
-        label: 'Budget spent',
+        label: t('companyDashboard.budgetSpent'),
         data: departments.map((d) => Number(d.total_budget_spent ?? 0)),
         backgroundColor: departments.map((_, i) => (i === 0 ? '#f59e0b' : '#94a3b8')),
         borderRadius: 4,
@@ -27,19 +29,19 @@ const chartData = computed(() => {
   }
 })
 
-const options = {
+const options = computed(() => ({
   indexAxis: 'y',
   maintainAspectRatio: false,
   plugins: { legend: { display: false } },
   scales: {
     x: { beginAtZero: true, ticks: { callback: (v) => v.toLocaleString() } }
   }
-}
+}))
 </script>
 
 <template>
   <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm h-72">
-    <h3 class="text-sm font-semibold text-slate-600 dark:text-slate-300">Department Budget Consumption</h3>
+    <h3 class="text-sm font-semibold text-slate-600 dark:text-slate-300">{{ $t('companyDashboard.budgetTitle') }}</h3>
     <div v-if="store.errorDepartmentBudgets" class="text-xs text-red-500 mt-1">{{ store.errorDepartmentBudgets }}</div>
 
     <div class="h-[210px] mt-3">

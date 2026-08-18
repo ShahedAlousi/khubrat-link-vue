@@ -25,22 +25,22 @@ function retry() {
 </script>
 
 <template>
-  <AuthLayout title="Payment Cancelled" max-width="max-w-lg">
+  <AuthLayout :title="$t('onboarding.paymentCancelled')" max-width="max-w-lg">
     <div class="text-center space-y-6">
       <div class="mx-auto w-20 h-20 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center text-4xl">
         <i class="fa-solid fa-ban"></i>
       </div>
 
       <p class="text-slate-700 text-lg font-medium leading-relaxed">
-        Payment was cancelled. Your paid plan has not been activated.
+        {{ $t('onboarding.paymentCancelledBody') }}
       </p>
 
       <p class="text-sm text-slate-500">
-        You can try again whenever you are ready. No charge was completed for this checkout session.
+        {{ $t('onboarding.tryAgainReady') }}
       </p>
 
       <BaseButton variant="gold" full-width @click="retry">
-        {{ isRenew ? 'Choose a plan again' : 'Start registration again' }}
+        {{ isRenew ? $t('onboarding.choosePlanAgain') : $t('onboarding.startRegistrationAgain') }}
       </BaseButton>
     </div>
   </AuthLayout>

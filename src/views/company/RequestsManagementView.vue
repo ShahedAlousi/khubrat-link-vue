@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BaseSelect from '@/components/common/BaseSelect.vue'
 import BaseAlert from '@/components/common/BaseAlert.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
@@ -7,7 +8,9 @@ import RequestDetailsDrawer from '@/components/requests/RequestDetailsDrawer.vue
 import LeaveRejectionModal from '@/components/requests/LeaveRejectionModal.vue'
 import { useManagementRequestsStore } from '@/stores/managementRequests.store'
 import { formatCurrency, formatDate, initials } from '@/utils/format'
+import { translateStatus, translateLeaveTypeName } from '@/i18n/helpers'
 
+const { t } = useI18n()
 const store = useManagementRequestsStore()
 
 const activeTab = ref('pending')
@@ -17,29 +20,26 @@ const rejectionModalOpen = ref(false)
 const rejectionTarget = ref(null)
 const toast = ref(null)
 
-const REQUEST_TYPES = [
-  { value: 'all', label: 'All Request Types' },
-  { value: 'leave', label: 'Leaves' },
-  { value: 'advance', label: 'Advances' },
-  { value: 'overtime', label: 'Overtime' },
-  { value: 'permission', label: 'Permissions' }
-]
+const REQUEST_TYPES = computed(() => [
+  { value: 'all', label: t('requests.allTypes') },
+  { value: 'leave', label: t('requests.leaves') },
+  { value: 'advance', label: t('requests.advances') },
+  { value: 'overtime', label: t('requests.overtime') },
+  { value: 'permission', label: t('requests.permissions') }
+])
 
 const upcomingTypes = ['permission']
 
-const TYPE_STYLES = {
+const TYPE_STYLE_META = {
   leave: {
-    label: 'Leave',
     icon: 'fa-plane-departure',
     badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
   },
   advance: {
-    label: 'Advance',
     icon: 'fa-money-bill-transfer',
     badge: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20'
   },
   overtime: {
-    label: 'Overtime',
     icon: 'fa-business-time',
     badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
   }
@@ -94,7 +94,10 @@ function typeOf(req) {
 }
 
 function typeStyle(req) {
-  return TYPE_STYLES[typeOf(req)] ?? TYPE_STYLES.leave
+  const type = typeOf(req)
+  const meta = TYPE_STYLE_META[type] ?? TYPE_STYLE_META.leave
+  const labelKey = type === 'advance' ? 'requests.advance' : type === 'overtime' ? 'requests.overtime' : 'requests.leave'
+  return { ...meta, label: t(labelKey) }
 }
 
 function canActOn(req) {
@@ -106,41 +109,35 @@ function canActOn(req) {
 
 function subtitleOf(req) {
   const type = typeOf(req)
-  if (type === 'advance') return 'Salary Advance'
-  if (type === 'overtime') return 'Overtime Work'
-  return req.leave_type_name || 'Leave Request'
+  if (type === 'advance') return t('requests.salaryAdvance')
+  if (type === 'overtime') return t('requests.overtimeWork')
+  return translateLeaveTypeName(req.leave_type_name) || t('requests.leaveRequest')
 }
 
-function unitLabel(req) {
-  const n = Number(req?.units_requested)
-  if (!Number.isFinite(n)) return '—'
-  const suffix = req?.duration_type === 'day' ? 'day' : 'hr'
-  return `${n} ${suffix}${n === 1 ? '' : 's'}`
-}
-
-/** Bold headline on the right side of a row. */
 function primaryLine(req) {
   const type = typeOf(req)
-  if (type === 'advance') return `Requested: ${money(req.requested_amount)}`
+  if (type === 'advance') return t('requests.requestedAmount', { amount: money(req.requested_amount) })
   if (type === 'overtime') return formatDate(req.request_date)
-  return `${formatDate(req.start_date)} to ${formatDate(req.end_date)}`
+  return `${formatDate(req.start_date)} – ${formatDate(req.end_date)}`
 }
 
 /** Muted supporting line under the headline. */
 function secondaryLine(req) {
   const type = typeOf(req)
   if (type === 'advance') {
-    const months = req.repayment_months ? `${req.repayment_months} month(s)` : '—'
-    return `Base Monthly: ${money(req.basic_salary)} • Repaid over ${months}`
+    return t('requests.baseMonthly', {
+      salary: money(req.basic_salary),
+      n: req.repayment_months || t('common.emDash')
+    })
   }
-  if (type === 'overtime') return `Duration: ${unitLabel(req)}`
-  return `${durationLabel(req)} requested`
+  if (type === 'overtime') return t('requests.duration', { n: Number(req?.units_requested) })
+  return t('requests.daysRequested', { n: durationValue(req) })
 }
 
 function money(value) {
-  if (value === null || value === undefined || value === '') return '—'
+  if (value === null || value === undefined || value === '') return t('common.emDash')
   const n = Number(value)
-  return Number.isFinite(n) ? formatCurrency(n) : '—'
+  return Number.isFinite(n) ? formatCurrency(n) : t('common.emDash')
 }
 
 function showToast(message, variant = 'info') {
@@ -150,16 +147,14 @@ function showToast(message, variant = 'info') {
   }, 3000)
 }
 
-function durationLabel(req) {
+function durationValue(req) {
   const days = req?.duration_days
-  if (days === null || days === undefined || Number.isNaN(Number(days))) return '—'
-  const n = Number(days)
-  return `${n} day${n === 1 ? '' : 's'}`
+  if (days === null || days === undefined || Number.isNaN(Number(days))) return t('common.emDash')
+  return Number(days)
 }
 
 function statusLabel(status) {
-  if (!status) return 'pending'
-  return String(status).replaceAll('_', ' ')
+  return translateStatus(status || 'pending')
 }
 
 function statusTone(status) {
@@ -203,9 +198,9 @@ async function handleApprove(req, options = {}) {
     else if (type === 'overtime') await store.approveOvertime(req.id, options)
     else await store.approveRequest(req.id)
 
-    showToast(`${typeStyle(req).label} request approved successfully.`, 'success')
+    showToast(t('requests.approvedSuccess', { type: typeStyle(req).label }), 'success')
   } catch {
-    showToast(store.error || 'Failed to approve request.', 'error')
+    showToast(store.error || t('requests.approveFailed'), 'error')
   }
 }
 
@@ -226,9 +221,9 @@ async function handleRejectionSubmit(reason) {
 
     rejectionModalOpen.value = false
     rejectionTarget.value = null
-    showToast(`${typeStyle(req).label} request rejected.`, 'error')
+    showToast(t('requests.rejectedSuccess', { type: typeStyle(req).label }), 'error')
   } catch {
-    showToast(store.error || 'Failed to reject request.', 'error')
+    showToast(store.error || t('requests.rejectFailed'), 'error')
   }
 }
 
@@ -238,9 +233,9 @@ async function handlePayInstallment(installment) {
 
   try {
     await store.payAdvanceInstallment(req.id, installment.id)
-    showToast('Installment marked as paid.', 'success')
+    showToast(t('requests.installmentPaid'), 'success')
   } catch {
-    showToast(store.error || 'Failed to mark the installment as paid.', 'error')
+    showToast(store.error || t('requests.installmentFailed'), 'error')
   }
 }
 
@@ -253,18 +248,18 @@ onMounted(() => {
   <section class="space-y-6 max-w-7xl mx-auto">
     <header>
       <h1 class="text-xl font-bold text-khubrat-blue dark:text-khubrat-goldLight">
-        Requests Inbox &amp; Decision Ledger
+        {{ $t('requests.title') }}
       </h1>
-      <p class="text-xs text-slate-400 mt-1">Review and decide on employee requests awaiting your action.</p>
+      <p class="text-xs text-slate-400 mt-1">{{ $t('requests.subtitle') }}</p>
     </header>
 
   <!-- Stats -->
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
       <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
         <div class="space-y-1">
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Awaiting Decision</p>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{{ $t('requests.awaiting') }}</p>
           <h3 class="text-2xl font-black text-amber-500">{{ store.totalPendingCount }}</h3>
-          <p class="text-[10px] text-slate-500 font-semibold">Action required immediately</p>
+          <p class="text-[10px] text-slate-500 font-semibold">{{ $t('requests.awaitingHint') }}</p>
         </div>
         <div class="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400 text-xl">
           <i class="fa-solid fa-hourglass-half"></i>
@@ -273,9 +268,9 @@ onMounted(() => {
 
       <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
         <div class="space-y-1">
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Resolved This Session</p>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{{ $t('requests.resolved') }}</p>
           <h3 class="text-2xl font-black text-emerald-500">{{ store.resolvedCount }}</h3>
-          <p class="text-[10px] text-slate-500 font-semibold">Processed in active log</p>
+          <p class="text-[10px] text-slate-500 font-semibold">{{ $t('requests.resolvedHint') }}</p>
         </div>
         <div class="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 text-xl">
           <i class="fa-solid fa-square-check"></i>
@@ -283,28 +278,28 @@ onMounted(() => {
       </div>
 
       <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm lg:col-span-2 flex flex-col justify-center">
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Module Coverage</p>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">{{ $t('requests.coverage') }}</p>
         <div class="flex flex-wrap gap-2">
           <span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-            Leaves — {{ store.pendingCount }} pending
+            {{ $t('requests.leavesPending', { n: store.pendingCount }) }}
           </span>
           <span
             v-if="store.canViewAdvances"
             class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-sky-500/10 text-sky-600 border border-sky-500/20"
           >
-            Advances — {{ store.advancesCount }} pending
+            {{ $t('requests.advancesPending', { n: store.advancesCount }) }}
           </span>
           <span
             v-else
             class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-900 text-slate-400 border border-slate-200 dark:border-slate-700"
           >
-            Advances — HR only
+            {{ $t('requests.advancesHrOnly') }}
           </span>
           <span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-amber-500/10 text-amber-600 border border-amber-500/20">
-            Overtime — {{ store.overtimeCount }} pending
+            {{ $t('requests.overtimePending', { n: store.overtimeCount }) }}
           </span>
           <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-900 text-slate-400 border border-slate-200 dark:border-slate-700">
-            Permissions — Soon
+            {{ $t('requests.permissionsSoon') }}
           </span>
         </div>
       </div>
@@ -321,7 +316,7 @@ onMounted(() => {
             : 'text-slate-500 dark:text-slate-400'"
           @click="activeTab = 'pending'"
         >
-          Pending Box
+          {{ $t('requests.pendingBox') }}
         </button>
         <button
           type="button"
@@ -331,7 +326,7 @@ onMounted(() => {
             : 'text-slate-500 dark:text-slate-400 font-semibold'"
           @click="activeTab = 'history'"
         >
-          Decision Log History
+          {{ $t('requests.decisionLog') }}
         </button>
       </div>
 
@@ -370,14 +365,14 @@ onMounted(() => {
     <BaseAlert v-if="store.error && !isLoading" variant="error">{{ store.error }}</BaseAlert>
 
     <BaseAlert v-if="!store.canActOnRequests" variant="info">
-      Your account can view requests but cannot approve or reject them. Only HR managers and department managers can take action.
+      {{ $t('requests.viewOnlyHint') }}
     </BaseAlert>
 
     <BaseAlert v-else-if="typeFilter === 'advance' && !store.canViewAdvances" variant="info">
-      Salary advances skip the department manager stage — only HR managers review them.
+      {{ $t('requests.advancesSkip') }}
     </BaseAlert>
 
-    <LoadingSpinner v-if="isLoading && activeTab === 'pending'" label="Loading requests…" />
+    <LoadingSpinner v-if="isLoading && activeTab === 'pending'" :label="$t('requests.loading')" />
 
     <div
       v-else-if="showComingSoon"
@@ -386,9 +381,9 @@ onMounted(() => {
       <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center mx-auto text-slate-400 text-2xl">
         <i class="fa-solid fa-screwdriver-wrench"></i>
       </div>
-      <h4 class="text-sm font-bold text-slate-700 dark:text-slate-200">Module coming soon</h4>
+      <h4 class="text-sm font-bold text-slate-700 dark:text-slate-200">{{ $t('requests.comingSoon') }}</h4>
       <p class="text-xs text-slate-400 max-w-sm mx-auto">
-        This request type is not wired to the backend yet. Leaves, advances and overtime are fully supported in this build.
+        {{ $t('requests.comingSoonBody') }}
       </p>
     </div>
 
@@ -396,10 +391,10 @@ onMounted(() => {
       <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center mx-auto text-slate-400 text-2xl">
         <i class="fa-solid fa-folder-open"></i>
       </div>
-      <h4 class="text-sm font-bold text-slate-700 dark:text-slate-200">No requests match this view</h4>
+      <h4 class="text-sm font-bold text-slate-700 dark:text-slate-200">{{ $t('requests.noMatch') }}</h4>
       <p class="text-xs text-slate-400 max-w-sm mx-auto">
-        <template v-if="activeTab === 'pending'">There are no pending requests in your inbox.</template>
-        <template v-else>Resolved requests from this session will appear here. A full history API is not yet available.</template>
+        <template v-if="activeTab === 'pending'">{{ $t('requests.noPending') }}</template>
+        <template v-else>{{ $t('requests.resolvedEmpty') }}</template>
       </p>
     </div>
 
@@ -435,10 +430,10 @@ onMounted(() => {
               <span
                 v-if="req.attachment_url"
                 class="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-600 dark:text-sky-400"
-                title="Supporting document attached"
+                :title="$t('requests.supportingDoc')"
               >
                 <i class="fa-solid fa-paperclip"></i>
-                Attachment
+                {{ $t('common.attachment') }}
               </span>
             </div>
           </div>
@@ -447,7 +442,7 @@ onMounted(() => {
         <div
           class="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 dark:border-slate-700"
         >
-          <div class="md:text-right min-w-0">
+          <div class="md:text-end min-w-0">
             <p class="text-xs font-black text-slate-800 dark:text-slate-100 truncate">
               {{ primaryLine(req) }}
             </p>
@@ -468,7 +463,7 @@ onMounted(() => {
               class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all"
               @click="openDetails(req)"
             >
-              {{ viewStyle === 'grid' ? 'Details' : 'View File' }}
+              {{ viewStyle === 'grid' ? $t('common.details') : $t('common.viewFile') }}
             </button>
 
             <template v-if="activeTab === 'pending' && canActOn(req)">
@@ -478,7 +473,7 @@ onMounted(() => {
                 :disabled="store.actionLoading"
                 @click="handleApprove(req)"
               >
-                Approve
+                {{ $t('requests.approve') }}
               </button>
               <button
                 type="button"
@@ -486,7 +481,7 @@ onMounted(() => {
                 :disabled="store.actionLoading"
                 @click="openRejection(req)"
               >
-                Reject
+                {{ $t('requests.reject') }}
               </button>
             </template>
           </div>

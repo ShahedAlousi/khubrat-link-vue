@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import AuthLayout from '@/components/layout/AuthLayout.vue'
 import BaseInput from '@/components/common/BaseInput.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
@@ -8,6 +9,7 @@ import BaseAlert from '@/components/common/BaseAlert.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { minLength } from '@/utils/validators'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
@@ -22,8 +24,8 @@ const submitError = ref('')
 const submitting = ref(false)
 
 function validate() {
-  fieldErrors.password = minLength(form.password, 8) ? '' : 'Password must be at least 8 characters.'
-  fieldErrors.confirmPassword = form.confirmPassword === form.password ? '' : 'Passwords do not match.'
+  fieldErrors.password = minLength(form.password, 8) ? '' : t('validation.passwordMin')
+  fieldErrors.confirmPassword = form.confirmPassword === form.password ? '' : t('validation.passwordsMismatch')
   return !fieldErrors.password && !fieldErrors.confirmPassword
 }
 
@@ -44,9 +46,9 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <AuthLayout title="Reset Your Password" subtitle="Choose a new password for your account.">
+  <AuthLayout :title="$t('auth.resetTitle')" :subtitle="$t('auth.resetSubtitle')">
     <BaseAlert v-if="!email || !token" variant="error" class="mb-5">
-      This reset link is missing or invalid. Please request a new one.
+      {{ $t('auth.resetInvalid') }}
     </BaseAlert>
 
     <form v-else class="space-y-5" @submit.prevent="handleSubmit">
@@ -55,7 +57,7 @@ async function handleSubmit() {
       <BaseInput
         v-model="form.password"
         type="password"
-        label="New Password"
+        :label="$t('auth.newPassword')"
         placeholder="••••••••"
         autocomplete="new-password"
         required
@@ -64,19 +66,19 @@ async function handleSubmit() {
       <BaseInput
         v-model="form.confirmPassword"
         type="password"
-        label="Confirm New Password"
+        :label="$t('auth.confirmPassword')"
         placeholder="••••••••"
         autocomplete="new-password"
         required
         :error="fieldErrors.confirmPassword"
       />
 
-      <BaseButton type="submit" variant="gold" full-width :loading="submitting">Update Password</BaseButton>
+      <BaseButton type="submit" variant="gold" full-width :loading="submitting">{{ $t('auth.updatePassword') }}</BaseButton>
     </form>
 
     <template #footer>
-      Encountered a problem?
-      <a href="mailto:support@khubratlink.com" class="font-bold underline">Contact technical support.</a>
+      {{ $t('auth.encounteredProblem') }}
+      <a href="mailto:support@khubratlink.com" class="font-bold underline">{{ $t('auth.contactSupport') }}</a>
     </template>
   </AuthLayout>
 </template>

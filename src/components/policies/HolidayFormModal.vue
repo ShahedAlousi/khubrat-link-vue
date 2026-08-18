@@ -1,5 +1,6 @@
 <script setup>
 import { computed, reactive } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ConfirmModal from '@/components/common/ConfirmModal.vue'
 import BaseInput from '@/components/common/BaseInput.vue'
 import BaseSelect from '@/components/common/BaseSelect.vue'
@@ -13,6 +14,7 @@ const props = defineProps({
   loading: { type: Boolean, default: false }
 })
 
+const { t } = useI18n()
 const emit = defineEmits(['save', 'cancel'])
 
 const isEdit = Boolean(props.holiday)
@@ -30,17 +32,17 @@ const form = reactive({
 
 const fieldErrors = reactive({ name: '', start_date: '', end_date: '' })
 
-const holidayTypeOptions = [
-  { value: 'single_day', label: 'Single Day' },
-  { value: 'date_range', label: 'Date Range' }
-]
+const holidayTypeOptions = computed(() => [
+  { value: 'single_day', label: t('policies.singleDay') },
+  { value: 'date_range', label: t('policies.dateRange') }
+])
 
 const isRange = computed(() => form.holiday_type === 'date_range')
 
 function validate() {
-  fieldErrors.name = isRequired(form.name) ? '' : 'Holiday name is required.'
-  fieldErrors.start_date = isRequired(form.start_date) ? '' : 'Start date is required.'
-  fieldErrors.end_date = isRange.value && !isRequired(form.end_date) ? 'End date is required.' : ''
+  fieldErrors.name = isRequired(form.name) ? '' : t('validation.holidayNameRequired')
+  fieldErrors.start_date = isRequired(form.start_date) ? '' : t('validation.startDateRequired')
+  fieldErrors.end_date = isRange.value && !isRequired(form.end_date) ? t('validation.endDateRequired') : ''
   return !fieldErrors.name && !fieldErrors.start_date && !fieldErrors.end_date
 }
 
@@ -58,32 +60,32 @@ function handleSave() {
 
 <template>
   <ConfirmModal
-    :title="isEdit ? 'Edit Holiday Parameters' : 'Add Corporate Holiday Policy'"
-    confirm-label="Save Holiday"
+    :title="isEdit ? $t('policies.editHoliday') : $t('policies.addHoliday')"
+    :confirm-label="$t('policies.saveHoliday')"
     confirm-variant="blue"
     :loading="loading"
     @confirm="handleSave"
     @cancel="emit('cancel')"
   >
-    <BaseInput v-model="form.name" label="Holiday Name (اسم العطلة)" required :error="fieldErrors.name" />
+    <BaseInput v-model="form.name" :label="$t('policies.holidayName')" required :error="fieldErrors.name" />
 
-    <BaseSelect v-model="form.holiday_type" label="Date Selection (نوع التاريخ)" :options="holidayTypeOptions" required />
+    <BaseSelect v-model="form.holiday_type" :label="$t('policies.dateSelection')" :options="holidayTypeOptions" required />
 
     <div class="grid grid-cols-2 gap-4">
       <BaseInput
         v-model="form.start_date"
         type="date"
-        :label="isRange ? 'Commencement Date' : 'Holiday Date'"
+        :label="isRange ? $t('policies.commencement') : $t('policies.holidayDate')"
         required
         :error="fieldErrors.start_date"
       />
-      <BaseInput v-if="isRange" v-model="form.end_date" type="date" label="Termination Date" required :error="fieldErrors.end_date" />
+      <BaseInput v-if="isRange" v-model="form.end_date" type="date" :label="$t('policies.termination')" required :error="fieldErrors.end_date" />
     </div>
 
     <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-150 dark:border-slate-800">
       <div class="space-y-0.5">
-        <label class="text-xs font-bold text-slate-500 dark:text-slate-300">Annual Recurrence (متكررة سنوياً)</label>
-        <p class="text-[9px] text-slate-400">Repeats automatically every fiscal cycle on the exact date.</p>
+        <label class="text-xs font-bold text-slate-500 dark:text-slate-300">{{ $t('policies.annualRecurrence') }}</label>
+        <p class="text-[9px] text-slate-400">{{ $t('policies.repeatsHint') }}</p>
       </div>
       <ToggleSwitch v-model="form.repeats_annually" />
     </div>

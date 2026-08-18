@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Doughnut } from 'vue-chartjs'
 
 const props = defineProps({
@@ -10,8 +11,10 @@ const props = defineProps({
   }
 })
 
+const { t } = useI18n()
+
 const chartData = computed(() => ({
-  labels: ['Active', 'Frozen', 'At-Risk'],
+  labels: [t('status.active'), t('status.frozen'), t('status.at_risk')],
   datasets: [
     {
       data: [props.distribution.active ?? 0, props.distribution.frozen ?? 0, props.distribution.at_risk ?? 0],
@@ -21,14 +24,14 @@ const chartData = computed(() => ({
   ]
 }))
 
-const chartOptions = {
+const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   cutout: '68%',
   plugins: {
     legend: { display: false }
   }
-}
+}))
 </script>
 
 <template>

@@ -1,15 +1,17 @@
 <script setup>
 import { computed } from 'vue'
 import { Doughnut, Bar } from 'vue-chartjs'
+import { useI18n } from 'vue-i18n'
 import { useHrAnalyticsStore } from '@/stores/hrAnalytics.store'
 
 const store = useHrAnalyticsStore()
+const { t } = useI18n()
 
 const gender = computed(() => store.demographics?.gender_distribution ?? {})
 const age = computed(() => store.demographics?.age_distribution ?? {})
 
 const genderData = computed(() => ({
-  labels: ['Male', 'Female', 'Unspecified'],
+  labels: [t('staff.male'), t('staff.female'), t('staff.unspecified')],
   datasets: [
     {
       data: [gender.value.male ?? 0, gender.value.female ?? 0, gender.value.unspecified ?? 0],
@@ -19,21 +21,27 @@ const genderData = computed(() => ({
   ]
 }))
 
-const genderOptions = {
+const genderOptions = computed(() => ({
   cutout: '65%',
   maintainAspectRatio: false,
   plugins: {
     legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } }
   }
-}
+}))
 
-const ageLabels = ['Under 25', '25-34', '35-44', '45-54', '55+']
+const ageLabels = computed(() => [
+  t('companyDashboard.under25'),
+  t('companyDashboard.age25'),
+  t('companyDashboard.age35'),
+  t('companyDashboard.age45'),
+  t('companyDashboard.age55')
+])
 
 const ageData = computed(() => ({
-  labels: ageLabels,
+  labels: ageLabels.value,
   datasets: [
     {
-      label: 'Employees',
+      label: t('companyDashboard.employees'),
       data: [
         age.value.under_25 ?? 0,
         age.value['25_34'] ?? 0,
@@ -48,19 +56,19 @@ const ageData = computed(() => ({
   ]
 }))
 
-const ageOptions = {
+const ageOptions = computed(() => ({
   indexAxis: 'y',
   maintainAspectRatio: false,
   plugins: { legend: { display: false } },
   scales: {
     x: { beginAtZero: true, ticks: { precision: 0 } }
   }
-}
+}))
 </script>
 
 <template>
   <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm h-72">
-    <h3 class="text-sm font-semibold text-slate-600 dark:text-slate-300">Workforce Demographics</h3>
+    <h3 class="text-sm font-semibold text-slate-600 dark:text-slate-300">{{ $t('companyDashboard.demographics') }}</h3>
     <div v-if="store.errorDemographics" class="text-xs text-red-500 mt-1">{{ store.errorDemographics }}</div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 h-[190px]">

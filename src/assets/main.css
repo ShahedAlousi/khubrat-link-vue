@@ -33,6 +33,15 @@ body {
   @apply bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100;
 }
 
+html[lang='ar'],
+html.locale-ar,
+html[lang='ar'] body,
+html.locale-ar body,
+html[lang='ar'] .font-sans,
+html.locale-ar .font-sans {
+  font-family: 'IBM Plex Sans Arabic', sans-serif;
+}
+
 /* Blurred hero background used on the auth / onboarding screens */
 .auth-bg {
   background-size: cover;

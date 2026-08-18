@@ -2,9 +2,10 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { hrManagersService } from '@/services/hrManagers.service'
 import { departmentsService } from '@/services/departments.service'
+import { t } from '@/i18n/helpers'
 
 /** HR department is not taken from the API — always shown as this label. */
-export const HR_DEPARTMENT_NAME = 'Human Resources'
+export const HR_DEPARTMENT_NAME = () => t('staff.humanResources')
 
 /**
  * HR list/detail payloads keep identity fields at the top level and nest
@@ -26,7 +27,7 @@ export function unwrapHrManagerPayload(row) {
     birth_date: employee?.birth_date ?? row.birth_date ?? null,
     employment_type: employee?.employment_type ?? row.employment_type ?? null,
     is_active: employee?.is_active ?? row.is_active ?? row.status === 'active',
-    department_name: HR_DEPARTMENT_NAME
+    department_name: HR_DEPARTMENT_NAME()
   }
 }
 

@@ -29,5 +29,10 @@ export default {
   // POST /management/salaries/{id}/pay
   pay(id) {
     return api.post(`/management/salaries/${id}/pay`).then((res) => res.data)
+  },
+
+  // POST /management/salaries/{id}/adjustments
+  addAdjustment(id, payload) {
+    return api.post(`/management/salaries/${id}/adjustments`, payload).then((res) => res.data)
   }
 }

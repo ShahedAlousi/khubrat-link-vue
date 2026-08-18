@@ -1,5 +1,6 @@
 <script setup>
-import { reactive } from 'vue'
+import { computed, reactive } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ConfirmModal from '@/components/common/ConfirmModal.vue'
 import BaseInput from '@/components/common/BaseInput.vue'
 import BaseSelect from '@/components/common/BaseSelect.vue'
@@ -11,6 +12,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['save', 'cancel'])
+
+const { t } = useI18n()
 
 const isEdit = Boolean(props.plan)
 
@@ -27,21 +30,21 @@ const form = reactive({
 
 const fieldErrors = reactive({ name: '', price: '', max_employees: '', max_uses_per_company: '' })
 
-const planTypeOptions = [
-  { value: 'free', label: 'Free' },
-  { value: 'paid', label: 'Paid' }
-]
+const planTypeOptions = computed(() => [
+  { value: 'free', label: t('common.free') },
+  { value: 'paid', label: t('common.paid') }
+])
 
-const billingPeriodOptions = [
-  { value: 'month', label: 'Monthly' },
-  { value: 'year', label: 'Yearly' }
-]
+const billingPeriodOptions = computed(() => [
+  { value: 'month', label: t('dashboard.monthly') },
+  { value: 'year', label: t('dashboard.yearly') }
+])
 
 function validate() {
-  fieldErrors.name = isRequired(form.name) ? '' : 'Package name is required.'
-  fieldErrors.price = form.price !== '' && Number(form.price) >= 0 ? '' : 'Enter a valid price.'
-  fieldErrors.max_employees = Number(form.max_employees) > 0 ? '' : 'Enter the allowed seat count.'
-  fieldErrors.max_uses_per_company = Number(form.max_uses_per_company) > 0 ? '' : 'Must be at least 1.'
+  fieldErrors.name = isRequired(form.name) ? '' : t('validation.packageNameRequired')
+  fieldErrors.price = form.price !== '' && Number(form.price) >= 0 ? '' : t('validation.validPrice')
+  fieldErrors.max_employees = Number(form.max_employees) > 0 ? '' : t('validation.seatCountRequired')
+  fieldErrors.max_uses_per_company = Number(form.max_uses_per_company) > 0 ? '' : t('validation.atLeastOne')
   return !fieldErrors.name && !fieldErrors.price && !fieldErrors.max_employees && !fieldErrors.max_uses_per_company
 }
 
@@ -62,35 +65,35 @@ function handleSave() {
 
 <template>
   <ConfirmModal
-    :title="isEdit ? 'Edit Package Plan Details' : 'Launch New HR Package Plan'"
-    confirm-label="Save Changes"
+    :title="isEdit ? $t('dashboard.editPackage') : $t('dashboard.launchPackage')"
+    :confirm-label="$t('common.saveChanges')"
     confirm-variant="blue"
     :loading="loading"
     @confirm="handleSave"
     @cancel="emit('cancel')"
   >
-    <BaseInput v-model="form.name" label="Package Name" required :error="fieldErrors.name" />
+    <BaseInput v-model="form.name" :label="$t('dashboard.packageName')" required :error="fieldErrors.name" />
 
     <div class="grid grid-cols-2 gap-4">
-      <BaseInput v-model="form.price" type="number" label="Price ($ USD)" required :error="fieldErrors.price" />
-      <BaseInput v-model="form.max_employees" type="number" label="Allowed Staff/Seats" required :error="fieldErrors.max_employees" />
+      <BaseInput v-model="form.price" type="number" :label="$t('dashboard.priceUsd')" required :error="fieldErrors.price" />
+      <BaseInput v-model="form.max_employees" type="number" :label="$t('dashboard.allowedSeats')" required :error="fieldErrors.max_employees" />
     </div>
 
     <div class="grid grid-cols-2 gap-4">
-      <BaseSelect v-model="form.plan_type" label="Plan Type" :options="planTypeOptions" required />
-      <BaseSelect v-model="form.billing_period" label="Billing Period" :options="billingPeriodOptions" required />
+      <BaseSelect v-model="form.plan_type" :label="$t('dashboard.planType')" :options="planTypeOptions" required />
+      <BaseSelect v-model="form.billing_period" :label="$t('dashboard.billingPeriod')" :options="billingPeriodOptions" required />
     </div>
 
     <BaseInput
       v-model="form.max_uses_per_company"
       type="number"
-      label="Max Uses Per Company"
+      :label="$t('dashboard.maxUses')"
       required
       :error="fieldErrors.max_uses_per_company"
     />
 
     <div class="space-y-1">
-      <label class="text-xs font-bold text-slate-400">Short Package Pitch/Description</label>
+      <label class="text-xs font-bold text-slate-400">{{ $t('dashboard.packageDescription') }}</label>
       <textarea
         v-model="form.description"
         rows="3"
@@ -100,7 +103,7 @@ function handleSave() {
 
     <label class="flex items-center gap-2 pt-1">
       <input v-model="form.is_active" type="checkbox" class="w-4 h-4 rounded text-khubrat-blue focus:ring-0" />
-      <span class="text-xs font-semibold text-slate-500 dark:text-slate-300">Set Package as immediately Active &amp; Available</span>
+      <span class="text-xs font-semibold text-slate-500 dark:text-slate-300">{{ $t('dashboard.setActive') }}</span>
     </label>
   </ConfirmModal>
 </template>

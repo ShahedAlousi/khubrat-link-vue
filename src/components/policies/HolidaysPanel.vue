@@ -139,10 +139,9 @@ async function confirmDelete() {
         <i class="fa-solid fa-calendar-days text-[180px]"></i>
       </div>
       <div class="max-w-2xl space-y-3 relative">
-        <h3 class="text-lg font-extrabold text-khubrat-goldLight">Syrian National Holidays Quick Import</h3>
+        <h3 class="text-lg font-extrabold text-khubrat-goldLight">{{ $t('policies.syrianImport') }}</h3>
         <p class="text-xs text-slate-200 leading-relaxed">
-          Pre-populate your official corporate policy calendar instantly. Seed fixed sovereign holidays into your
-          scheduler, or remove them dynamically using the toggle trigger below.
+          {{ $t('policies.syrianImportHint') }}
         </p>
         <button
           class="font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all duration-200 transform active:scale-95 shadow-md"
@@ -151,7 +150,7 @@ async function confirmDelete() {
           @click="handleSeedToggle"
         >
           <i class="fa-solid" :class="holidaysStore.seeding ? 'fa-spinner animate-spin' : holidaysStore.isSyrianSeeded ? 'fa-trash-can' : 'fa-cloud-arrow-down'"></i>
-          {{ holidaysStore.isSyrianSeeded ? 'Remove Syrian Holidays' : 'Seed Default Syrian Holidays' }}
+          {{ holidaysStore.isSyrianSeeded ? $t('policies.removeSyrian') : $t('policies.seedSyrian') }}
         </button>
       </div>
     </div>
@@ -162,19 +161,19 @@ async function confirmDelete() {
         <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
           <div class="flex justify-between items-center gap-3">
             <div class="flex-1">
-              <WeekdaySelector v-model="restDaysDraft" label="Weekly Rest Days Configuration" :readonly="readonly" />
+              <WeekdaySelector v-model="restDaysDraft" :label="$t('policies.weeklyRest')" :readonly="readonly" />
             </div>
-            <BaseButton v-if="!readonly" variant="blue" :loading="savingRestDays" @click="handleSaveRestDays">Save</BaseButton>
+            <BaseButton v-if="!readonly" variant="blue" :loading="savingRestDays" @click="handleSaveRestDays">{{ $t('common.save') }}</BaseButton>
           </div>
-          <BaseAlert v-if="restDaysSuccess" variant="success">Weekly rest days saved successfully.</BaseAlert>
+          <BaseAlert v-if="restDaysSuccess" variant="success">{{ $t('policies.weeklyRestSaved') }}</BaseAlert>
         </div>
 
         <div v-if="!readonly" class="p-3 bg-khubrat-blue/5 dark:bg-slate-900/40 border border-khubrat-blue/10 dark:border-slate-800 text-xs rounded-xl flex items-center gap-2 text-khubrat-blue dark:text-khubrat-goldLight">
           <i class="fa-solid fa-circle-info"></i>
-          <span><strong>Interactive Selection:</strong> Click a single date, or press and drag across several days, to add a holiday policy for that range.</span>
+          <span>{{ $t('policies.calendarHint') }}</span>
         </div>
 
-        <LoadingSpinner v-if="holidaysStore.loading && !holidaysStore.holidays.length" label="Loading calendar…" />
+        <LoadingSpinner v-if="holidaysStore.loading && !holidaysStore.holidays.length" :label="$t('policies.loadingCalendar')" />
         <HolidayCalendar
           v-else
           :holidays="holidaysStore.holidays"
@@ -188,8 +187,8 @@ async function confirmDelete() {
       <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
         <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
           <div>
-            <h4 class="text-sm font-black text-khubrat-blue dark:text-white">Holiday Timeline Directory</h4>
-            <p class="text-[10px] text-slate-400">Chronological list of all custom and imported holidays.</p>
+            <h4 class="text-sm font-black text-khubrat-blue dark:text-white">{{ $t('policies.holidayDirectory') }}</h4>
+            <p class="text-[10px] text-slate-400">{{ $t('policies.holidayDirectoryHint') }}</p>
           </div>
           <button
             v-if="!readonly"
@@ -201,7 +200,7 @@ async function confirmDelete() {
         </div>
 
         <div v-if="!holidaysStore.holidays.length" class="text-center text-xs font-semibold text-slate-400 py-10">
-          No holidays configured yet.
+          {{ $t('policies.noHolidays') }}
         </div>
 
         <div v-else class="space-y-3 max-h-[380px] overflow-y-auto pr-1">
@@ -218,7 +217,7 @@ async function confirmDelete() {
               </p>
               <p class="text-[9px] font-bold" :class="h.repeats_annually ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'">
                 <i class="fa-solid fa-arrows-rotate mr-1"></i>
-                {{ h.repeats_annually ? 'Repeats annually' : 'One-off' }}
+                {{ h.repeats_annually ? $t('policies.repeatsAnnually') : $t('policies.oneOff') }}
               </p>
             </div>
             <div v-if="!readonly" class="flex gap-1">
@@ -252,15 +251,15 @@ async function confirmDelete() {
 
     <ConfirmModal
       v-if="deleteTarget"
-      title="Delete Holiday"
-      confirm-label="Delete Permanently"
+      :title="$t('policies.deleteHoliday')"
+      :confirm-label="$t('staff.deletePermanently')"
       confirm-variant="danger"
       :loading="deleteLoading"
       @confirm="confirmDelete"
       @cancel="deleteTarget = null"
     >
       <p class="text-sm text-slate-600 dark:text-slate-300">
-        Purge <strong>{{ deleteTarget?.name }}</strong> from the corporate calendar agenda?
+        {{ $t('policies.purgeHoliday', { name: deleteTarget?.name }) }}
       </p>
     </ConfirmModal>
   </div>

@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import PolicyReadonlyValue from './PolicyReadonlyValue.vue'
 import CompanyGeofenceMap from './CompanyGeofenceMap.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
@@ -12,6 +13,7 @@ const props = defineProps({
   readonly: { type: Boolean, default: false }
 })
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const attendancePolicyStore = useAttendancePolicyStore()
 
@@ -30,11 +32,11 @@ const alertMessage = ref('')
 const alertVariant = ref('success')
 
 function displayTime(value) {
-  return value ? String(value).slice(0, 5) : '—'
+  return value ? String(value).slice(0, 5) : t('common.emDash')
 }
 
 function displayValue(value, suffix = '') {
-  if (value === null || value === undefined || value === '') return '—'
+  if (value === null || value === undefined || value === '') return t('common.emDash')
   return `${value}${suffix}`
 }
 
@@ -77,10 +79,10 @@ async function handleSavePolicy() {
       allows_overtime: form.allows_overtime
     })
     alertVariant.value = 'success'
-    alertMessage.value = 'Attendance policies were successfully saved.'
+    alertMessage.value = t('policies.attendanceSaved')
   } catch (err) {
     alertVariant.value = 'error'
-    alertMessage.value = attendancePolicyStore.error || 'An error occurred during saving.'
+    alertMessage.value = attendancePolicyStore.error || t('policies.saveError')
   }
 }
 
@@ -94,10 +96,10 @@ async function handleSaveLocation() {
       longitude: form.longitude
     })
     alertVariant.value = 'success'
-    alertMessage.value = 'The geo-finding settings have been successfully saved.'
+    alertMessage.value = t('policies.geoSaved')
   } catch (err) {
     alertVariant.value = 'error'
-    alertMessage.value = attendancePolicyStore.error || 'An error occurred during saving.'
+    alertMessage.value = attendancePolicyStore.error || t('policies.saveError')
   }
 }
 </script>
@@ -111,28 +113,28 @@ async function handleSaveLocation() {
       class="flex items-center gap-2 text-xs font-bold text-slate-400"
     >
       <i class="fa-solid fa-circle-notch fa-spin"></i>
-      Loading the saved attendance policy…
+      {{ $t('policies.loadingAttendance') }}
     </div>
 
     <!-- Daily Shift Hours Section -->
     <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
       <div class="space-y-1">
-        <h4 class="text-md font-bold text-khubrat-blue dark:text-khubrat-goldLight">Daily Shift Hours &amp; Grace Periods</h4>
+        <h4 class="text-md font-bold text-khubrat-blue dark:text-khubrat-goldLight">{{ $t('policies.shiftHours') }}</h4>
         <p class="text-xs text-slate-400">
-          Specify operational start/end bounds and thresholds to trigger automated salary deductions.
+          {{ $t('policies.shiftHoursHint') }}
         </p>
       </div>
 
       <div v-if="readonly" class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-        <PolicyReadonlyValue label="Default Shift Start Time" :value="displayTime(form.work_start_time)" />
-        <PolicyReadonlyValue label="Default Shift End Time" :value="displayTime(form.work_end_time)" />
-        <PolicyReadonlyValue label="Late Arrival Threshold (Minutes)" :value="displayValue(form.allowed_late_minutes, ' mins')" />
-        <PolicyReadonlyValue label="Early Departure Threshold (Minutes)" :value="displayValue(form.allowed_early_leave_minutes, ' mins')" />
+        <PolicyReadonlyValue :label="$t('policies.shiftStart')" :value="displayTime(form.work_start_time)" />
+        <PolicyReadonlyValue :label="$t('policies.shiftEnd')" :value="displayTime(form.work_end_time)" />
+        <PolicyReadonlyValue :label="$t('policies.lateThreshold')" :value="displayValue(form.allowed_late_minutes, ` ${$t('policies.mins')}`)" />
+        <PolicyReadonlyValue :label="$t('policies.earlyThreshold')" :value="displayValue(form.allowed_early_leave_minutes, ` ${$t('policies.mins')}`)" />
       </div>
 
       <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
         <div class="space-y-2">
-          <label class="text-xs font-bold text-slate-500 dark:text-slate-300">Default Shift Start Time</label>
+          <label class="text-xs font-bold text-slate-500 dark:text-slate-300">{{ $t('policies.shiftStart') }}</label>
           <input
             v-model="form.work_start_time"
             type="time"
@@ -141,7 +143,7 @@ async function handleSaveLocation() {
         </div>
 
         <div class="space-y-2">
-          <label class="text-xs font-bold text-slate-500 dark:text-slate-300">Default Shift End Time</label>
+          <label class="text-xs font-bold text-slate-500 dark:text-slate-300">{{ $t('policies.shiftEnd') }}</label>
           <input
             v-model="form.work_end_time"
             type="time"
@@ -152,39 +154,39 @@ async function handleSaveLocation() {
 
       <div v-if="!readonly" class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
         <div class="space-y-2">
-          <label class="text-xs font-bold text-slate-500 dark:text-slate-300">Late Arrival Threshold (Minutes)</label>
+          <label class="text-xs font-bold text-slate-500 dark:text-slate-300">{{ $t('policies.lateThreshold') }}</label>
           <div class="flex items-center">
             <input
               v-model.number="form.allowed_late_minutes"
               type="number"
               min="0"
-              placeholder="e.g. 15"
+              placeholder="15"
               class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-l-xl px-4 py-3 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight dark:text-white transition-all"
             />
-            <span class="bg-slate-100 dark:bg-slate-700 border-t border-b border-r border-slate-200 dark:border-slate-700 px-4 py-3 rounded-r-xl text-xs font-bold text-slate-400">Mins</span>
+            <span class="bg-slate-100 dark:bg-slate-700 border-t border-b border-r border-slate-200 dark:border-slate-700 px-4 py-3 rounded-r-xl text-xs font-bold text-slate-400">{{ $t('policies.mins') }}</span>
           </div>
         </div>
 
         <div class="space-y-2">
-          <label class="text-xs font-bold text-slate-500 dark:text-slate-300">Early Departure Threshold (Minutes)</label>
+          <label class="text-xs font-bold text-slate-500 dark:text-slate-300">{{ $t('policies.earlyThreshold') }}</label>
           <div class="flex items-center">
             <input
               v-model.number="form.allowed_early_leave_minutes"
               type="number"
               min="0"
-              placeholder="e.g. 15"
+              placeholder="15"
               class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-l-xl px-4 py-3 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight dark:text-white transition-all"
             />
-            <span class="bg-slate-100 dark:bg-slate-700 border-t border-b border-r border-slate-200 dark:border-slate-700 px-4 py-3 rounded-r-xl text-xs font-bold text-slate-400">Mins</span>
+            <span class="bg-slate-100 dark:bg-slate-700 border-t border-b border-r border-slate-200 dark:border-slate-700 px-4 py-3 rounded-r-xl text-xs font-bold text-slate-400">{{ $t('policies.mins') }}</span>
           </div>
         </div>
       </div>
 
       <div class="pt-2 border-t border-slate-100 dark:border-slate-700">
         <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-150 dark:border-slate-800">
-          <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Allow Overtime Logging </span>
+          <span class="text-xs font-bold text-slate-700 dark:text-slate-300">{{ $t('policies.allowOvertime') }} </span>
           <span v-if="readonly" class="text-sm font-semibold text-slate-800 dark:text-slate-100">
-            {{ form.allows_overtime ? 'Yes' : 'No' }}
+            {{ form.allows_overtime ? $t('common.yes') : $t('common.no') }}
           </span>
           <ToggleSwitch v-else v-model="form.allows_overtime" />
         </div>
@@ -193,7 +195,7 @@ async function handleSaveLocation() {
       <div v-if="!readonly" class="flex justify-end pt-4">
         <BaseButton variant="gold" :loading="attendancePolicyStore.savingPolicy" @click="handleSavePolicy">
           <i class="fa-solid fa-clock"></i>
-          Keeping attendance policies
+          {{ $t('policies.keepingPolicies') }}
         </BaseButton>
       </div>
     </div>
@@ -202,27 +204,26 @@ async function handleSaveLocation() {
     <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
       <div class="space-y-1">
         <h4 class="text-md font-bold text-khubrat-blue dark:text-khubrat-goldLight">
-          Company Geofencing Configuration 
+          {{ $t('policies.geofenceTitle') }} 
         </h4>
         <p class="text-xs text-slate-400">
-          Set up the physical coordinates of the headquarters and the allowed physical perimeter within which
-          employees can log attendance.
+          {{ $t('policies.geofenceHint') }}
         </p>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
         <div class="space-y-4 flex flex-col justify-between h-full">
           <div v-if="readonly" class="space-y-4">
-            <PolicyReadonlyValue label="Allowed Presence Perimeter (Meters)" :value="displayValue(form.allowed_perimeter, ' m')" />
+            <PolicyReadonlyValue :label="$t('policies.perimeter')" :value="displayValue(form.allowed_perimeter, ` ${$t('policies.meters')}`)" />
             <div class="grid grid-cols-2 gap-3">
-              <PolicyReadonlyValue label="Latitude" :value="form.latitude ?? '—'" />
-              <PolicyReadonlyValue label="Longitude" :value="form.longitude ?? '—'" />
+              <PolicyReadonlyValue :label="$t('policies.latitude')" :value="form.latitude ?? $t('common.emDash')" />
+              <PolicyReadonlyValue :label="$t('policies.longitude')" :value="form.longitude ?? $t('common.emDash')" />
             </div>
           </div>
           <div v-else class="space-y-4">
             <div>
               <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
-                Allowed Presence Perimeter (Meters) 
+                {{ $t('policies.perimeter') }} 
               </label>
               <div class="relative rounded-xl shadow-sm">
                 <input
@@ -230,30 +231,30 @@ async function handleSaveLocation() {
                   type="number"
                   min="10"
                   max="3000"
-                  placeholder="e.g. 150"
+                  placeholder="150"
                   class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 p-3.5 pl-16 focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight transition-all font-semibold"
                 />
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[10px] font-black text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-3.5 rounded-l-xl border-r border-slate-200 dark:border-slate-700">
-                  Meters
+                  {{ $t('policies.meters') }}
                 </div>
               </div>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">Latitude </label>
+                <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">{{ $t('policies.latitude') }} </label>
                 <input
                   :value="form.latitude ?? ''"
-                  placeholder="Pick on the map"
+                  :placeholder="$t('policies.pickOnMap')"
                   readonly
                   class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-[11px] text-slate-500 dark:text-slate-400 p-2.5 font-mono cursor-not-allowed"
                 />
               </div>
               <div>
-                <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">Longitude </label>
+                <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">{{ $t('policies.longitude') }} </label>
                 <input
                   :value="form.longitude ?? ''"
-                  placeholder="Pick on the map"
+                  :placeholder="$t('policies.pickOnMap')"
                   readonly
                   class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-[11px] text-slate-500 dark:text-slate-400 p-2.5 font-mono cursor-not-allowed"
                 />
@@ -275,7 +276,7 @@ async function handleSaveLocation() {
       <div v-if="!readonly" class="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-700">
         <BaseButton variant="gold" :loading="attendancePolicyStore.savingLocation" @click="handleSaveLocation">
           <i class="fa-solid fa-map-location-dot"></i>
-          Save location settings
+          {{ $t('policies.saveLocation') }}
         </BaseButton>
       </div>
     </div>

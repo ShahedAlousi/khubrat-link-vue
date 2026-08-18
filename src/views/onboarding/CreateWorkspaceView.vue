@@ -1,12 +1,14 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import AuthLayout from '@/components/layout/AuthLayout.vue'
 import BaseInput from '@/components/common/BaseInput.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import { useOnboardingStore } from '@/stores/onboarding.store'
 import { isValidEmail, isRequired } from '@/utils/validators'
 
+const { t } = useI18n()
 const router = useRouter()
 const onboardingStore = useOnboardingStore()
 
@@ -19,9 +21,9 @@ const form = reactive({
 const fieldErrors = reactive({ name: '', email: '', acceptedTerms: '' })
 
 function validate() {
-  fieldErrors.name = isRequired(form.name) ? '' : 'Company name is required.'
-  fieldErrors.email = isValidEmail(form.email) ? '' : 'Enter a valid company email.'
-  fieldErrors.acceptedTerms = form.acceptedTerms ? '' : 'You must accept the Terms of Use to continue.'
+  fieldErrors.name = isRequired(form.name) ? '' : t('validation.companyNameRequired')
+  fieldErrors.email = isValidEmail(form.email) ? '' : t('validation.companyEmail')
+  fieldErrors.acceptedTerms = form.acceptedTerms ? '' : t('validation.termsRequired')
   return !fieldErrors.name && !fieldErrors.email && !fieldErrors.acceptedTerms
 }
 
@@ -34,32 +36,32 @@ function handleSubmit() {
 
 <template>
   <AuthLayout
-    title="Create Your Free Workspace"
+    :title="$t('onboarding.createWorkspace')"
     max-width="max-w-lg"
-    back-label="Go Back"
+    :back-label="$t('common.back')"
     @back="router.push({ name: 'login' })"
   >
     <form class="space-y-5" @submit.prevent="handleSubmit">
-      <BaseInput v-model="form.name" label="Company Name" required :error="fieldErrors.name" />
-      <BaseInput v-model="form.email" type="email" label="Company Email" required :error="fieldErrors.email" />
+      <BaseInput v-model="form.name" :label="$t('onboarding.companyName')" required :error="fieldErrors.name" />
+      <BaseInput v-model="form.email" type="email" :label="$t('onboarding.companyEmail')" required :error="fieldErrors.email" />
 
       <label class="flex items-start gap-2.5 text-sm text-slate-700 dark:text-slate-200">
         <input v-model="form.acceptedTerms" type="checkbox" class="mt-1 rounded border-slate-300" />
         <span>
-          I agree to the Terms of Use and Privacy Policy of the Khubrat System.
-          <a href="#" class="underline font-semibold">Read more</a>
+          {{ $t('onboarding.agreeTerms') }}
+          <a href="#" class="underline font-semibold">{{ $t('onboarding.readMore') }}</a>
         </span>
       </label>
       <p v-if="fieldErrors.acceptedTerms" class="text-xs font-semibold text-rose-500 -mt-3">
         {{ fieldErrors.acceptedTerms }}
       </p>
 
-      <BaseButton type="submit" variant="gold" full-width>Continue</BaseButton>
+      <BaseButton type="submit" variant="gold" full-width>{{ $t('common.continue') }}</BaseButton>
 
       <p class="text-center text-sm text-slate-600 dark:text-slate-300">
-        Already have a workspace?
+        {{ $t('onboarding.alreadyWorkspace') }}
         <router-link :to="{ name: 'login' }" class="font-bold text-khubrat-blue dark:text-khubrat-goldLight hover:underline">
-          Sign in
+          {{ $t('auth.signIn') }}
         </router-link>
       </p>
     </form>

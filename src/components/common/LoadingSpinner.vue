@@ -1,8 +1,14 @@
 <script setup>
-defineProps({
-  label: { type: String, default: 'Loading…' },
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const props = defineProps({
+  label: { type: String, default: '' },
   fullHeight: { type: Boolean, default: false }
 })
+
+const { t } = useI18n()
+const resolvedLabel = computed(() => props.label || t('common.loading'))
 </script>
 
 <template>
@@ -11,6 +17,6 @@ defineProps({
     :class="fullHeight ? 'h-full min-h-[240px]' : 'py-10'"
   >
     <i class="fa-solid fa-circle-notch fa-spin text-2xl text-khubrat-blue dark:text-khubrat-goldLight"></i>
-    <span class="text-xs font-bold uppercase tracking-wider">{{ label }}</span>
+    <span class="text-xs font-bold uppercase tracking-wider">{{ resolvedLabel }}</span>
   </div>
 </template>

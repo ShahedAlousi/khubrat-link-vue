@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth.store'
 import AttendancePolicyPanel from '@/components/policies/AttendancePolicyPanel.vue'
 import LeaveTypesPanel from '@/components/policies/LeaveTypesPanel.vue'
@@ -8,18 +9,19 @@ import PayrollSettingsPanel from '@/components/policies/PayrollSettingsPanel.vue
 import AppraisalsPanel from '@/components/policies/AppraisalsPanel.vue'
 import HolidaysPanel from '@/components/policies/HolidaysPanel.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 
 const readonly = computed(() => !authStore.canManagePolicies)
 
-const tabs = [
-  { id: 'attendance', label: 'Attendance', icon: 'fa-business-time' },
-  { id: 'leaves', label: 'Leave Policies', icon: 'fa-mug-hot' },
-  { id: 'payroll', label: 'Payroll Settings', icon: 'fa-receipt' },
-  { id: 'appraisals', label: 'Performance Appraisals', icon: 'fa-star-half-stroke' },
-  { id: 'holidays', label: 'Holidays & Calendar', icon: 'fa-calendar-days' }
-]
+const tabs = computed(() => [
+  { id: 'attendance', label: t('policies.tabAttendance'), icon: 'fa-business-time' },
+  { id: 'leaves', label: t('policies.tabLeave'), icon: 'fa-mug-hot' },
+  { id: 'payroll', label: t('policies.tabPayroll'), icon: 'fa-receipt' },
+  { id: 'appraisals', label: t('policies.tabAppraisals'), icon: 'fa-star-half-stroke' },
+  { id: 'holidays', label: t('policies.tabHolidays'), icon: 'fa-calendar-days' }
+])
 
 const activeTab = ref('attendance')
 
@@ -35,18 +37,10 @@ onMounted(() => {
     <div class="bg-gradient-to-r from-khubrat-blue to-blue-900 text-white p-6 rounded-2xl shadow-md border-b-4 border-khubrat-goldLight">
       <div class="space-y-1 max-w-3xl">
         <h3 class="text-lg font-bold text-khubrat-goldLight">
-          {{ readonly ? 'Company Policy Overview' : 'Tenant Operational Parameters' }}
+          {{ readonly ? $t('policies.overviewTitle') : $t('policies.editTitle') }}
         </h3>
         <p class="text-xs text-slate-200 leading-relaxed">
-          <template v-if="readonly">
-            Review the company&apos;s configured attendance, leave, payroll, appraisal, and holiday policies.
-            This view is read-only — contact the general manager to request changes.
-          </template>
-          <template v-else>
-            Establish core administrative policies for your enterprise. Modify attendance regulations, vacation
-            allocations, compensation criteria, performance appraisal scales, and national holiday configurations —
-            each section below saves independently to its own API endpoint.
-          </template>
+          {{ readonly ? $t('policies.readonlyHint') : $t('policies.editHint') }}
         </p>
       </div>
     </div>

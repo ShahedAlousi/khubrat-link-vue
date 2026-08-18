@@ -23,7 +23,7 @@ const recentPlatforms = computed(() => companiesStore.stats?.latest_registered_p
 
 <template>
   <section class="space-y-8">
-    <LoadingSpinner v-if="companiesStore.statsLoading && !companiesStore.stats" label="Loading dashboard…" full-height />
+    <LoadingSpinner v-if="companiesStore.statsLoading && !companiesStore.stats" :label="$t('dashboard.loading')" full-height />
 
     <BaseAlert v-else-if="companiesStore.error && !companiesStore.stats" variant="error">
       {{ companiesStore.error }}
@@ -33,23 +33,23 @@ const recentPlatforms = computed(() => companiesStore.stats?.latest_registered_p
       <!-- Top counters -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard
-          label="Total Revenue"
+          :label="$t('dashboard.totalRevenue')"
           :value="formatCurrency(summary.total_revenue)"
-          :hint="summary.monthly_revenue ? `${formatCurrency(summary.monthly_revenue)} this month` : ''"
+          :hint="summary.monthly_revenue ? $t('dashboard.thisMonth', { currency: formatCurrency(summary.monthly_revenue) }) : ''"
           icon="fa-wallet"
           icon-wrap-class="bg-khubrat-blue/10 dark:bg-khubrat-blue/30 text-khubrat-blue dark:text-khubrat-goldLight"
         />
         <StatCard
-          label="Total Subscriptions"
+          :label="$t('dashboard.totalSubscriptions')"
           :value="summary.total_subscriptions ?? 0"
-          :hint="summary.new_companies_this_month ? `+${summary.new_companies_this_month} new companies` : ''"
+          :hint="summary.new_companies_this_month ? $t('dashboard.newCompaniesHint', { n: summary.new_companies_this_month }) : ''"
           icon="fa-building-circle-check"
           icon-wrap-class="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
         />
         <StatCard
-          label="New Companies (Month)"
+          :label="$t('dashboard.newCompaniesMonth')"
           :value="summary.new_companies_this_month ?? 0"
-          hint="Registered this calendar month"
+          :hint="$t('dashboard.registeredThisMonth')"
           hint-class="text-amber-500"
           icon="fa-cubes-stacked"
           icon-wrap-class="bg-amber-500/10 text-amber-600 dark:text-amber-400"
@@ -61,8 +61,8 @@ const recentPlatforms = computed(() => companiesStore.stats?.latest_registered_p
         <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm lg:col-span-2">
           <div class="flex items-center justify-between mb-6">
             <div>
-              <h4 class="text-md font-bold text-khubrat-blue dark:text-white">Monthly Subscription Analytics</h4>
-              <p class="text-xs text-slate-400">Monthly signup trends and platform conversions</p>
+              <h4 class="text-md font-bold text-khubrat-blue dark:text-white">{{ $t('dashboard.monthlyAnalytics') }}</h4>
+              <p class="text-xs text-slate-400">{{ $t('dashboard.monthlyAnalyticsHint') }}</p>
             </div>
           </div>
           <MonthlySubscriptionChart :analytics="analytics" />
@@ -70,14 +70,14 @@ const recentPlatforms = computed(() => companiesStore.stats?.latest_registered_p
 
         <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
           <div class="flex flex-col mb-6">
-            <h4 class="text-md font-bold text-khubrat-blue dark:text-white">Company Status Distribution</h4>
-            <p class="text-xs text-slate-400">Active, Frozen, and At-Risk accounts</p>
+            <h4 class="text-md font-bold text-khubrat-blue dark:text-white">{{ $t('dashboard.statusDistribution') }}</h4>
+            <p class="text-xs text-slate-400">{{ $t('dashboard.statusDistributionHint') }}</p>
           </div>
           <StatusDistributionChart :distribution="distribution" />
           <div class="mt-4 flex justify-around text-xs font-bold border-t border-slate-100 dark:border-slate-700 pt-4">
-            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> Active</div>
-            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500"></span> Frozen</div>
-            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500"></span> At-Risk</div>
+            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> {{ $t('status.active') }}</div>
+            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500"></span> {{ $t('status.frozen') }}</div>
+            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500"></span> {{ $t('status.at_risk') }}</div>
           </div>
         </div>
       </div>

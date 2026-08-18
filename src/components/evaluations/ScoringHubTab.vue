@@ -1,5 +1,6 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useEvaluationsStore } from '@/stores/useEvaluationsStore'
 import BaseInput from '@/components/common/BaseInput.vue'
 import BaseSelect from '@/components/common/BaseSelect.vue'
@@ -12,6 +13,7 @@ const props = defineProps({
 })
 
 const evaluationsStore = useEvaluationsStore()
+const { t, te } = useI18n()
 
 const searchName = ref('')
 const filterDept = ref('all')
@@ -81,9 +83,15 @@ function initials(name = '') {
 }
 
 function formatScore(value) {
-  if (value === null || value === undefined || value === '') return '—'
+  if (value === null || value === undefined || value === '') return t('common.emDash')
   const n = Number(value)
   return Number.isFinite(n) ? n.toFixed(2) : String(value)
+}
+
+function displayRating(value) {
+  if (!value) return t('common.emDash')
+  const key = `evaluations.${String(value).toLowerCase()}`
+  return te(key) ? t(key) : value
 }
 
 const departmentOptions = computed(() => {
@@ -91,7 +99,7 @@ const departmentOptions = computed(() => {
     ? evaluationsStore.scorableEmployees
     : []
   const depts = [...new Set(list.map(departmentName).filter(Boolean))]
-  return [{ value: 'all', label: 'All Departments' }, ...depts.map((d) => ({ value: d, label: d }))]
+  return [{ value: 'all', label: t('evaluations.allDepartments') }, ...depts.map((d) => ({ value: d, label: d }))]
 })
 
 const filteredEmployees = computed(() => {
@@ -128,14 +136,10 @@ const sheets = computed(() =>
   Array.isArray(evaluationsStore.scoringDetails) ? evaluationsStore.scoringDetails : []
 )
 
-const REVIEW_TYPE_LABELS = {
-  self: 'Self Review',
-  manager: 'Manager Review',
-  peer: 'Peer Review'
-}
-
 function sheetLabel(sheet) {
-  return REVIEW_TYPE_LABELS[sheet?.review_type] || sheet?.review_type || 'Review'
+  const key = `evaluations.${sheet?.review_type}Review`
+  if (sheet?.review_type && te(key)) return t(key)
+  return sheet?.review_type || t('evaluations.review')
 }
 
 /** الأسئلة القابلة لوضع درجة HR هي من نوع rating فقط. */
@@ -269,34 +273,34 @@ function isCalculated(emp) {
     <!-- Stats & donut -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
-        <h4 class="text-sm font-black text-khubrat-blue dark:text-khubrat-goldLight uppercase tracking-wider">Evaluation Metrics Summary</h4>
+        <h4 class="text-sm font-black text-khubrat-blue dark:text-khubrat-goldLight uppercase tracking-wider">{{ $t('evaluations.metricsSummary') }}</h4>
         <p class="text-xs text-slate-400 leading-relaxed">
-          Monitor the qualitative distributions of all evaluated employees. Ratings are computed by the server as HR grades sheets.
+          {{ $t('evaluations.metricsHint') }}
         </p>
         <div class="grid grid-cols-3 gap-2 text-center">
           <div class="p-2.5 bg-emerald-500/10 rounded-xl text-emerald-600">
             <span class="text-lg font-black block">{{ excellentCount }}</span>
-            <span class="text-[9px] font-bold block uppercase">Excellent</span>
+            <span class="text-[9px] font-bold block uppercase">{{ $t('evaluations.excellent') }}</span>
           </div>
           <div class="p-2.5 bg-blue-500/10 rounded-xl text-blue-500">
             <span class="text-lg font-black block">{{ goodCount }}</span>
-            <span class="text-[9px] font-bold block uppercase">Good</span>
+            <span class="text-[9px] font-bold block uppercase">{{ $t('evaluations.good') }}</span>
           </div>
           <div class="p-2.5 bg-rose-500/10 rounded-xl text-rose-500">
             <span class="text-lg font-black block">{{ poorCount }}</span>
-            <span class="text-[9px] font-bold block uppercase">Poor</span>
+            <span class="text-[9px] font-bold block uppercase">{{ $t('evaluations.poor') }}</span>
           </div>
         </div>
       </div>
 
       <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-around gap-6 lg:col-span-2">
         <div class="space-y-1">
-          <h5 class="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">Performance Distribution</h5>
-          <p class="text-[10px] text-slate-400">Visual segment of completed employee scores this period</p>
+          <h5 class="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">{{ $t('evaluations.performanceDistribution') }}</h5>
+          <p class="text-[10px] text-slate-400">{{ $t('evaluations.performanceHint') }}</p>
           <div class="space-y-1.5 pt-2 text-[10px] font-bold">
-            <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 bg-emerald-500 rounded-full"></span> <span>Excellent (Score >= 8.5)</span></div>
-            <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 bg-blue-500 rounded-full"></span> <span>Good (Score 5.0 - 8.4)</span></div>
-            <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 bg-rose-500 rounded-full"></span> <span>Poor (Score &lt; 5.0)</span></div>
+            <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 bg-emerald-500 rounded-full"></span> <span>{{ $t('evaluations.excellentRange') }}</span></div>
+            <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 bg-blue-500 rounded-full"></span> <span>{{ $t('evaluations.goodRange') }}</span></div>
+            <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 bg-rose-500 rounded-full"></span> <span>{{ $t('evaluations.poorRange') }}</span></div>
           </div>
         </div>
 
@@ -309,7 +313,7 @@ function isCalculated(emp) {
           </svg>
           <div class="absolute text-center">
             <span class="text-xs font-black block text-slate-800 dark:text-white">{{ totalRated }}/{{ totalEmployees }}</span>
-            <span class="text-[8px] text-slate-400 font-semibold block uppercase">Rated</span>
+            <span class="text-[8px] text-slate-400 font-semibold block uppercase">{{ $t('evaluations.rated') }}</span>
           </div>
         </div>
       </div>
@@ -320,18 +324,18 @@ function isCalculated(emp) {
       <!-- Left: queue -->
       <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
         <div class="border-b border-slate-100 dark:border-slate-700 pb-3 space-y-2">
-          <h4 class="text-sm font-black text-khubrat-blue dark:text-white">Active Evaluations Queue</h4>
-          <p class="text-[10px] text-slate-400">Select an employee with fully submitted reviews to score and calculate their final index.</p>
+          <h4 class="text-sm font-black text-khubrat-blue dark:text-white">{{ $t('evaluations.activeQueue') }}</h4>
+          <p class="text-[10px] text-slate-400">{{ $t('evaluations.queueHint') }}</p>
         </div>
 
         <div class="space-y-3">
-          <BaseInput v-model="searchName" placeholder="Search employee name…" />
+          <BaseInput v-model="searchName" :placeholder="$t('evaluations.searchEmployee')" />
           <BaseSelect v-model="filterDept" :options="departmentOptions" />
         </div>
 
         <LoadingSpinner v-if="evaluationsStore.scoringLoading && !selectedEmployeeId" />
         <div v-else class="space-y-3 max-h-[350px] overflow-y-auto pr-1">
-          <p v-if="!filteredEmployees.length" class="text-center text-[11px] text-slate-400 py-6">No matching candidates in grading queue.</p>
+          <p v-if="!filteredEmployees.length" class="text-center text-[11px] text-slate-400 py-6">{{ $t('evaluations.noCandidates') }}</p>
           <div
             v-for="emp in filteredEmployees"
             :key="empId(emp)"
@@ -348,12 +352,12 @@ function isCalculated(emp) {
                 {{ initials(empName(emp)) }}
               </div>
               <div>
-                <h5 class="font-extrabold text-xs text-slate-900 dark:text-white">{{ empName(emp) || '—' }}</h5>
+                <h5 class="font-extrabold text-xs text-slate-900 dark:text-white">{{ empName(emp) || $t('common.emDash') }}</h5>
                 <p class="text-[9px] text-slate-400">{{ empSubtitle(emp) }}</p>
               </div>
             </div>
             <span v-if="isCalculated(emp)" class="text-[9px] bg-emerald-500/15 text-emerald-500 px-2 py-0.5 rounded font-extrabold uppercase">
-              Calculated
+              {{ $t('evaluations.calculated') }}
             </span>
           </div>
         </div>
@@ -367,7 +371,7 @@ function isCalculated(emp) {
               {{ initials(empName(selectedEmployee)) }}
             </div>
             <div>
-              <h4 class="text-sm font-black text-slate-900 dark:text-white">{{ empName(selectedEmployee) || '—' }}</h4>
+              <h4 class="text-sm font-black text-slate-900 dark:text-white">{{ empName(selectedEmployee) || $t('common.emDash') }}</h4>
               <p class="text-[10px] text-slate-400">{{ empSubtitle(selectedEmployee) }}</p>
             </div>
           </div>
@@ -375,14 +379,14 @@ function isCalculated(emp) {
 
         <div class="space-y-4">
           <div class="flex items-center justify-between">
-            <h5 class="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">Evaluation Sheets Submitted by Peers & Managers</h5>
-            <span class="text-[10px] text-khubrat-goldDark dark:text-khubrat-goldLight font-bold">Grades on a 10-point scale</span>
+            <h5 class="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">{{ $t('evaluations.sheetsTitle') }}</h5>
+            <span class="text-[10px] text-khubrat-goldDark dark:text-khubrat-goldLight font-bold">{{ $t('evaluations.gradesScale') }}</span>
           </div>
 
-          <LoadingSpinner v-if="evaluationsStore.scoringLoading" label="Loading evaluation sheets…" />
+          <LoadingSpinner v-if="evaluationsStore.scoringLoading" :label="$t('evaluations.loadingSheets')" />
 
           <p v-else-if="!sheets.length" class="text-xs text-slate-400 p-4">
-            No submitted evaluation sheets found for this candidate in the current cycle.
+            {{ $t('evaluations.noSheets') }}
           </p>
 
           <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -393,7 +397,7 @@ function isCalculated(emp) {
             >
               <div class="flex justify-between items-start gap-2">
                 <div>
-                  <span class="text-[9px] text-slate-400 block uppercase font-bold">Feedback Source</span>
+                  <span class="text-[9px] text-slate-400 block uppercase font-bold">{{ $t('evaluations.feedbackSource') }}</span>
                   <h5 class="font-extrabold text-xs text-slate-800 dark:text-slate-200">{{ sheetLabel(sheet) }}</h5>
                   <p class="text-[9px] text-slate-400 mt-0.5">{{ sheet.reviewer?.full_name }}</p>
                 </div>
@@ -401,18 +405,18 @@ function isCalculated(emp) {
                   class="px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider shrink-0"
                   :class="isSheetGraded(sheet) ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
                 >
-                  {{ isSheetGraded(sheet) ? `Done (${sheetAverage(sheet)}/10)` : 'Pending Grading' }}
+                  {{ isSheetGraded(sheet) ? $t('evaluations.doneOf', { n: sheetAverage(sheet) }) : $t('evaluations.pendingGrading') }}
                 </span>
               </div>
               <div class="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-800">
                 <span class="text-[10px] text-slate-400 font-bold">
-                  {{ ratingAnswers(sheet).length }} scorable / {{ (sheet.answers || []).length }} responses
+                  {{ $t('evaluations.scorableResponses', { scorable: ratingAnswers(sheet).length, total: (sheet.answers || []).length }) }}
                 </span>
                 <button
                   class="text-[10px] font-black text-khubrat-blue dark:text-khubrat-goldLight hover:underline flex items-center gap-1"
                   @click="openGradingDrawer(sheet)"
                 >
-                  {{ isSheetGraded(sheet) ? 'Edit Sheet Score' : 'Grade Sheet' }}
+                  {{ isSheetGraded(sheet) ? $t('evaluations.editSheet') : $t('evaluations.gradeSheet') }}
                   <i class="fa-solid fa-chevron-right text-[8px]"></i>
                 </button>
               </div>
@@ -421,9 +425,9 @@ function isCalculated(emp) {
         </div>
 
         <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div class="space-y-0.5 text-left">
-            <h6 class="text-xs font-bold text-slate-800 dark:text-slate-200">Final Index Appraisal Report</h6>
-            <p class="text-[10px] text-slate-400 leading-relaxed max-w-md">Weighted index is calculated automatically by the server once all sheets are graded.</p>
+          <div class="space-y-0.5 text-start">
+            <h6 class="text-xs font-bold text-slate-800 dark:text-slate-200">{{ $t('evaluations.finalReport') }}</h6>
+            <p class="text-[10px] text-slate-400 leading-relaxed max-w-md">{{ $t('evaluations.weightedHint') }}</p>
           </div>
           <BaseButton
             variant="blue"
@@ -431,7 +435,7 @@ function isCalculated(emp) {
             :loading="evaluationsStore.ActionLoading"
             @click="calculateFinalResult"
           >
-            {{ isAlreadyFinalized ? 'Score Finalized' : 'Calculate Final Result' }}
+            {{ isAlreadyFinalized ? $t('evaluations.scoreFinalized') : $t('evaluations.calculateFinal') }}
           </BaseButton>
         </div>
 
@@ -442,9 +446,9 @@ function isCalculated(emp) {
                 <i class="fa-solid fa-award"></i>
               </div>
               <div class="space-y-0.5">
-                <span class="text-[10px] font-black uppercase tracking-widest block text-slate-400">Weighted Performance Rating</span>
+                <span class="text-[10px] font-black uppercase tracking-widest block text-slate-400">{{ $t('evaluations.weightedRating') }}</span>
                 <h4 class="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  Grade:
+                  {{ $t('evaluations.grade') }}
                   <span class="text-emerald-600 dark:text-emerald-400 font-extrabold">
                     {{ formatScore(displayedFinalResult.final_score) }}/10
                   </span>
@@ -452,21 +456,21 @@ function isCalculated(emp) {
               </div>
             </div>
             <span class="px-4 py-2 text-white font-black text-xs rounded-xl uppercase tracking-widest" :class="badgeColorClass">
-              {{ classificationOf(displayedFinalResult) }}
+              {{ displayRating(classificationOf(displayedFinalResult)) }}
             </span>
           </div>
 
           <div class="grid grid-cols-3 gap-3 pt-2 border-t border-emerald-500/20">
             <div class="text-center">
-              <p class="text-[9px] font-bold uppercase text-slate-400">Manager</p>
+              <p class="text-[9px] font-bold uppercase text-slate-400">{{ $t('evaluations.manager') }}</p>
               <p class="text-sm font-black text-slate-800 dark:text-white">{{ formatScore(displayedFinalResult.manager_score) }}</p>
             </div>
             <div class="text-center">
-              <p class="text-[9px] font-bold uppercase text-slate-400">Self</p>
+              <p class="text-[9px] font-bold uppercase text-slate-400">{{ $t('evaluations.self') }}</p>
               <p class="text-sm font-black text-slate-800 dark:text-white">{{ formatScore(displayedFinalResult.self_score) }}</p>
             </div>
             <div class="text-center">
-              <p class="text-[9px] font-bold uppercase text-slate-400">Peer</p>
+              <p class="text-[9px] font-bold uppercase text-slate-400">{{ $t('evaluations.peer') }}</p>
               <p class="text-sm font-black text-slate-800 dark:text-white">{{ formatScore(displayedFinalResult.peer_score) }}</p>
             </div>
           </div>
@@ -475,24 +479,24 @@ function isCalculated(emp) {
 
       <div v-else class="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl p-12 border border-slate-200 dark:border-slate-700 text-center shadow-sm text-slate-400">
         <i class="fa-solid fa-star-half-stroke text-5xl mb-3 block text-khubrat-goldDark/30"></i>
-        <p class="font-bold text-sm">No Active Evaluation Selected</p>
-        <p class="text-xs text-slate-400 mt-1">Select an employee from the left column to begin grading sheets and generate their weighted performance report.</p>
+        <p class="font-bold text-sm">{{ $t('evaluations.noActive') }}</p>
+        <p class="text-xs text-slate-400 mt-1">{{ $t('evaluations.noActiveHint') }}</p>
       </div>
     </div>
 
     <!-- Sheet grading drawer -->
     <div v-if="gradingSheet" class="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true">
       <div class="absolute inset-0 bg-black/55 backdrop-blur-sm" @click="closeGradingDrawer"></div>
-      <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+      <div class="pointer-events-none fixed inset-y-0 end-0 flex max-w-full ps-10">
         <div class="pointer-events-auto w-screen max-w-xl bg-white dark:bg-slate-800 shadow-2xl flex flex-col">
           <div class="bg-khubrat-blue text-white p-6 border-b border-khubrat-goldLight/20">
             <div class="flex items-center justify-between">
               <div>
                 <h2 class="text-md font-extrabold text-khubrat-goldLight uppercase tracking-wider">
-                  Grade Sheet: {{ sheetLabel(gradingSheet) }}
+                  {{ $t('evaluations.gradeSheetLabel', { label: sheetLabel(gradingSheet) }) }}
                 </h2>
                 <p class="text-[10px] text-white/60 mt-0.5">
-                  Review answers for {{ selectedEmployee ? empName(selectedEmployee) : '' }}
+                  {{ $t('evaluations.reviewAnswersFor', { name: selectedEmployee ? empName(selectedEmployee) : '' }) }}
                 </p>
               </div>
               <button class="text-white/60 hover:text-white transition-all" @click="closeGradingDrawer">
@@ -509,7 +513,7 @@ function isCalculated(emp) {
             >
               <div class="space-y-1">
                 <span class="text-[9px] text-khubrat-goldDark dark:text-khubrat-goldLight font-black uppercase block">
-                  Evaluation Criteria {{ idx + 1 }}
+                  {{ $t('evaluations.criteriaN', { n: idx + 1 }) }}
                 </span>
                 <h5 class="font-bold text-xs text-slate-800 dark:text-slate-100">
                   {{ answer.question?.question }}
@@ -519,14 +523,14 @@ function isCalculated(emp) {
               <div class="p-3 bg-white dark:bg-slate-950 rounded-lg italic text-slate-500 dark:text-slate-300 border-l-4 border-khubrat-blue dark:border-khubrat-goldLight">
                 <template v-if="answer.comment">"{{ answer.comment }}"</template>
                 <template v-else-if="answer.rating !== null && answer.rating !== undefined">
-                  Rating given: <strong class="text-slate-800 dark:text-slate-100">{{ answer.rating }} / 5</strong>
+                  {{ $t('evaluations.ratingGiven') }} <strong class="text-slate-800 dark:text-slate-100">{{ answer.rating }} / 5</strong>
                 </template>
-                <template v-else>No written answer provided.</template>
+                <template v-else>{{ $t('evaluations.noWritten') }}</template>
               </div>
 
               <!-- درجة الـ HR تُرسل لأسئلة النوع rating فقط -->
               <div class="flex items-center justify-between pt-2 border-t border-slate-200/50 dark:border-slate-800">
-                <span class="text-[10px] text-slate-400 font-bold uppercase">Assign Score Value (0 - 10)</span>
+                <span class="text-[10px] text-slate-400 font-bold uppercase">{{ $t('evaluations.assignScore') }}</span>
                 <div class="flex items-center gap-2">
                   <input
                     v-model="draftScores[answer.id]"
@@ -544,7 +548,7 @@ function isCalculated(emp) {
           </div>
 
           <div class="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex gap-3">
-            <BaseButton variant="ghost" full-width @click="closeGradingDrawer">Cancel</BaseButton>
+            <BaseButton variant="ghost" full-width @click="closeGradingDrawer">{{ $t('common.cancel') }}</BaseButton>
             <BaseButton
               variant="blue"
               full-width
@@ -552,7 +556,7 @@ function isCalculated(emp) {
               :loading="evaluationsStore.ActionLoading"
               @click="submitGradedSheet"
             >
-              Save Scores
+              {{ $t('evaluations.saveScores') }}
             </BaseButton>
           </div>
         </div>

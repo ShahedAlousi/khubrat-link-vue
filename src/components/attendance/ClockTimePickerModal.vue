@@ -75,7 +75,7 @@ function confirm() {
       <!-- رأس المودال: يعرض الوقت المُختار حالياً + مفتاح AM/PM -->
       <div class="bg-khubrat-blue text-white p-4 text-center">
         <span class="text-[10px] uppercase font-black tracking-widest text-khubrat-goldLight block">
-          {{ phase === 'hours' ? 'Select Hours' : 'Select Minutes' }}
+          {{ phase === 'hours' ? $t('attendance.selectHours') : $t('attendance.selectMinutes') }}
         </span>
         <div class="flex items-center justify-center gap-3 mt-2">
           <span
@@ -96,13 +96,13 @@ function confirm() {
               class="px-2 py-0.5 text-[9px] font-black rounded uppercase tracking-wider transition-all"
               :class="period === 'AM' ? 'bg-khubrat-goldLight text-khubrat-blue' : 'text-slate-400'"
               @click="period = 'AM'"
-            >AM</button>
+            >{{ $t('attendance.am') }}</button>
             <button
               type="button"
               class="px-2 py-0.5 text-[9px] font-black rounded uppercase tracking-wider transition-all"
               :class="period === 'PM' ? 'bg-khubrat-goldLight text-khubrat-blue' : 'text-slate-400'"
               @click="period = 'PM'"
-            >PM</button>
+            >{{ $t('attendance.pm') }}</button>
           </div>
         </div>
       </div>
@@ -154,12 +154,12 @@ function confirm() {
             type="button"
             class="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-900"
             @click="emit('close')"
-          >Cancel</button>
+          >{{ $t('common.cancel') }}</button>
           <button
             type="button"
             class="flex-1 py-2 bg-khubrat-blue dark:bg-khubrat-goldLight text-white dark:text-khubrat-blue rounded-xl text-xs font-black"
             @click="confirm"
-          >OK</button>
+          >{{ $t('attendance.ok') }}</button>
         </div>
       </div>
     </div>

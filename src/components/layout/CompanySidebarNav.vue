@@ -1,27 +1,29 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import AppLogo from '@/components/common/AppLogo.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { initials } from '@/utils/format'
+import { translateRole } from '@/i18n/helpers'
 
+const { t } = useI18n()
 const route = useRoute()
 const authStore = useAuthStore()
 
-// حالة انكماش القائمة
 const isCollapsed = ref(false)
 
 const navItems = computed(() => {
   const items = [
-    { name: 'company-dashboard', label: 'Dashboard', icon: 'fa-chart-pie' },
-    { name: 'company-profile', label: 'Company Profile', icon: 'fa-building' },
-    { name: 'company-policies', label: 'Policy Configuration', icon: 'fa-sliders' },
-    { name: 'company-requests', label: 'Requests', icon: 'fa-envelope-open-text' },
-    { name: 'company-staff-management', label: 'Staff Management', icon: 'fa-users-gear' },
-    { name: 'company-evaluations', label: 'Evaluations', icon: 'fa-award' },
-    { name: 'company-attendance', label: 'Attendance', icon: 'fa-clipboard-user' },
-    { name: 'company-payroll', label: 'Payroll', icon: 'fa-money-check-dollar' },
-    { name: 'company-settings', label: 'Settings', icon: 'fa-gear' }
+    { name: 'company-dashboard', label: t('nav.company.dashboard'), icon: 'fa-chart-pie' },
+    { name: 'company-profile', label: t('nav.company.profile'), icon: 'fa-building' },
+    { name: 'company-policies', label: t('nav.company.policies'), icon: 'fa-sliders' },
+    { name: 'company-requests', label: t('nav.company.requests'), icon: 'fa-envelope-open-text' },
+    { name: 'company-staff-management', label: t('nav.company.staff'), icon: 'fa-users-gear' },
+    { name: 'company-evaluations', label: t('nav.company.evaluations'), icon: 'fa-award' },
+    { name: 'company-attendance', label: t('nav.company.attendance'), icon: 'fa-clipboard-user' },
+    { name: 'company-payroll', label: t('nav.company.payroll'), icon: 'fa-money-check-dollar' },
+    { name: 'company-settings', label: t('nav.company.settings'), icon: 'fa-gear' }
   ]
 
   return items.filter((item) => {
@@ -34,15 +36,9 @@ const navItems = computed(() => {
   })
 })
 
-const ROLE_LABELS = {
-  general_manager: 'Tenant Admin',
-  hr_manager: 'HR Manager',
-  department_manager: 'Department Manager'
-}
-
-const roleLabel = computed(() => ROLE_LABELS[authStore.userRole] || 'Tenant Admin')
+const roleLabel = computed(() => translateRole(authStore.userRole))
 const adminName = computed(() => authStore.user?.name || authStore.user?.contact_name || roleLabel.value)
-const adminEmail = computed(() => authStore.user?.email || authStore.company?.email || '—')
+const adminEmail = computed(() => authStore.user?.email || authStore.company?.email || t('common.emDash'))
 const adminInitials = computed(() => initials(adminName.value) || initials(roleLabel.value))
 
 function toggleSidebar() {
@@ -55,30 +51,26 @@ async function handleLogout() {
 </script>
 
 <template>
-  <!-- القائمة الجانبية مع التحكم بالعرض والـ Transition -->
-  <aside 
-    class="gradient-brand text-white flex flex-col flex-shrink-0 border-r border-khubrat-goldDark/20 z-20 transition-all duration-300 relative"
+  <aside
+    class="gradient-brand text-white flex flex-col flex-shrink-0 border-e border-khubrat-goldDark/20 z-20 transition-all duration-300 relative"
     :class="isCollapsed ? 'w-20' : 'w-72'"
   >
-    <!-- زر الإغلاق والفتح الذكي على الحافة -->
-    <button 
-      @click="toggleSidebar" 
-      class="absolute -right-3 top-7 bg-khubrat-goldDark text-white w-6 h-6 rounded-full flex items-center justify-center border border-white/20 hover:bg-khubrat-goldLight transition-colors z-30"
-      :title="isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'"
+    <button
+      @click="toggleSidebar"
+      class="absolute -end-3 top-7 bg-khubrat-goldDark text-white w-6 h-6 rounded-full flex items-center justify-center border border-white/20 hover:bg-khubrat-goldLight transition-colors z-30"
+      :title="isCollapsed ? $t('nav.expandSidebar') : $t('nav.collapseSidebar')"
     >
-      <i class="fa-solid fa-xs" :class="isCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'"></i>
+      <i class="fa-solid fa-xs rtl:rotate-180" :class="isCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'"></i>
     </button>
 
-    <!-- الهيدر وحاوية الشعار المقصوصة بسلاسة -->
     <div class="p-6 border-b border-white/10 flex items-center justify-center w-full overflow-hidden h-24">
-      <AppLogo 
-        variant="sidebar" 
-        :size="isCollapsed ? 'sm' : 'md'" 
+      <AppLogo
+        variant="sidebar"
+        :size="isCollapsed ? 'sm' : 'md'"
         :showText="!isCollapsed"
       />
     </div>
 
-    <!-- قائمة العناصر -->
     <nav class="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
       <router-link
         v-for="item in navItems"
@@ -87,9 +79,9 @@ async function handleLogout() {
         class="tab-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200"
         :class="[
           route.name === item.name
-            ? 'bg-khubrat-goldLight/10 text-khubrat-goldLight border-l-4 border-khubrat-goldLight'
+            ? 'bg-khubrat-goldLight/10 text-khubrat-goldLight border-s-4 border-khubrat-goldLight'
             : 'text-white/70 hover:bg-white/5 hover:text-white',
-          isCollapsed ? 'justify-center px-0' : 'text-left'
+          isCollapsed ? 'justify-center px-0' : 'text-start'
         ]"
         :title="isCollapsed ? item.label : ''"
       >
@@ -98,43 +90,38 @@ async function handleLogout() {
       </router-link>
     </nav>
 
-    <!-- قسم ملف الآدمين أسفل القائمة -->
     <div class="p-4 border-t border-white/10 bg-black/20">
       <div class="flex items-center" :class="isCollapsed ? 'justify-center' : 'gap-3'">
-        <!-- دائر الحروف الأولى -->
         <div
           class="w-10 h-10 rounded-full flex-shrink-0 bg-khubrat-goldDark flex items-center justify-center text-white font-bold text-sm"
           :title="`${adminName} — ${roleLabel}`"
         >
           {{ adminInitials }}
         </div>
-        
-        <!-- إظهار البيانات فقط عندما تكون القائمة مفتوحة -->
+
         <template v-if="!isCollapsed">
           <div class="min-w-0 flex-1">
             <p class="text-sm font-bold text-khubrat-goldLight truncate">{{ adminName }}</p>
-            <!-- <p class="text-[10px] font-semibold text-white/70 truncate">{{ roleLabel }}</p> -->
             <p class="text-[11px] text-white/50 truncate">{{ adminEmail }}</p>
           </div>
           <button
-            class="ml-auto text-white/40 hover:text-red-400 p-1 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Log out"
+            class="ms-auto text-white/40 hover:text-red-400 p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            :title="$t('nav.logout')"
             :disabled="authStore.loggingOut"
             @click="handleLogout"
           >
-            <i class="fa-solid" :class="authStore.loggingOut ? 'fa-spinner fa-spin' : 'fa-right-from-bracket'"></i>
+            <i class="fa-solid" :class="authStore.loggingOut ? 'fa-spinner fa-spin' : 'fa-right-from-bracket rtl:-scale-x-100'"></i>
           </button>
         </template>
-        
-        <!-- زر تسجيل الخروج العائم البديل عند الانكماش -->
+
         <button
           v-else
           class="absolute bottom-16 text-white/40 hover:text-red-400 p-2 bg-black/40 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Log out"
+          :title="$t('nav.logout')"
           :disabled="authStore.loggingOut"
           @click="handleLogout"
         >
-          <i class="fa-solid" :class="authStore.loggingOut ? 'fa-spinner fa-spin' : 'fa-right-from-bracket'"></i>
+          <i class="fa-solid" :class="authStore.loggingOut ? 'fa-spinner fa-spin' : 'fa-right-from-bracket rtl:-scale-x-100'"></i>
         </button>
       </div>
     </div>

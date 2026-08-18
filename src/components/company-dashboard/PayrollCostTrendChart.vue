@@ -1,7 +1,10 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Line } from 'vue-chartjs'
 import { formatCurrency } from '@/utils/format'
+
+const { t, tm, locale } = useI18n()
 
 const props = defineProps({
   /** Array of { month, month_name, total_cost } */
@@ -9,34 +12,46 @@ const props = defineProps({
   year: { type: Number, default: () => new Date().getFullYear() }
 })
 
-const chartData = computed(() => ({
-  labels: props.trend.map((row) => row.month_name || String(row.month)),
-  datasets: [
-    {
-      label: 'Payroll cost',
-      data: props.trend.map((row) => Number(row.total_cost) || 0),
-      borderColor: '#002173',
-      backgroundColor: (ctx) => {
-        const chart = ctx.chart
-        const { ctx: c, chartArea } = chart
-        if (!chartArea) return 'rgba(0, 33, 115, 0.12)'
-        const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
-        gradient.addColorStop(0, 'rgba(0, 33, 115, 0.35)')
-        gradient.addColorStop(1, 'rgba(0, 33, 115, 0.02)')
-        return gradient
-      },
-      pointBackgroundColor: '#002173',
-      pointBorderColor: '#FCD88A',
-      pointBorderWidth: 2,
-      pointRadius: 4,
-      pointHoverRadius: 6,
-      tension: 0.4,
-      fill: true
-    }
-  ]
-}))
+const monthNames = computed(() => {
+  void locale.value
+  const names = tm('months.long')
+  return Array.isArray(names) ? names : []
+})
 
-const chartOptions = {
+const chartData = computed(() => {
+  const names = monthNames.value
+  return {
+    labels: props.trend.map((row) => {
+      const idx = Number(row.month) - 1
+      return idx >= 0 && idx < names.length ? names[idx] : (row.month_name || String(row.month))
+    }),
+    datasets: [
+      {
+        label: t('payroll.payrollCost'),
+        data: props.trend.map((row) => Number(row.total_cost) || 0),
+        borderColor: '#002173',
+        backgroundColor: (ctx) => {
+          const chart = ctx.chart
+          const { ctx: c, chartArea } = chart
+          if (!chartArea) return 'rgba(0, 33, 115, 0.12)'
+          const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+          gradient.addColorStop(0, 'rgba(0, 33, 115, 0.35)')
+          gradient.addColorStop(1, 'rgba(0, 33, 115, 0.02)')
+          return gradient
+        },
+        pointBackgroundColor: '#002173',
+        pointBorderColor: '#FCD88A',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        tension: 0.4,
+        fill: true
+      }
+    ]
+  }
+})
+
+const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   interaction: { mode: 'index', intersect: false },
@@ -54,7 +69,7 @@ const chartOptions = {
           return `${label} ${props.year}`
         },
         label(ctx) {
-          return `Payroll cost: ${formatCurrency(ctx.raw)}`
+          return `${t('payroll.payrollCost')}: ${formatCurrency(ctx.raw)}`
         }
       }
     }
@@ -77,7 +92,7 @@ const chartOptions = {
       }
     }
   }
-}
+}))
 </script>
 
 <template>
@@ -86,7 +101,7 @@ const chartOptions = {
       v-if="!trend.length"
       class="absolute inset-0 flex items-center justify-center text-xs font-bold text-slate-400"
     >
-      No cost trend data yet.
+      {{ $t('payroll.noCostTrend') }}
     </p>
     <Line v-else :data="chartData" :options="chartOptions" />
   </div>

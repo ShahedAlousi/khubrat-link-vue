@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import BaseButton from '@/components/common/BaseButton.vue'
 import BaseAlert from '@/components/common/BaseAlert.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
@@ -9,6 +10,7 @@ import { useCompaniesStore } from '@/stores/companies.store'
 import { useSubscriptionPlansStore } from '@/stores/subscriptionPlans.store'
 import { savePendingCheckout } from '@/utils/paymentSession'
 
+const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 const companiesStore = useCompaniesStore()
@@ -36,7 +38,7 @@ onMounted(async () => {
 })
 
 function priceLabel(plan) {
-  return Number(plan.price) === 0 ? 'Free' : `$${plan.price}`
+  return Number(plan.price) === 0 ? t('common.free') : `$${plan.price}`
 }
 
 async function handleRenew() {
@@ -74,7 +76,7 @@ async function handleRenew() {
     freeRenewalDone.value = true
   } catch (err) {
     if (checkoutTab) checkoutTab.close()
-    submitError.value = err.message || 'Failed to start the renewal. Please try again.'
+    submitError.value = err.message || t('subscription.renewFailed')
   }
 }
 
@@ -96,28 +98,28 @@ async function goToLogin() {
       </div>
 
       <div class="space-y-2">
-        <h3 class="text-lg font-black text-khubrat-blue dark:text-white">Subscription renewed successfully</h3>
+        <h3 class="text-lg font-black text-khubrat-blue dark:text-white">{{ $t('subscription.renewed') }}</h3>
         <p class="text-sm text-slate-500 dark:text-slate-400">
-          Your workspace is now running on the <strong>{{ selectedPlan?.name }}</strong> plan.
+          {{ $t('subscription.nowOnPlan', { plan: selectedPlan?.name }) }}
         </p>
       </div>
 
       <div class="bg-blue-50/60 dark:bg-slate-900 rounded-xl p-4 border border-blue-100 dark:border-slate-700">
-        <p class="text-xs text-slate-600 dark:text-slate-400 mb-1">A confirmation email has just been sent to:</p>
-        <p class="font-bold text-khubrat-blue dark:text-khubrat-goldLight">{{ companyEmail || '—' }}</p>
+        <p class="text-xs text-slate-600 dark:text-slate-400 mb-1">{{ $t('subscription.emailSent') }}</p>
+        <p class="font-bold text-khubrat-blue dark:text-khubrat-goldLight">{{ companyEmail || $t('common.emDash') }}</p>
       </div>
 
       <BaseButton variant="gold" full-width :loading="authStore.loggingOut" @click="goToLogin">
-        Go to the login page
+        {{ $t('onboarding.goLogin') }}
       </BaseButton>
     </div>
 
     <template v-else>
       <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start justify-between gap-4">
         <div class="space-y-1">
-          <h3 class="text-md font-bold text-khubrat-blue dark:text-white">Renew Your Subscription</h3>
+          <h3 class="text-md font-bold text-khubrat-blue dark:text-white">{{ $t('subscription.renewTitle') }}</h3>
           <p class="text-xs text-slate-400">
-            Pick the plan that fits your company. Paid plans continue to a secure checkout page, free plans are applied immediately.
+            {{ $t('subscription.renewSubtitle') }}
           </p>
         </div>
         <button
@@ -125,7 +127,7 @@ async function goToLogin() {
           class="text-xs font-bold text-slate-400 hover:text-khubrat-blue dark:hover:text-khubrat-goldLight whitespace-nowrap"
           @click="router.push({ name: 'company-settings' })"
         >
-          <i class="fa-solid fa-arrow-left mr-1"></i> Back to settings
+          <i class="fa-solid fa-arrow-left mr-1"></i> {{ $t('onboarding.backToSettings') }}
         </button>
       </div>
 
@@ -137,10 +139,10 @@ async function goToLogin() {
       >
         <i class="fa-solid fa-triangle-exclamation"></i>
         <span v-if="companiesStore.isCompanyFrozen">
-          Your company workspace is frozen. Renew now to reactivate full access for your team.
+          {{ $t('subscription.frozenBanner') }}
         </span>
         <span v-else>
-          Your subscription has expired. Renew now to restore full access for your team.
+          {{ $t('subscription.expiredBanner') }}
         </span>
       </div>
 
@@ -153,7 +155,7 @@ async function goToLogin() {
           v-for="plan in plans"
           :key="plan.id"
           type="button"
-          class="text-left border-2 rounded-2xl p-5 transition-all duration-200 bg-white dark:bg-slate-800"
+          class="text-start border-2 rounded-2xl p-5 transition-all duration-200 bg-white dark:bg-slate-800"
           :class="selectedPlan?.id === plan.id
             ? 'border-khubrat-blue dark:border-khubrat-goldLight bg-blue-50/50 dark:bg-slate-900 shadow-md'
             : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'"
@@ -170,10 +172,10 @@ async function goToLogin() {
           <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">{{ plan.description }}</p>
           <div class="flex flex-wrap gap-2 mt-3">
             <span class="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-[10px] rounded text-slate-600 dark:text-slate-300 font-black uppercase">
-              {{ plan.plan_type }}
+              {{ plan.plan_type === 'free' ? $t('common.free') : plan.plan_type === 'paid' ? $t('common.paid') : plan.plan_type }}
             </span>
             <span v-if="plan.max_employees" class="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-[10px] rounded text-slate-600 dark:text-slate-300 font-black uppercase">
-              {{ plan.max_employees }} employees
+              {{ $t('common.employeesCount', { n: plan.max_employees }) }}
             </span>
           </div>
         </button>
@@ -186,9 +188,9 @@ async function goToLogin() {
         :loading="companiesStore.renewing || redirecting"
         @click="handleRenew"
       >
-        <template v-if="redirecting">Redirecting to secure checkout…</template>
-        <template v-else-if="selectedPlan && Number(selectedPlan.price) === 0">Activate Free Plan</template>
-        <template v-else>Continue to Payment</template>
+        <template v-if="redirecting">{{ $t('subscription.redirecting') }}</template>
+        <template v-else-if="selectedPlan && Number(selectedPlan.price) === 0">{{ $t('subscription.activateFree') }}</template>
+        <template v-else>{{ $t('subscription.continuePayment') }}</template>
       </BaseButton>
     </template>
   </section>

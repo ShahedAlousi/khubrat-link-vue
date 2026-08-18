@@ -1,9 +1,16 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import salariesService from '@/services/salaries.service'
+import { useSalariesStore } from '@/stores/salaries.store'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import BaseInput from '@/components/common/BaseInput.vue'
 import { formatCurrency, formatDate, initials } from '@/utils/format'
+import { translateStatus } from '@/i18n/helpers'
+
+const { t } = useI18n()
+const salariesStore = useSalariesStore()
 
 const props = defineProps({
   salaryId: { type: [String, Number], required: true },
@@ -14,6 +21,11 @@ const emit = defineEmits(['close', 'paid'])
 
 const loading = ref(true)
 const paying = ref(false)
+const savingAdjustment = ref(false)
+const showManualEdit = ref(false)
+const adjustmentType = ref('addition')
+const adjustmentAmount = ref('')
+const adjustmentReason = ref('')
 const error = ref(null)
 const details = ref(null)
 
@@ -68,7 +80,7 @@ function close() {
 }
 
 function display(value) {
-  return value === null || value === undefined || value === '' ? '—' : value
+  return value === null || value === undefined || value === '' ? t('common.emDash') : value
 }
 
 function humanizeKey(key) {
@@ -78,14 +90,14 @@ function humanizeKey(key) {
 }
 
 function formatMoney(value) {
-  if (value === null || value === undefined || value === '') return '—'
+  if (value === null || value === undefined || value === '') return t('common.emDash')
   const n = Number(value)
   return Number.isFinite(n) ? formatCurrency(n) : String(value)
 }
 
 function formatFieldValue(key, value) {
-  if (value === null || value === undefined || value === '') return '—'
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  if (value === null || value === undefined || value === '') return t('common.emDash')
+  if (typeof value === 'boolean') return value ? t('common.yes') : t('common.no')
   if (MONEY_KEYS.has(key) || /salary|amount|bonus|allowance|deduction|addition|tax|pay/i.test(key)) {
     const n = Number(value)
     if (Number.isFinite(n)) return formatCurrency(n)
@@ -113,7 +125,7 @@ function normalizeLines(source, forcedType = null) {
     try {
       raw = JSON.parse(raw)
     } catch {
-      return [{ label: 'Note', amount: null, type: forcedType, note: raw }]
+      return [{ label: t('common.note'), amount: null, type: forcedType, note: raw }]
     }
   }
 
@@ -153,7 +165,7 @@ function normalizeLines(source, forcedType = null) {
     if (typeof item !== 'object') {
       const n = Number(item)
       return {
-        label: `Item ${index + 1}`,
+        label: t('common.itemN', { n: index + 1 }),
         amount: Number.isFinite(n) ? n : null,
         type: forcedType,
         note: Number.isFinite(n) ? null : String(item)
@@ -162,7 +174,7 @@ function normalizeLines(source, forcedType = null) {
 
     const amount = item.amount ?? item.value ?? item.total ?? item.money ?? null
     const label =
-      item.name || item.label || item.title || item.rule_name || item.type_name || `Item ${index + 1}`
+      item.name || item.label || item.title || item.rule_name || item.type_name || t('common.itemN', { n: index + 1 })
     const type = item.type || item.category || forcedType || inferType(label, amount)
     const note = item.note || item.description || item.reason || item.details || null
 
@@ -210,10 +222,49 @@ async function fetchDetails() {
     const resp = await salariesService.get(props.salaryId)
     details.value = unwrapPayload(resp)
   } catch (err) {
-    error.value = err?.message || 'Failed to load salary details.'
+    error.value = err?.message || t('payroll.loadFailed')
     details.value = null
   } finally {
     loading.value = false
+  }
+}
+
+function resetAdjustmentForm() {
+  showManualEdit.value = false
+  adjustmentType.value = 'addition'
+  adjustmentAmount.value = ''
+  adjustmentReason.value = ''
+}
+
+async function saveAdjustment() {
+  if (!props.salaryId) return
+
+  const amount = Number(adjustmentAmount.value)
+  const reason = String(adjustmentReason.value || '').trim()
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    error.value = t('payroll.adjustmentAmountRequired')
+    return
+  }
+  if (!reason) {
+    error.value = t('payroll.adjustmentReasonRequired')
+    return
+  }
+
+  savingAdjustment.value = true
+  error.value = null
+  try {
+    await salariesStore.addSalaryAdjustment(props.salaryId, {
+      type: adjustmentType.value,
+      amount,
+      reason
+    })
+    resetAdjustmentForm()
+    await fetchDetails()
+  } catch (err) {
+    error.value = err?.message || t('payroll.adjustmentFailed')
+  } finally {
+    savingAdjustment.value = false
   }
 }
 
@@ -226,7 +277,7 @@ async function pay() {
     await fetchDetails()
     emit('paid')
   } catch (err) {
-    error.value = err?.message || 'Failed to mark salary as paid.'
+    error.value = err?.message || t('payroll.markPaidFailed')
   } finally {
     paying.value = false
   }
@@ -235,6 +286,7 @@ async function pay() {
 watch(
   () => props.salaryId,
   () => {
+    resetAdjustmentForm()
     fetchDetails()
   },
   { immediate: true }
@@ -244,26 +296,29 @@ const employeeInitials = computed(() => initials(details.value?.employee_name))
 
 const periodLabel = computed(() => {
   const d = details.value
-  if (!d) return '—'
+  if (!d) return t('common.emDash')
   if (d.period) return d.period
   if (d.month && d.year) return `${d.year}-${String(d.month).padStart(2, '0')}`
-  return '—'
+  return t('common.emDash')
 })
 
 const statusLabel = computed(() => {
   const d = details.value
-  if (!d) return '—'
-  if (d.is_received) return 'Paid'
-  if (d.status) return String(d.status).replaceAll('_', ' ')
-  return 'Pending'
+  if (!d) return t('common.emDash')
+  if (d.is_received) return t('status.paid')
+  if (d.status) return translateStatus(d.status)
+  return t('status.pending')
 })
 
 const statusTone = computed(() => {
-  const label = String(statusLabel.value).toLowerCase()
-  if (label.includes('paid') || label.includes('received')) {
+  const d = details.value
+  if (!d) return 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+  if (d.is_received) return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+  const s = String(d.status || '').toLowerCase()
+  if (s.includes('paid') || s.includes('received')) {
     return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
   }
-  if (label.includes('draft')) {
+  if (s.includes('draft')) {
     return 'bg-slate-500/10 text-slate-500 border-slate-500/20'
   }
   return 'bg-amber-500/10 text-amber-500 border-amber-500/20'
@@ -320,14 +375,14 @@ const paymentSummaryRaw = computed(() => {
     <div class="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true">
       <div class="absolute inset-0 bg-black/55 backdrop-blur-[1px]" @click="close" />
 
-      <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+      <div class="pointer-events-none fixed inset-y-0 end-0 flex max-w-full ps-10">
         <aside
-          class="pointer-events-auto w-screen max-w-md bg-white dark:bg-slate-800 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-700"
+          class="pointer-events-auto w-screen max-w-md bg-white dark:bg-slate-800 shadow-2xl flex flex-col border-s border-slate-200 dark:border-slate-700"
         >
           <div class="bg-khubrat-blue text-white p-6 border-b border-khubrat-goldLight/20">
             <div class="flex items-center justify-between gap-3">
               <h2 class="text-sm font-extrabold text-khubrat-goldLight uppercase tracking-wider">
-                Salary Details File
+                {{ $t('payroll.salaryFile') }}
               </h2>
               <button class="text-white/60 hover:text-white transition-all" @click="close">
                 <i class="fa-solid fa-xmark text-lg"></i>
@@ -352,7 +407,7 @@ const paymentSummaryRaw = computed(() => {
                 <div
                   class="w-14 h-14 rounded-2xl bg-khubrat-blue/10 dark:bg-khubrat-goldLight/10 text-khubrat-blue dark:text-khubrat-goldLight flex items-center justify-center font-black text-lg shrink-0"
                 >
-                  {{ employeeInitials || '—' }}
+                  {{ employeeInitials || $t('common.emDash') }}
                 </div>
                 <div class="min-w-0 flex-1">
                   <h3 class="text-base font-extrabold text-slate-800 dark:text-slate-100 truncate">
@@ -377,13 +432,13 @@ const paymentSummaryRaw = computed(() => {
                 class="rounded-2xl bg-gradient-to-br from-khubrat-blue to-[#001a5c] text-white p-5 shadow-lg"
               >
                 <p class="text-[10px] font-extrabold uppercase tracking-wider text-khubrat-goldLight/80">
-                  Net Salary · {{ periodLabel }}
+                  {{ $t('payroll.netSalaryPeriod', { period: periodLabel }) }}
                 </p>
                 <p class="text-3xl font-black text-khubrat-goldLight mt-1">
                   {{ formatMoney(details.net_salary) }}
                 </p>
                 <p v-if="details.paid_at" class="text-[11px] text-white/60 mt-2">
-                  Paid on {{ formatDate(details.paid_at) }}
+                  {{ $t('payroll.paidOn', { date: formatDate(details.paid_at) }) }}
                 </p>
               </div>
 
@@ -391,7 +446,7 @@ const paymentSummaryRaw = computed(() => {
                 <div
                   class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700"
                 >
-                  <p class="text-[10px] font-bold text-slate-400">Base</p>
+                  <p class="text-[10px] font-bold text-slate-400">{{ $t('payroll.base') }}</p>
                   <p class="text-xs font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                     {{ formatMoney(baseSalary) }}
                   </p>
@@ -399,7 +454,7 @@ const paymentSummaryRaw = computed(() => {
                 <div
                   class="bg-emerald-50/70 dark:bg-emerald-950/20 p-3 rounded-xl border border-emerald-200/70 dark:border-emerald-900"
                 >
-                  <p class="text-[10px] font-bold text-emerald-600/80">Additions</p>
+                  <p class="text-[10px] font-bold text-emerald-600/80">{{ $t('payroll.additions') }}</p>
                   <p class="text-xs font-bold text-emerald-700 dark:text-emerald-400 mt-0.5">
                     {{ formatMoney(details.total_additions) }}
                   </p>
@@ -407,7 +462,7 @@ const paymentSummaryRaw = computed(() => {
                 <div
                   class="bg-rose-50/70 dark:bg-rose-950/20 p-3 rounded-xl border border-rose-200/70 dark:border-rose-900"
                 >
-                  <p class="text-[10px] font-bold text-rose-600/80">Deductions</p>
+                  <p class="text-[10px] font-bold text-rose-600/80">{{ $t('payroll.deductions') }}</p>
                   <p class="text-xs font-bold text-rose-700 dark:text-rose-400 mt-0.5">
                     {{ formatMoney(details.total_deductions) }}
                   </p>
@@ -418,7 +473,7 @@ const paymentSummaryRaw = computed(() => {
                 <div
                   class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700"
                 >
-                  <p class="text-[10px] font-bold text-slate-400">Period</p>
+                  <p class="text-[10px] font-bold text-slate-400">{{ $t('payroll.period') }}</p>
                   <p class="text-xs font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                     {{ periodLabel }}
                   </p>
@@ -426,16 +481,104 @@ const paymentSummaryRaw = computed(() => {
                 <div
                   class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700"
                 >
-                  <p class="text-[10px] font-bold text-slate-400">Gross</p>
+                  <p class="text-[10px] font-bold text-slate-400">{{ $t('payroll.gross') }}</p>
                   <p class="text-xs font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                     {{ formatMoney(details.gross_salary) }}
                   </p>
                 </div>
               </div>
 
+              <div v-if="!details.is_received" class="space-y-3">
+                <button
+                  v-if="!showManualEdit"
+                  type="button"
+                  class="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-khubrat-blue/40 dark:border-khubrat-goldLight/30 bg-khubrat-blue/5 dark:bg-khubrat-goldLight/5 px-4 py-2.5 text-xs font-bold text-khubrat-blue dark:text-khubrat-goldLight transition-all hover:bg-khubrat-blue/10 dark:hover:bg-khubrat-goldLight/10"
+                  @click="showManualEdit = true"
+                >
+                  <i class="fa-solid fa-pen-to-square text-[11px]"></i>
+                  {{ $t('payroll.manualEdit') }}
+                </button>
+
+                <div
+                  v-else
+                  class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 space-y-3"
+                >
+                  <div class="flex items-center justify-between gap-2">
+                    <p class="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
+                      {{ $t('payroll.manualEdit') }}
+                    </p>
+                    <button
+                      type="button"
+                      class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                      @click="resetAdjustmentForm"
+                    >
+                      <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                  </div>
+
+                  <div
+                    class="flex items-center gap-1 rounded-xl bg-white dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700"
+                    role="group"
+                  >
+                    <button
+                      type="button"
+                      class="flex-1 px-3 py-2 rounded-lg text-[11px] font-bold transition-all"
+                      :class="
+                        adjustmentType === 'addition'
+                          ? 'bg-emerald-500 text-white shadow-sm'
+                          : 'text-slate-500 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400'
+                      "
+                      :aria-pressed="adjustmentType === 'addition'"
+                      @click="adjustmentType = 'addition'"
+                    >
+                      {{ $t('payroll.additions') }}
+                    </button>
+                    <button
+                      type="button"
+                      class="flex-1 px-3 py-2 rounded-lg text-[11px] font-bold transition-all"
+                      :class="
+                        adjustmentType === 'deduction'
+                          ? 'bg-rose-500 text-white shadow-sm'
+                          : 'text-slate-500 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400'
+                      "
+                      :aria-pressed="adjustmentType === 'deduction'"
+                      @click="adjustmentType = 'deduction'"
+                    >
+                      {{ $t('payroll.deductions') }}
+                    </button>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-3">
+                    <BaseInput
+                      v-model="adjustmentAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      :label="$t('payroll.adjustmentAmount')"
+                      :placeholder="$t('payroll.adjustmentAmount')"
+                    />
+                    <BaseInput
+                      v-model="adjustmentReason"
+                      :label="$t('payroll.adjustmentReason')"
+                      :placeholder="$t('payroll.adjustmentReason')"
+                    />
+                  </div>
+
+                  <BaseButton
+                    variant="blue"
+                    full-width
+                    :loading="savingAdjustment"
+                    :disabled="savingAdjustment"
+                    @click="saveAdjustment"
+                  >
+                    {{ $t('common.save') }}
+                  </BaseButton>
+                </div>
+              </div>
+
               <div v-if="additionLines.length" class="space-y-2">
                 <p class="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
-                  Additions Breakdown
+                  {{ $t('payroll.additionsBreakdown') }}
                 </p>
                 <div
                   class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-700"
@@ -462,7 +605,7 @@ const paymentSummaryRaw = computed(() => {
 
               <div v-if="deductionLines.length" class="space-y-2">
                 <p class="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
-                  Deductions Breakdown
+                  {{ $t('payroll.deductionsBreakdown') }}
                 </p>
                 <div
                   class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-700"
@@ -489,7 +632,7 @@ const paymentSummaryRaw = computed(() => {
 
               <div v-if="paymentSummaryRaw" class="space-y-2">
                 <p class="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
-                  Payment Summary
+                  {{ $t('payroll.paymentSummary') }}
                 </p>
                 <pre
                   class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-300 overflow-x-auto whitespace-pre-wrap"
@@ -498,7 +641,7 @@ const paymentSummaryRaw = computed(() => {
 
               <div v-if="extraFields.length" class="space-y-2">
                 <p class="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
-                  Additional Details
+                  {{ $t('payroll.additionalDetails') }}
                 </p>
                 <div class="grid grid-cols-2 gap-3">
                   <div
@@ -526,7 +669,7 @@ const paymentSummaryRaw = computed(() => {
           <div
             class="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex gap-3"
           >
-            <BaseButton class="flex-1" variant="ghost" @click="close">Close</BaseButton>
+            <BaseButton class="flex-1" variant="ghost" @click="close">{{ $t('common.close') }}</BaseButton>
             <BaseButton
               class="flex-1"
               variant="blue"
@@ -534,7 +677,7 @@ const paymentSummaryRaw = computed(() => {
               :disabled="!details || details.is_received || loading"
               @click="pay"
             >
-              {{ details?.is_received ? 'Already Paid' : 'Mark Paid' }}
+              {{ details?.is_received ? $t('payroll.alreadyPaid') : $t('payroll.markPaid') }}
             </BaseButton>
           </div>
         </aside>

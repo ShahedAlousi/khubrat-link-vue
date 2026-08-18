@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BaseSelect from '@/components/common/BaseSelect.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import BaseAlert from '@/components/common/BaseAlert.vue'
@@ -10,11 +11,13 @@ import { usePayrollAnalyticsStore } from '@/stores/payrollAnalytics.store'
 import { formatCurrency } from '@/utils/format'
 
 const store = usePayrollAnalyticsStore()
+const { t, tm, locale } = useI18n()
 
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-]
+const monthNames = computed(() => {
+  void locale.value
+  const names = tm('months.long')
+  return Array.isArray(names) ? names : []
+})
 
 const yearOptions = computed(() => {
   const current = new Date().getFullYear()
@@ -24,12 +27,12 @@ const yearOptions = computed(() => {
   })
 })
 
-const monthOptions = MONTH_NAMES.map((label, i) => ({ value: i + 1, label }))
+const monthOptions = computed(() => monthNames.value.map((label, i) => ({ value: i + 1, label })))
 
 const periodLabel = computed(() => {
   const month = store.summary?.month ?? store.filters.month
   const year = store.summary?.year ?? store.filters.year
-  return `${MONTH_NAMES[month - 1] || ''} ${year}`
+  return `${monthNames.value[month - 1] || ''} ${year}`
 })
 
 const momHint = computed(() => {
@@ -38,7 +41,7 @@ const momHint = computed(() => {
   const rounded = Math.abs(pct).toFixed(0)
   const sign = pct >= 0 ? '+' : '−'
   return {
-    text: `${sign}${rounded}% vs previous month`,
+    text: `${sign}${t('payroll.vsPrevious', { n: rounded })}`,
     positive: pct >= 0
   }
 })
@@ -106,22 +109,22 @@ onMounted(() => {
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div>
         <h2 class="text-lg font-black text-khubrat-blue dark:text-white">
-          Payroll &amp; Salary Analytics
+          {{ $t('payroll.analyticsTitle') }}
         </h2>
-        <p class="text-xs text-slate-400 mt-0.5">Control panel — monthly cost, distribution, and savings.</p>
+        <p class="text-xs text-slate-400 mt-0.5">{{ $t('payroll.analyticsSubtitle') }}</p>
       </div>
 
       <div class="flex flex-wrap items-end gap-3">
         <BaseSelect
           :model-value="store.filters.year"
-          label="Year"
+          :label="$t('payroll.year')"
           :options="yearOptions"
           class="w-32"
           @update:model-value="onYearChange"
         />
         <BaseSelect
           :model-value="store.filters.month"
-          label="Month"
+          :label="$t('payroll.month')"
           :options="monthOptions"
           class="w-40"
           @update:model-value="onMonthChange"
@@ -129,7 +132,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <LoadingSpinner v-if="store.loading && !store.analytics" label="Loading payroll analytics…" />
+    <LoadingSpinner v-if="store.loading && !store.analytics" :label="$t('payroll.loadingAnalytics')" />
 
     <BaseAlert v-else-if="store.error && !store.analytics" variant="error">
       {{ store.error }}
@@ -145,7 +148,7 @@ onMounted(() => {
           <span
             class="absolute top-3 end-3 w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-700 text-[10px] font-black text-slate-500 flex items-center justify-center"
           >1</span>
-          <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Net Payroll</p>
+          <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ $t('payroll.netPayroll') }}</p>
           <div class="mt-2 flex items-end justify-between gap-3">
             <h3 class="text-2xl font-black text-khubrat-blue dark:text-white tabular-nums">
               {{ formatCurrency(store.summary.total_net_payroll) }}
@@ -176,7 +179,7 @@ onMounted(() => {
           <span
             class="absolute top-3 end-3 w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-700 text-[10px] font-black text-slate-500 flex items-center justify-center"
           >2</span>
-          <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Basic Salary</p>
+          <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ $t('payroll.basicSalary') }}</p>
           <h3 class="mt-2 text-2xl font-black text-khubrat-blue dark:text-white tabular-nums">
             {{ formatCurrency(store.summary.total_base_salary) }}
           </h3>
@@ -197,7 +200,7 @@ onMounted(() => {
           <span
             class="absolute top-3 end-3 w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-700 text-[10px] font-black text-slate-500 flex items-center justify-center"
           >3</span>
-          <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Allowances / Deductions</p>
+          <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ $t('payroll.allowances') }} / {{ $t('payroll.deductions') }}</p>
           <h3 class="mt-2 text-xl font-black tabular-nums">
             <span class="text-khubrat-blue dark:text-white">{{ formatCurrency(store.summary.total_allowances) }}</span>
             <span class="text-slate-300 dark:text-slate-600 mx-1">/</span>
@@ -219,7 +222,7 @@ onMounted(() => {
           <span
             class="absolute top-3 end-3 w-6 h-6 rounded-md bg-white/80 dark:bg-slate-700 text-[10px] font-black text-slate-500 flex items-center justify-center"
           >4</span>
-          <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Savings</p>
+          <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ $t('payroll.totalSavings') }}</p>
           <h3 class="mt-2 text-2xl font-black text-khubrat-blue dark:text-white tabular-nums">
             {{ formatCurrency(store.totalSavings) }}
           </h3>
@@ -229,7 +232,7 @@ onMounted(() => {
               ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
               : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'"
           >
-            {{ savingsPositive ? 'Positive' : 'Negative' }}
+            {{ savingsPositive ? $t('payroll.positive') : $t('payroll.negative') }}
           </span>
         </article>
       </div>
@@ -240,7 +243,7 @@ onMounted(() => {
           class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm lg:col-span-2"
         >
           <h4 class="text-md font-bold text-khubrat-blue dark:text-white mb-4">
-            Monthly Salary Cost Trend (12 months)
+            {{ $t('payroll.costTrend') }}
           </h4>
           <PayrollCostTrendChart :trend="store.monthlyCostTrend" :year="store.filters.year" />
         </div>
@@ -249,7 +252,7 @@ onMounted(() => {
           class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm"
         >
           <h4 class="text-md font-bold text-khubrat-blue dark:text-white mb-4">
-            Current Month Salary Distribution ({{ periodLabel }})
+            {{ $t('payroll.distribution', { period: periodLabel }) }}
           </h4>
           <PayrollDistributionChart
             :base-salary="store.summary.total_base_salary"
@@ -262,7 +265,7 @@ onMounted(() => {
     </template>
 
     <BaseAlert v-else-if="!store.loading" variant="info">
-      No payroll analytics data for the selected period.
+      {{ $t('payroll.noAnalytics') }}
     </BaseAlert>
   </section>
 </template>

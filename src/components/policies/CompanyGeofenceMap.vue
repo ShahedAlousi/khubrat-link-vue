@@ -139,10 +139,10 @@ defineExpose({
   <div class="relative">
     <div ref="mapEl" class="w-full h-80 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner z-10"></div>
     <p v-if="!hasCoordinates() && !readonly" class="mt-2 text-[10px] font-bold text-slate-400">
-      No location saved yet — click anywhere on the map to set the company coordinates.
+      {{ $t('policies.noLocationSaved') }}
     </p>
     <p v-else-if="!hasCoordinates() && readonly" class="mt-2 text-[10px] font-bold text-slate-400">
-      No company location has been configured yet.
+      {{ $t('policies.noLocationConfigured') }}
     </p>
   </div>
 </template>

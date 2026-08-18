@@ -53,6 +53,11 @@ export const useSalariesStore = defineStore('salaries', () => {
     return res
   }
 
+  async function addSalaryAdjustment(id, payload) {
+    const res = await salariesService.addAdjustment(id, payload)
+    return res
+  }
+
   function openDrawer(id) {
     drawerId.value = id
     drawerOpen.value = true
@@ -72,6 +77,7 @@ export const useSalariesStore = defineStore('salaries', () => {
     fetchSalaries,
     generateDrafts,
     markSalaryPaid,
+    addSalaryAdjustment,
     openDrawer,
     closeDrawer
   }

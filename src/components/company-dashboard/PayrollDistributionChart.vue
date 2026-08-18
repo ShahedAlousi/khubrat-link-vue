@@ -1,7 +1,10 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Doughnut } from 'vue-chartjs'
 import { formatCurrency } from '@/utils/format'
+
+const { t } = useI18n()
 
 const props = defineProps({
   baseSalary: { type: Number, default: 0 },
@@ -13,7 +16,7 @@ const props = defineProps({
 const segments = computed(() => [
   {
     key: 'base',
-    label: 'Basic Salary',
+    label: t('payroll.basicSalary'),
     value: Number(props.baseSalary) || 0,
     color: '#002173',
     icon: 'fa-dollar-sign',
@@ -21,7 +24,7 @@ const segments = computed(() => [
   },
   {
     key: 'allowances',
-    label: 'Allowances',
+    label: t('payroll.allowances'),
     value: Number(props.allowances) || 0,
     color: '#10b981',
     icon: 'fa-plus',
@@ -29,7 +32,7 @@ const segments = computed(() => [
   },
   {
     key: 'deductions',
-    label: 'Deductions',
+    label: t('payroll.deductions'),
     value: Number(props.deductions) || 0,
     color: '#f43f5e',
     icon: 'fa-minus',
@@ -49,7 +52,7 @@ const chartData = computed(() => ({
   ]
 }))
 
-const chartOptions = {
+const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   cutout: '72%',
@@ -63,7 +66,7 @@ const chartOptions = {
       }
     }
   }
-}
+}))
 </script>
 
 <template>
@@ -71,7 +74,7 @@ const chartOptions = {
     <div class="h-52 relative flex items-center justify-center">
       <Doughnut :data="chartData" :options="chartOptions" />
       <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-6 text-center">
-        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Net Payroll</p>
+        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ $t('payroll.netPayroll') }}</p>
         <p class="text-sm font-black text-khubrat-blue dark:text-white leading-tight">
           {{ formatCurrency(netPayroll) }}
         </p>

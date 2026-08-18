@@ -7,6 +7,7 @@ import {
   normalizeOvertimeRequest
 } from '@/services/managementRequests.service'
 import { useAuthStore } from '@/stores/auth.store'
+import { t } from '@/i18n/helpers'
 
 const EMPTY_META = { current_page: 1, last_page: 1, per_page: 15, total: 0, from: null, to: null }
 
@@ -70,7 +71,7 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
       inbox.value = Array.isArray(data) ? data : []
       return inbox.value
     } catch (err) {
-      error.value = err.message || 'Failed to load leave requests.'
+      error.value = err.message || t('requests.loadLeavesFailed')
       throw err
     } finally {
       loading.value = false
@@ -97,7 +98,7 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
   async function approveRequest(id) {
     const roleContext = resolveRoleContext()
     if (!roleContext) {
-      const err = { message: 'Your role is not authorized to approve leave requests.' }
+      const err = { message: t('requests.notAuthorizedApproveLeave') }
       error.value = err.message
       throw err
     }
@@ -119,7 +120,7 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
       if (selectedId.value === id) closeDrawer()
       return true
     } catch (err) {
-      error.value = err.message || 'Failed to approve leave request.'
+      error.value = err.message || t('requests.approveLeaveFailed')
       throw err
     } finally {
       actionLoading.value = false
@@ -129,7 +130,7 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
   async function rejectRequest(id, rejectionReason) {
     const roleContext = resolveRoleContext()
     if (!roleContext) {
-      const err = { message: 'Your role is not authorized to reject leave requests.' }
+      const err = { message: t('requests.notAuthorizedRejectLeave') }
       error.value = err.message
       throw err
     }
@@ -156,7 +157,7 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
       if (selectedId.value === id) closeDrawer()
       return true
     } catch (err) {
-      error.value = err.message || 'Failed to reject leave request.'
+      error.value = err.message || t('requests.rejectLeaveFailed')
       throw err
     } finally {
       actionLoading.value = false
@@ -179,7 +180,7 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
       advancesMeta.value = meta
       return advances.value
     } catch (err) {
-      error.value = err.message || 'Failed to load salary advance requests.'
+      error.value = err.message || t('requests.loadAdvancesFailed')
       throw err
     } finally {
       advancesLoading.value = false
@@ -194,7 +195,7 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
       requestDetails.value = details
       return details
     } catch (err) {
-      error.value = err.message || 'Failed to load advance request details.'
+      error.value = err.message || t('requests.loadAdvanceDetailsFailed')
       throw err
     } finally {
       detailsLoading.value = false
@@ -203,7 +204,7 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
 
   async function runAdvanceAction(id, payload, failureMessage) {
     if (!canActOnAdvances.value) {
-      const err = { message: 'Only HR managers can decide on salary advance requests.' }
+      const err = { message: t('requests.onlyHrAdvances') }
       error.value = err.message
       throw err
     }
@@ -241,21 +242,21 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
   }
 
   function approveAdvance(id) {
-    return runAdvanceAction(id, { action: 'approve' }, 'Failed to approve advance request.')
+    return runAdvanceAction(id, { action: 'approve' }, t('requests.approveAdvanceFailed'))
   }
 
   function rejectAdvance(id, rejectionReason) {
     return runAdvanceAction(
       id,
       { action: 'reject', rejection_reason: rejectionReason },
-      'Failed to reject advance request.'
+      t('requests.rejectAdvanceFailed')
     )
   }
 
   /** HR-only: mark one installment of an approved advance as paid. */
   async function payAdvanceInstallment(advanceId, installmentId) {
     if (!canActOnAdvances.value) {
-      const err = { message: 'Only HR managers can settle advance installments.' }
+      const err = { message: t('requests.onlyHrInstallments') }
       error.value = err.message
       throw err
     }
@@ -270,7 +271,7 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
       }
       return result
     } catch (err) {
-      error.value = err.message || 'Failed to mark the installment as paid.'
+      error.value = err.message || t('requests.installmentFailed')
       throw err
     } finally {
       actionLoading.value = false
@@ -287,7 +288,7 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
       overtimeMeta.value = meta
       return overtime.value
     } catch (err) {
-      error.value = err.message || 'Failed to load overtime requests.'
+      error.value = err.message || t('requests.loadOvertimeFailed')
       throw err
     } finally {
       overtimeLoading.value = false
@@ -302,7 +303,7 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
       requestDetails.value = details
       return details
     } catch (err) {
-      error.value = err.message || 'Failed to load overtime request details.'
+      error.value = err.message || t('requests.loadOvertimeDetailsFailed')
       throw err
     } finally {
       detailsLoading.value = false
@@ -312,7 +313,7 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
   async function runOvertimeAction(id, payload, failureMessage) {
     const roleContext = resolveRoleContext()
     if (!roleContext) {
-      const err = { message: 'Your role is not authorized to decide on overtime requests.' }
+      const err = { message: t('requests.notAuthorizedOvertime') }
       error.value = err.message
       throw err
     }
@@ -363,7 +364,7 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
         hours_approved: options.hours_approved ?? null,
         review_notes: options.review_notes ?? null
       },
-      'Failed to approve overtime request.'
+      t('requests.approveOvertimeFailed')
     )
   }
 
@@ -371,7 +372,7 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
     return runOvertimeAction(
       id,
       { action: 'reject', rejection_reason: rejectionReason, review_notes: reviewNotes },
-      'Failed to reject overtime request.'
+      t('requests.rejectOvertimeFailed')
     )
   }
 

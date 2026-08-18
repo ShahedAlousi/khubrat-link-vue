@@ -1,5 +1,6 @@
 import api from './api'
 import { validateLeaveActionPayload } from '@/utils/validators'
+import { t } from '@/i18n/helpers'
 
 /**
  * Normalize inbox payload: array, single object, or paginated `{ data: [...] }`.
@@ -326,7 +327,7 @@ export const managementRequestsService = {
         const type = (blob.type || '').toLowerCase()
         if (!type.includes('text/html') && !type.includes('application/json')) return blob
 
-        let message = 'Failed to load the attachment file.'
+        let message = t('requests.loadAttachmentFailed')
         try {
           const text = await blob.text()
           if (type.includes('json')) {
@@ -458,7 +459,7 @@ export const managementRequestsService = {
     if (hoursApproved !== null && hoursApproved !== undefined && hoursApproved !== '') {
       const parsed = Number(hoursApproved)
       if (!Number.isInteger(parsed) || parsed < 0) {
-        errors.hours_approved = 'Approved hours must be a non-negative whole number.'
+        errors.hours_approved = t('validation.approvedHours')
       }
     }
 

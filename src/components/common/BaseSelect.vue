@@ -1,22 +1,24 @@
 <script setup>
-import { useId } from 'vue'
+import { computed, useId } from 'vue'
+import { useI18n } from 'vue-i18n'
 
-defineProps({
+const props = defineProps({
   modelValue: { type: [String, Number], default: '' },
   label: { type: String, default: '' },
   options: {
     type: Array,
     default: () => []
-    // Array of { value, label }
   },
-  placeholder: { type: String, default: 'Select…' },
+  placeholder: { type: String, default: '' },
   error: { type: String, default: '' },
   required: { type: Boolean, default: false }
 })
 
 defineEmits(['update:modelValue'])
 
+const { t } = useI18n()
 const selectId = useId()
+const resolvedPlaceholder = computed(() => props.placeholder || t('common.select'))
 </script>
 
 <template>
@@ -35,7 +37,7 @@ const selectId = useId()
       @change="$emit('update:modelValue', $event.target.value)"
     >
       <option value="" disabled class="bg-white text-slate-400 dark:bg-slate-900 dark:text-slate-500">
-        {{ placeholder }}
+        {{ resolvedPlaceholder }}
       </option>
       <option
         v-for="option in options"

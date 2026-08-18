@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { payrollAnalyticsService } from '@/services/payrollAnalytics.service'
+import { t } from '@/i18n/helpers'
 
 export const usePayrollAnalyticsStore = defineStore('payrollAnalytics', () => {
   const analytics = ref(null)
@@ -45,7 +46,7 @@ export const usePayrollAnalyticsStore = defineStore('payrollAnalytics', () => {
       filters.value = { year: Number(next.year), month: Number(next.month) }
       return data
     } catch (err) {
-      error.value = err.message || 'Failed to load payroll analytics.'
+      error.value = err.message || t('payroll.loadAnalyticsFailed')
       throw err
     } finally {
       loading.value = false

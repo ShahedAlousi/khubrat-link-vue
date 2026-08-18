@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import companyProfileService from '@/services/companyProfileService'
+import { t } from '@/i18n/helpers'
 
 const emptyProfile = () => ({
   id: null,
@@ -61,7 +62,7 @@ export const useCompanyProfileStore = defineStore('companyProfile', () => {
 
       return profile.value
     } catch (err) {
-      error.value = err.message || 'Failed to load company profile.'
+      error.value = err.message || t('profile.loadFailed')
       throw err
     } finally {
       isLoading.value = false
@@ -90,7 +91,7 @@ export const useCompanyProfileStore = defineStore('companyProfile', () => {
       isEditing.value = false
       return true
     } catch (err) {
-      error.value = err.message || 'Failed to save company profile.'
+      error.value = err.message || t('profile.saveFailed')
       throw err
     } finally {
       isSaving.value = false

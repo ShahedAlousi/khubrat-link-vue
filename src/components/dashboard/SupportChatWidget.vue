@@ -7,7 +7,7 @@ const telegramBotUrl = 'https://t.me/KubratLink_support_bot'
     <!-- Header -->
     <h4 class="text-md font-bold text-[#002173] dark:text-white border-b border-slate-100 dark:border-slate-700 pb-3 flex items-center gap-2">
       <i class="fa-solid fa-headset text-[#835c21] dark:text-[#fcd88a]"></i>
-      <span>Technical Support</span>
+      <span>{{ $t('settings.supportTitle') }}</span>
     </h4>
 
     <!-- Telegram Support Card -->
@@ -20,10 +20,10 @@ const telegramBotUrl = 'https://t.me/KubratLink_support_bot'
       <!-- Description Text -->
       <div class="max-w-md space-y-1">
         <h5 class="text-sm font-semibold text-slate-800 dark:text-slate-100">
-          Connect with System Developers & Architects
+          {{ $t('settings.supportHeadline') }}
         </h5>
         <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-          For custom inquiries or immediate technical support directly from our engineering team, feel free to reach out via our official Telegram bot.
+          {{ $t('settings.supportBody') }}
         </p>
       </div>
 
@@ -35,7 +35,7 @@ const telegramBotUrl = 'https://t.me/KubratLink_support_bot'
         class="inline-flex items-center justify-center gap-2 bg-[#fcd88a] hover:bg-[#835c21] text-[#002173] hover:text-white text-xs font-bold px-6 py-3 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 transform hover:scale-105 active:scale-95"
       >
         <i class="fa-brands fa-telegram text-base"></i>
-        <span>Contact via Telegram</span>
+        <span>{{ $t('settings.contactTelegram') }}</span>
         <i class="fa-solid fa-arrow-up-right-from-square text-[10px] opacity-80 ms-1"></i>
       </a>
     </div>

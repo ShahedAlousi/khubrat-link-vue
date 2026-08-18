@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useEvaluationsStore } from '@/stores/useEvaluationsStore'
 import BaseAlert from '@/components/common/BaseAlert.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
@@ -9,6 +10,7 @@ const props = defineProps({
 })
 
 const evaluationsStore = useEvaluationsStore()
+const { t } = useI18n()
 
 // جلب تقدم الموظفين عند توفر معرف الدورة أو تغييره
 async function loadProgress() {
@@ -29,7 +31,7 @@ watch(
 
 // قراءة اسم الموظف من داخل كائن employee
 function employeeName(row) { 
-  return row.employee?.full_name || row.employee_name || row.name || '—' 
+  return row.employee?.full_name || row.employee_name || row.name || t('common.emDash') 
 }
 
 // قراءة اسم القسم من الحقل المباشر أو من داخل كائن employee
@@ -88,7 +90,7 @@ async function remind(row) {
             <i class="fa-solid fa-percent text-xl"></i>
           </div>
           <div>
-            <span class="text-[10px] text-slate-400 font-bold block uppercase">Overall Completion Rate</span>
+            <span class="text-[10px] text-slate-400 font-bold block uppercase">{{ $t('evaluations.overallRate') }}</span>
             <h3 class="text-xl font-black text-khubrat-blue dark:text-white mt-0.5">{{ overallCompletionRate }}%</h3>
           </div>
         </div>
@@ -97,8 +99,8 @@ async function remind(row) {
             <i class="fa-solid fa-circle-check text-xl"></i>
           </div>
           <div>
-            <span class="text-[10px] text-slate-400 font-bold block uppercase">Completed</span>
-            <h3 class="text-xl font-black text-emerald-500 mt-0.5">{{ completedCount }} Employees</h3>
+            <span class="text-[10px] text-slate-400 font-bold block uppercase">{{ $t('evaluations.completed') }}</span>
+            <h3 class="text-xl font-black text-emerald-500 mt-0.5">{{ $t('evaluations.employeesCount', { n: completedCount }) }}</h3>
           </div>
         </div>
         <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-4">
@@ -106,26 +108,26 @@ async function remind(row) {
             <i class="fa-solid fa-hourglass-half text-xl"></i>
           </div>
           <div>
-            <span class="text-[10px] text-slate-400 font-bold block uppercase">Pending</span>
-            <h3 class="text-xl font-black text-amber-500 mt-0.5">{{ pendingCount }} Employees</h3>
+            <span class="text-[10px] text-slate-400 font-bold block uppercase">{{ $t('evaluations.pending') }}</span>
+            <h3 class="text-xl font-black text-amber-500 mt-0.5">{{ $t('evaluations.employeesCount', { n: pendingCount }) }}</h3>
           </div>
         </div>
       </div>
 
       <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
         <div class="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center flex-wrap gap-4">
-          <h5 class="font-bold text-khubrat-blue dark:text-white text-sm">Submission Progress Directory</h5>
-          <span class="text-xs text-slate-400">Total Assigned: {{ evaluationsStore.progressData.length }} Staff members</span>
+          <h5 class="font-bold text-khubrat-blue dark:text-white text-sm">{{ $t('evaluations.progressDirectory') }}</h5>
+          <span class="text-xs text-slate-400">{{ $t('evaluations.totalAssigned', { n: evaluationsStore.progressData.length }) }}</span>
         </div>
         <div class="overflow-x-auto">
-          <table class="w-full text-left">
+          <table class="w-full text-start">
             <thead class="bg-slate-100/50 dark:bg-slate-900/40 text-slate-500 dark:text-slate-300 text-xs">
               <tr>
-                <th class="p-4">Employee Details</th>
-                <th class="p-4">Submission Metrics</th>
-                <th class="p-4">Percentage</th>
-                <th class="p-4">Status Flag</th>
-                <th class="p-4 text-center">Actions</th>
+                <th class="p-4">{{ $t('evaluations.employeeDetails') }}</th>
+                <th class="p-4">{{ $t('evaluations.submissionMetrics') }}</th>
+                <th class="p-4">{{ $t('evaluations.percentage') }}</th>
+                <th class="p-4">{{ $t('evaluations.statusFlag') }}</th>
+                <th class="p-4 text-center">{{ $t('staff.actions') }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-700 text-xs">
@@ -149,8 +151,8 @@ async function remind(row) {
                 </td>
                 <td class="p-4 font-bold text-khubrat-blue dark:text-khubrat-goldLight">{{ percent(row) }}%</td>
                 <td class="p-4">
-                  <span v-if="isCompleted(row)" class="px-2 py-1 bg-emerald-500/10 text-emerald-600 rounded-lg font-bold border border-emerald-500/20">Completed</span>
-                  <span v-else class="px-2 py-1 bg-amber-500/10 text-amber-500 rounded-lg font-bold border border-amber-500/20">Pending</span>
+                  <span v-if="isCompleted(row)" class="px-2 py-1 bg-emerald-500/10 text-emerald-600 rounded-lg font-bold border border-emerald-500/20">{{ $t('evaluations.completed') }}</span>
+                  <span v-else class="px-2 py-1 bg-amber-500/10 text-amber-500 rounded-lg font-bold border border-amber-500/20">{{ $t('evaluations.pending') }}</span>
                 </td>
                 <td class="p-4 text-center">
                   <button
@@ -160,7 +162,7 @@ async function remind(row) {
                   >
                     <i class="fa-regular fa-bell"></i>
                   </button>
-                  <span v-else class="text-slate-400">-</span>
+                  <span v-else class="text-slate-400">{{ $t('common.emDash') }}</span>
                 </td>
               </tr>
             </tbody>

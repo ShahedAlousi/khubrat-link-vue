@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { Line } from 'vue-chartjs'
+import { useI18n } from 'vue-i18n'
 import { useHrAnalyticsStore } from '@/stores/hrAnalytics.store'
 
 const props = defineProps({
@@ -8,6 +9,7 @@ const props = defineProps({
 })
 
 const store = useHrAnalyticsStore()
+const { t } = useI18n()
 
 const quarters = computed(() => store.turnover?.quarters ?? [])
 const labels = computed(() => quarters.value.map((q) => q.quarter))
@@ -18,7 +20,7 @@ const data = computed(() => ({
   labels: labels.value,
   datasets: [
     {
-      label: 'Turnover %',
+      label: t('companyDashboard.turnoverPct'),
       data: series.value,
       borderColor: '#2563eb',
       backgroundColor: 'rgba(37,99,235,0.12)',
@@ -27,7 +29,7 @@ const data = computed(() => ({
       pointRadius: 4
     },
     {
-      label: 'Benchmark',
+      label: t('companyDashboard.benchmark'),
       data: benchmarkSeries.value,
       borderColor: '#ef4444',
       borderDash: [6, 4],
@@ -38,7 +40,7 @@ const data = computed(() => ({
   ]
 }))
 
-const options = {
+const options = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   plugins: { legend: { display: true, position: 'bottom' } },
@@ -48,12 +50,12 @@ const options = {
       ticks: { callback: (v) => v + '%' }
     }
   }
-}
+}))
 </script>
 
 <template>
   <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm h-64">
-    <h3 class="text-sm font-semibold text-slate-600 dark:text-slate-300">Quarterly Turnover</h3>
+    <h3 class="text-sm font-semibold text-slate-600 dark:text-slate-300">{{ $t('companyDashboard.quarterlyTurnover') }}</h3>
     <div class="h-[220px] mt-2">
       <Line :data="data" :options="options" />
     </div>

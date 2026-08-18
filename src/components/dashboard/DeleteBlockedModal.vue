@@ -14,7 +14,7 @@ const emit = defineEmits(['freeze', 'cancel'])
   <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-md shadow-xl overflow-hidden">
       <div class="bg-khubrat-blue text-white p-6 flex justify-between items-center">
-        <h3 class="text-lg font-bold text-khubrat-goldLight">Deletion Not Allowed</h3>
+        <h3 class="text-lg font-bold text-khubrat-goldLight">{{ $t('dashboard.deletionNotAllowed') }}</h3>
         <button class="text-white/60 hover:text-white transition-all" @click="emit('cancel')">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
@@ -27,29 +27,31 @@ const emit = defineEmits(['freeze', 'cancel'])
           <i class="fa-solid fa-triangle-exclamation text-amber-500 text-lg mt-0.5"></i>
           <div class="space-y-1.5">
             <p class="text-sm font-bold text-amber-800 dark:text-amber-300">
-              This company cannot be deleted because it has current activity.
+              {{ $t('dashboard.cannotDeleteActivity') }}
             </p>
             <p class="text-xs leading-relaxed text-amber-700/90 dark:text-amber-400/90">
-              <template v-if="companyName"><strong>{{ companyName }}</strong> still holds</template>
-              <template v-else>This account still holds</template>
-              related records such as employees, payroll or requests. Would you like to freeze it instead? Freezing
-              blocks all portal access while keeping the data intact.
+              <i18n-t v-if="companyName" keypath="dashboard.stillHolds" tag="span">
+                <template #name>
+                  <strong>{{ companyName }}</strong>
+                </template>
+              </i18n-t>
+              <template v-else>{{ $t('dashboard.stillHoldsGeneric') }}</template>
             </p>
             <p v-if="details" class="text-[11px] text-amber-700/70 dark:text-amber-400/70 italic">
-              Server response: {{ details }}
+              {{ $t('dashboard.serverResponse', { details }) }}
             </p>
           </div>
         </div>
 
         <p v-if="!canFreeze" class="text-xs text-slate-500 dark:text-slate-400">
-          This company account is already frozen.
+          {{ $t('dashboard.alreadyFrozen') }}
         </p>
 
         <div class="flex justify-end gap-3 pt-2">
-          <BaseButton variant="ghost" @click="emit('cancel')">Cancel</BaseButton>
+          <BaseButton variant="ghost" @click="emit('cancel')">{{ $t('common.cancel') }}</BaseButton>
           <BaseButton v-if="canFreeze" variant="gold" @click="emit('freeze')">
             <i class="fa-solid fa-snowflake"></i>
-            Freeze Instead
+            {{ $t('dashboard.freezeInstead') }}
           </BaseButton>
         </div>
       </div>

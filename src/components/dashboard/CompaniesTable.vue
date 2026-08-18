@@ -1,8 +1,7 @@
-
-
 <script setup>
 import { computed, ref } from 'vue'
 import { formatDate } from '@/utils/format'
+import { translateStatus } from '@/i18n/helpers'
 
 const props = defineProps({
   companies: { type: Array, default: () => [] },
@@ -52,27 +51,27 @@ const statusBadgeClass = {
       class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row gap-4 items-center justify-between shadow-sm"
     >
       <div class="relative w-full sm:w-80">
-        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+        <i class="fa-solid fa-magnifying-glass absolute start-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
         <input
           v-model="search"
           type="text"
-          placeholder="Search company name, email, domain…"
-          class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-1 focus:ring-khubrat-goldLight focus:outline-none"
+          :placeholder="$t('dashboard.searchCompany')"
+          class="w-full ps-10 pe-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-1 focus:ring-khubrat-goldLight focus:outline-none"
         />
       </div>
       <select
         v-model="statusFilter"
         class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none"
       >
-        <option value="all">All Statuses</option>
-        <option value="active">Active Only</option>
-        <option value="frozen">Frozen Only</option>
+        <option value="all">{{ $t('dashboard.allStatuses') }}</option>
+        <option value="active">{{ $t('dashboard.activeOnly') }}</option>
+        <option value="frozen">{{ $t('dashboard.frozenOnly') }}</option>
       </select>
       <select
         v-model="packageFilter"
         class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none"
       >
-        <option value="all">All Packages</option>
+        <option value="all">{{ $t('dashboard.allPackages') }}</option>
         <option v-for="plan in plans" :key="plan.id" :value="plan.name || plan.id">{{ plan.name }}</option>
       </select>
     </div>
@@ -80,24 +79,24 @@ const statusBadgeClass = {
     <!-- Table -->
     <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm">
+        <table class="w-full text-start text-sm">
           <thead>
             <tr
               class="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 font-bold"
             >
-              <th class="p-4 pl-6">Company Entity</th>
-              <th class="p-4">Domain</th>
-              <th class="p-4">Current Package</th>
-              <th class="p-4">Plan End Date</th>
-              <th class="p-4">Status</th>
-              <th class="p-4 text-center">Interventions</th>
+              <th class="p-4 ps-6">{{ $t('dashboard.companyEntity') }}</th>
+              <th class="p-4">{{ $t('dashboard.domain') }}</th>
+              <th class="p-4">{{ $t('dashboard.currentPackage') }}</th>
+              <th class="p-4">{{ $t('dashboard.planEndDate') }}</th>
+              <th class="p-4">{{ $t('dashboard.status') }}</th>
+              <th class="p-4 text-center">{{ $t('dashboard.interventions') }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60">
             <tr v-if="!filtered.length">
               <td colspan="6" class="text-center p-8 text-slate-400 font-semibold">
                 <i class="fa-solid fa-folder-open text-3xl mb-2 block"></i>
-                No companies found matching selected parameters.
+                {{ $t('dashboard.noCompaniesMatch') }}
               </td>
             </tr>
             <tr
@@ -105,20 +104,20 @@ const statusBadgeClass = {
               :key="co.id"
               class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
             >
-              <td class="p-4 pl-6">
+              <td class="p-4 ps-6">
                 <p class="font-extrabold text-slate-900 dark:text-white">{{ co.name }}</p>
                 <span class="text-xs text-slate-400">{{ co.email }}</span>
               </td>
               <td class="p-4">
-                <span class="text-xs font-semibold text-slate-500 dark:text-slate-300">{{ co.domain || '—' }}</span>
+                <span class="text-xs font-semibold text-slate-500 dark:text-slate-300">{{ co.domain || $t('common.emDash') }}</span>
               </td>
               <td class="p-4">
                 <span class="px-2.5 py-1 text-[10px] font-bold bg-slate-100 dark:bg-slate-700 rounded-md text-slate-600 dark:text-slate-300">
-                  {{ co.plan || '—' }}
+                  {{ co.plan || $t('common.emDash') }}
                 </span>
               </td>
               <td class="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                {{ co.plan_end_date ? formatDate(co.plan_end_date) : '—' }}
+                {{ co.plan_end_date ? formatDate(co.plan_end_date) : $t('common.emDash') }}
               </td>
               <td class="p-4">
                 <span
@@ -126,22 +125,22 @@ const statusBadgeClass = {
                   :class="statusBadgeClass[companyStatus(co)] || statusBadgeClass.active"
                 >
                   <i class="fa-solid fa-circle text-[6px]"></i>
-                  {{ companyStatus(co) }}
+                  {{ translateStatus(companyStatus(co)) }}
                 </span>
               </td>
               <td class="p-4">
                 <div class="flex items-center justify-center gap-1.5">
                   <button
                     class="px-3 py-1.5 text-xs bg-khubrat-blue/5 hover:bg-khubrat-blue/10 text-khubrat-blue dark:text-khubrat-goldLight dark:bg-slate-700 dark:hover:bg-slate-600 font-bold rounded-lg transition-all"
-                    title="View subscription details"
+                    :title="$t('dashboard.viewSubscription')"
                     @click="emit('view', co)"
                   >
-                    <i class="fa-solid fa-eye mr-1"></i> Details
+                    <i class="fa-solid fa-eye me-1"></i> {{ $t('common.details') }}
                   </button>
                   <button
                     v-if="companyStatus(co) === 'active'"
                     class="p-2 text-xs bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 rounded-lg transition-all"
-                    title="Deactivate account"
+                    :title="$t('dashboard.deactivateAccount')"
                     @click="emit('freeze', co)"
                   >
                     <i class="fa-solid fa-user-slash"></i>
@@ -149,7 +148,7 @@ const statusBadgeClass = {
                   <button
                     v-else
                     class="p-2 text-xs bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-lg transition-all"
-                    title="Reactivate account"
+                    :title="$t('dashboard.reactivateAccount')"
                     @click="emit('activate', co)"
                   >
                     <i class="fa-solid fa-circle-check"></i>

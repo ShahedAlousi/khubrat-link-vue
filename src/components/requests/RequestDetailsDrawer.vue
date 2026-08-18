@@ -1,8 +1,12 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BaseButton from '@/components/common/BaseButton.vue'
 import { managementRequestsService, resolveAttachmentDisplayUrl } from '@/services/managementRequests.service'
 import { formatCurrency, formatDate, initials } from '@/utils/format'
+import { translateStatus, translateLeaveTypeName } from '@/i18n/helpers'
+
+const { t } = useI18n()
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -23,9 +27,9 @@ const isAdvance = computed(() => requestType.value === 'advance')
 const isOvertime = computed(() => requestType.value === 'overtime')
 
 const typeHeading = computed(() => {
-  if (isAdvance.value) return 'Salary Advance File'
-  if (isOvertime.value) return 'Overtime Request File'
-  return 'Leave Request File'
+  if (isAdvance.value) return t('requests.advanceFile')
+  if (isOvertime.value) return t('requests.overtimeFile')
+  return t('requests.leaveFile')
 })
 
 const attachmentPath = computed(() => props.request?.attachment_url || null)
@@ -60,37 +64,38 @@ const attachmentMeta = computed(() => {
     ext: ext || 'file',
     isPdf,
     isImage,
-    kindLabel: isPdf ? 'PDF document' : isImage ? 'Image attachment' : 'Supporting file'
+    kindLabel: isPdf ? t('requests.pdfDocument') : isImage ? t('requests.imageAttachment') : t('requests.supportingFile')
   }
 })
 
 const durationLabel = computed(() => {
   const days = props.request?.duration_days
-  if (days === null || days === undefined || Number.isNaN(Number(days))) return '—'
+  if (days === null || days === undefined || Number.isNaN(Number(days))) return t('common.emDash')
   const n = Number(days)
-  return `${n} day${n === 1 ? '' : 's'}`
+  return t(n === 1 ? 'requests.day' : 'requests.days', { n })
 })
 
 const unitSuffix = computed(() => (props.request?.duration_type === 'day' ? 'day' : 'hr'))
+const durationUnitLabel = computed(() =>
+  unitSuffix.value === 'day' ? t('policies.days') : t('policies.hours')
+)
 
 function formatUnits(value) {
-  if (value === null || value === undefined || value === '') return '—'
+  if (value === null || value === undefined || value === '') return t('common.emDash')
   const n = Number(value)
-  if (!Number.isFinite(n)) return '—'
-  return `${n} ${unitSuffix.value}${n === 1 ? '' : 's'}`
+  if (!Number.isFinite(n)) return t('common.emDash')
+  const isDay = unitSuffix.value === 'day'
+  if (isDay) return t(n === 1 ? 'requests.day' : 'requests.days', { n })
+  return t(n === 1 ? 'requests.hr' : 'requests.hrs', { n })
 }
 
 function formatMoney(value) {
-  if (value === null || value === undefined || value === '') return '—'
+  if (value === null || value === undefined || value === '') return t('common.emDash')
   const n = Number(value)
-  return Number.isFinite(n) ? formatCurrency(n) : '—'
+  return Number.isFinite(n) ? formatCurrency(n) : t('common.emDash')
 }
 
-const statusLabel = computed(() => {
-  const raw = props.request?.status
-  if (!raw) return '—'
-  return String(raw).replaceAll('_', ' ')
-})
+const statusLabel = computed(() => translateStatus(props.request?.status))
 
 const statusTone = computed(() => {
   const s = String(props.request?.status || '').toLowerCase()
@@ -106,7 +111,7 @@ const installments = computed(() =>
 )
 
 function display(value) {
-  return value === null || value === undefined || value === '' ? '—' : value
+  return value === null || value === undefined || value === '' ? t('common.emDash') : value
 }
 
 watch(
@@ -146,7 +151,7 @@ async function withAttachmentBlob(handler) {
       handler(href, null, meta)
       return
     }
-    attachmentError.value = err.message || 'Failed to load attachment.'
+    attachmentError.value = err.message || t('requests.loadAttachmentFailed')
   } finally {
     if (objectUrl) {
       setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
@@ -204,9 +209,9 @@ function handleApprove() {
     <div v-if="open" class="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true">
       <div class="absolute inset-0 bg-black/55 backdrop-blur-[1px]" @click="emit('close')" />
 
-      <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+      <div class="pointer-events-none fixed inset-y-0 end-0 flex max-w-full ps-10">
         <aside
-          class="pointer-events-auto w-screen max-w-md bg-white dark:bg-slate-800 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-700"
+          class="pointer-events-auto w-screen max-w-md bg-white dark:bg-slate-800 shadow-2xl flex flex-col border-s border-slate-200 dark:border-slate-700"
         >
           <div class="bg-khubrat-blue text-white p-6 border-b border-khubrat-goldLight/20">
             <div class="flex items-center justify-between gap-3">
@@ -240,10 +245,10 @@ function handleApprove() {
             <div class="space-y-2">
               <div class="flex items-center justify-between">
                 <p class="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
-                  Request Parameters
+                  {{ $t('requests.parameters') }}
                 </p>
                 <span v-if="detailsLoading" class="text-[10px] text-slate-400">
-                  <i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading details…
+                  <i class="fa-solid fa-spinner fa-spin mr-1"></i> {{ $t('requests.loadingDetails') }}
                 </span>
               </div>
 
@@ -251,13 +256,13 @@ function handleApprove() {
               <template v-if="isLeave">
                 <div class="grid grid-cols-2 gap-4">
                   <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p class="text-[10px] font-bold text-slate-400">Leave Category</p>
+                    <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.leaveCategory') }}</p>
                     <p class="text-xs font-bold text-slate-800 dark:text-slate-100 mt-0.5">
-                      {{ display(request.leave_type_name) }}
+                      {{ display(translateLeaveTypeName(request.leave_type_name) || request.leave_type_name) }}
                     </p>
                   </div>
                   <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p class="text-[10px] font-bold text-slate-400">Duration</p>
+                    <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.durationLabel') }}</p>
                     <p class="text-xs font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                       {{ durationLabel }}
                     </p>
@@ -266,13 +271,13 @@ function handleApprove() {
 
                 <div class="grid grid-cols-2 gap-4">
                   <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p class="text-[10px] font-bold text-slate-400">Start Date</p>
+                    <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.startDate') }}</p>
                     <p class="text-xs font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                       {{ formatDate(request.start_date) }}
                     </p>
                   </div>
                   <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p class="text-[10px] font-bold text-slate-400">End Date</p>
+                    <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.endDate') }}</p>
                     <p class="text-xs font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                       {{ formatDate(request.end_date) }}
                     </p>
@@ -281,13 +286,13 @@ function handleApprove() {
 
                 <div v-if="request.start_time || request.end_time" class="grid grid-cols-2 gap-4">
                   <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p class="text-[10px] font-bold text-slate-400">Start Time</p>
+                    <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.startTime') }}</p>
                     <p class="text-xs font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                       {{ display(request.start_time) }}
                     </p>
                   </div>
                   <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p class="text-[10px] font-bold text-slate-400">End Time</p>
+                    <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.endTime') }}</p>
                     <p class="text-xs font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                       {{ display(request.end_time) }}
                     </p>
@@ -298,9 +303,11 @@ function handleApprove() {
                   v-if="request.remaining_balance_days !== null && request.remaining_balance_days !== undefined"
                   class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700"
                 >
-                  <p class="text-[10px] font-bold text-slate-400">Remaining Balance</p>
+                  <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.remainingBalance') }}</p>
                   <p class="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                    {{ request.remaining_balance_days }} day(s)
+                    {{ Number(request.remaining_balance_days) === 1
+                      ? $t('requests.day', { n: request.remaining_balance_days })
+                      : $t('requests.days', { n: request.remaining_balance_days }) }}
                   </p>
                 </div>
               </template>
@@ -309,28 +316,30 @@ function handleApprove() {
               <template v-else-if="isAdvance">
                 <div class="grid grid-cols-2 gap-4">
                   <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p class="text-[10px] font-bold text-slate-400">Requested Amount</p>
+                    <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.requestedAmountLabel') }}</p>
                     <p class="text-xs font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                       {{ formatMoney(request.requested_amount) }}
                     </p>
                   </div>
                   <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p class="text-[10px] font-bold text-slate-400">Repayment Period</p>
+                    <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.repaymentPeriod') }}</p>
                     <p class="text-xs font-bold text-slate-800 dark:text-slate-100 mt-0.5">
-                      {{ display(request.repayment_months) }} month(s)
+                      {{ request.repayment_months
+                        ? $t('common.monthsCount', { n: request.repayment_months })
+                        : display(request.repayment_months) }}
                     </p>
                   </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
                   <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p class="text-[10px] font-bold text-slate-400">Monthly Installment</p>
+                    <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.monthlyInstallment') }}</p>
                     <p class="text-xs font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                       {{ formatMoney(request.monthly_installment) }}
                     </p>
                   </div>
                   <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p class="text-[10px] font-bold text-slate-400">Base Monthly Salary</p>
+                    <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.baseMonthlySalary') }}</p>
                     <p class="text-xs font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                       {{ formatMoney(request.basic_salary) }}
                     </p>
@@ -342,13 +351,13 @@ function handleApprove() {
               <template v-else-if="isOvertime">
                 <div class="grid grid-cols-2 gap-4">
                   <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p class="text-[10px] font-bold text-slate-400">Work Date</p>
+                    <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.workDate') }}</p>
                     <p class="text-xs font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                       {{ formatDate(request.request_date) }}
                     </p>
                   </div>
                   <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p class="text-[10px] font-bold text-slate-400">Requested Duration</p>
+                    <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.requestedDuration') }}</p>
                     <p class="text-xs font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                       {{ formatUnits(request.units_requested) }}
                     </p>
@@ -357,13 +366,13 @@ function handleApprove() {
 
                 <div class="grid grid-cols-2 gap-4">
                   <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p class="text-[10px] font-bold text-slate-400">Estimated Amount</p>
+                    <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.estimatedAmount') }}</p>
                     <p class="text-xs font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                       {{ formatMoney(request.estimated_amount) }}
                     </p>
                   </div>
                   <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p class="text-[10px] font-bold text-slate-400">Approved Duration</p>
+                    <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.approvedDuration') }}</p>
                     <p class="text-xs font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                       {{ formatUnits(request.units_approved) }}
                     </p>
@@ -374,7 +383,7 @@ function handleApprove() {
                   v-if="request.calculated_amount !== null && request.calculated_amount !== undefined"
                   class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700"
                 >
-                  <p class="text-[10px] font-bold text-slate-400">Calculated Payout</p>
+                  <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.calculatedPayout') }}</p>
                   <p class="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
                     {{ formatMoney(request.calculated_amount) }}
                   </p>
@@ -383,7 +392,7 @@ function handleApprove() {
 
               <!-- ------------------------------------------------ Shared -->
               <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1">
-                <p class="text-[10px] font-bold text-slate-400">Reason Note</p>
+                <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.reasonNote') }}</p>
                 <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{{ display(request.reason) }}</p>
               </div>
 
@@ -391,7 +400,7 @@ function handleApprove() {
                 v-if="request.rejection_reason"
                 class="bg-rose-50 dark:bg-rose-950/30 p-3 rounded-xl border border-rose-200 dark:border-rose-900 space-y-1"
               >
-                <p class="text-[10px] font-bold text-rose-500">Rejection Reason</p>
+                <p class="text-[10px] font-bold text-rose-500">{{ $t('requests.rejectionReason') }}</p>
                 <p class="text-xs text-rose-600 dark:text-rose-300 leading-relaxed">
                   {{ request.rejection_reason }}
                 </p>
@@ -401,7 +410,7 @@ function handleApprove() {
                 v-if="isOvertime && request.review_notes"
                 class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1"
               >
-                <p class="text-[10px] font-bold text-slate-400">Reviewer Notes</p>
+                <p class="text-[10px] font-bold text-slate-400">{{ $t('requests.reviewerNotes') }}</p>
                 <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                   {{ request.review_notes }}
                 </p>
@@ -410,7 +419,7 @@ function handleApprove() {
               <!-- Installment schedule (advances only) -->
               <div v-if="isAdvance" class="space-y-2">
                 <p class="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
-                  Repayment Schedule
+                  {{ $t('requests.repaymentSchedule') }}
                 </p>
 
                 <div
@@ -432,7 +441,7 @@ function handleApprove() {
                         {{ formatMoney(installment.amount) }}
                       </p>
                       <p class="text-[10px] text-slate-400 mt-0.5">
-                        Due {{ formatDate(installment.due_date) }}
+                        {{ $t('requests.due', { date: formatDate(installment.due_date) }) }}
                       </p>
                     </div>
                     <span
@@ -441,7 +450,7 @@ function handleApprove() {
                         ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
                         : 'bg-amber-500/10 text-amber-500 border-amber-500/20'"
                     >
-                      {{ display(installment.status) }}
+                      {{ translateStatus(installment.status) }}
                     </span>
                     <button
                       v-if="canPayInstallments && installment.status !== 'paid' && installment.id"
@@ -450,7 +459,7 @@ function handleApprove() {
                       :disabled="actionLoading"
                       @click="emit('pay-installment', installment)"
                     >
-                      Mark paid
+                      {{ $t('requests.markPaid') }}
                     </button>
                   </div>
                 </div>
@@ -460,7 +469,7 @@ function handleApprove() {
                   class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-center"
                 >
                   <p class="text-[11px] text-slate-400">
-                    The repayment schedule is generated once the advance is approved.
+                    {{ $t('requests.scheduleHint') }}
                   </p>
                 </div>
               </div>
@@ -468,7 +477,7 @@ function handleApprove() {
               <!-- Supporting attachment (image / PDF) -->
               <div v-if="isLeave || attachmentMeta" class="space-y-2">
                 <p class="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
-                  Supporting Document
+                  {{ $t('requests.supportingDocument') }}
                 </p>
 
                 <div
@@ -549,7 +558,7 @@ function handleApprove() {
                       <button
                         type="button"
                         class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/70 dark:hover:text-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
-                        title="View file"
+                        :title="$t('common.viewFile')"
                         :disabled="attachmentBusy"
                         @click="openAttachment"
                       >
@@ -572,7 +581,7 @@ function handleApprove() {
                       <button
                         type="button"
                         class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/70 dark:hover:text-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
-                        title="Download file"
+                        :title="$t('common.downloadFile')"
                         :disabled="attachmentBusy"
                         @click="downloadAttachment"
                       >
@@ -600,7 +609,7 @@ function handleApprove() {
                     <button
                       type="button"
                       class="block w-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-khubrat-goldLight/40"
-                      title="Open image"
+                      :title="$t('common.openImage')"
                       @click="openAttachment"
                     >
                       <img
@@ -615,7 +624,7 @@ function handleApprove() {
                         class="flex items-center justify-center gap-2 h-28 text-[11px] text-slate-400"
                       >
                         <i class="fa-solid fa-image" aria-hidden="true"></i>
-                        Preview unavailable — use View or Download
+                        {{ $t('requests.previewUnavailable') }}
                       </div>
                     </button>
                   </div>
@@ -624,7 +633,7 @@ function handleApprove() {
                     <iframe
                       v-if="attachmentHref && !previewFailed"
                       :src="attachmentHref"
-                      title="PDF preview"
+                      :title="$t('requests.pdfPreview')"
                       class="w-full h-56 rounded-lg border border-slate-200 dark:border-slate-700 bg-white"
                       @error="onPreviewError"
                     />
@@ -633,7 +642,7 @@ function handleApprove() {
                       class="flex items-center justify-center gap-2 h-28 rounded-lg border border-dashed border-slate-200 dark:border-slate-700 text-[11px] text-slate-400"
                     >
                       <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
-                      Open the PDF with View or Download
+                      {{ $t('requests.openPdf') }}
                     </div>
                   </div>
 
@@ -646,7 +655,7 @@ function handleApprove() {
                   v-else
                   class="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-center"
                 >
-                  <p class="text-[11px] text-slate-400">No supporting file was attached to this request.</p>
+                  <p class="text-[11px] text-slate-400">{{ $t('requests.noFile') }}</p>
                 </div>
               </div>
 
@@ -657,7 +666,7 @@ function handleApprove() {
               >
                 <div class="space-y-1">
                   <label class="text-[10px] font-bold text-slate-400">
-                    Approved Duration ({{ unitSuffix }}s)
+                    {{ $t('requests.approvedDuration') }} ({{ durationUnitLabel }})
                   </label>
                   <input
                     v-model.number="approvedUnits"
@@ -667,23 +676,23 @@ function handleApprove() {
                     class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight dark:text-white transition-all"
                   />
                   <p class="text-[10px] text-slate-400">
-                    Defaults to the requested duration. Lower it to approve partially.
+                    {{ $t('requests.approvedDurationHint') }}
                   </p>
                 </div>
 
                 <div class="space-y-1">
-                  <label class="text-[10px] font-bold text-slate-400">Reviewer Notes (optional)</label>
+                  <label class="text-[10px] font-bold text-slate-400">{{ $t('requests.reviewerNotesOptional') }}</label>
                   <textarea
                     v-model="reviewNotes"
                     rows="2"
-                    placeholder="Add a note for the payroll record…"
+                    :placeholder="$t('requests.reviewerPlaceholder')"
                     class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-khubrat-goldLight dark:text-white transition-all"
                   />
                 </div>
               </div>
 
               <div class="flex items-center justify-between">
-                <span class="text-[10px] font-bold text-slate-400 uppercase">Status</span>
+                <span class="text-[10px] font-bold text-slate-400 uppercase">{{ $t('common.status') }}</span>
                 <span
                   class="px-2.5 py-1 rounded-lg text-[10px] font-bold border capitalize"
                   :class="statusTone"
@@ -702,7 +711,7 @@ function handleApprove() {
                 @click="handleApprove"
               >
                 <i class="fa-solid fa-check"></i>
-                Approve Request
+                {{ $t('requests.approveRequest') }}
               </BaseButton>
               <BaseButton
                 class="flex-1 !bg-rose-600 hover:!bg-rose-700 !text-white"
@@ -710,11 +719,11 @@ function handleApprove() {
                 @click="emit('reject', request)"
               >
                 <i class="fa-solid fa-xmark"></i>
-                Reject Request
+                {{ $t('requests.rejectRequest') }}
               </BaseButton>
             </template>
             <BaseButton v-else class="w-full" variant="ghost" @click="emit('close')">
-              Close Details File
+              {{ $t('requests.closeFile') }}
             </BaseButton>
           </div>
         </aside>

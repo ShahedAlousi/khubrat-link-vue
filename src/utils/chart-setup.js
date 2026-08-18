@@ -27,4 +27,9 @@ ChartJS.register(
   Filler
 )
 
+export function applyChartLocale(locale) {
+  ChartJS.defaults.font.family =
+    locale === 'ar' ? '"IBM Plex Sans Arabic", sans-serif' : '"Open Sans", sans-serif'
+}
+
 export default ChartJS

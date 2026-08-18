@@ -1,6 +1,7 @@
 import { reactive, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { attendancePolicyService } from '@/services/attendancePolicy.service'
+import { t } from '@/i18n/helpers'
 
 // Empty shape: the panel shows placeholders until the tenant's saved policy arrives.
 const EMPTY_POLICY = {
@@ -61,7 +62,7 @@ export const useAttendancePolicyStore = defineStore('attendancePolicy', () => {
       return data
     } catch (err) {
       error.value =
-        err.response?.data?.message || err.message || 'Failed to load the attendance policy.'
+        err.response?.data?.message || err.message || t('policies.loadAttendanceFailed')
       console.error('[AttendancePolicy] Fetch failed:', err)
       throw err
     } finally {
@@ -74,7 +75,7 @@ export const useAttendancePolicyStore = defineStore('attendancePolicy', () => {
     error.value = null
     try {
       if (!payload.work_start_time || !payload.work_end_time) {
-        throw new Error('Please set both the shift start time and the shift end time.')
+        throw new Error(t('policies.shiftTimesRequired'))
       }
 
       if (
@@ -82,7 +83,7 @@ export const useAttendancePolicyStore = defineStore('attendancePolicy', () => {
         payload.allowed_late_minutes === null ||
         payload.allowed_late_minutes === undefined
       ) {
-        throw new Error('Please enter the allowed delay limit (you can type 0 but cannot leave it blank).')
+        throw new Error(t('policies.delayRequired'))
       }
 
       if (
@@ -90,7 +91,7 @@ export const useAttendancePolicyStore = defineStore('attendancePolicy', () => {
         payload.allowed_early_leave_minutes === null ||
         payload.allowed_early_leave_minutes === undefined
       ) {
-        throw new Error('Please enter the allowed early departure limit (you can write 0 but it cannot be left blank).')
+        throw new Error(t('policies.earlyRequired'))
       }
 
       const policyPayload = {
@@ -105,7 +106,7 @@ export const useAttendancePolicyStore = defineStore('attendancePolicy', () => {
       applyPolicyData({ ...policyPayload, ...(result?.data ?? {}) })
       return result
     } catch (err) {
-      error.value = err.response?.data?.message || err.message || 'فشل حفظ سياسة الحضور.'
+      error.value = err.response?.data?.message || err.message || t('policies.saveAttendanceFailed')
       throw err
     } finally {
       savingPolicy.value = false
@@ -120,7 +121,7 @@ export const useAttendancePolicyStore = defineStore('attendancePolicy', () => {
     error.value = null
     try {
       if (payload.latitude === null || payload.longitude === null || payload.latitude === '' || payload.longitude === '') {
-        throw new Error('Please pick the company location on the map first.')
+        throw new Error(t('policies.pickLocationFirst'))
       }
 
       const locationPayload = {
@@ -133,7 +134,7 @@ export const useAttendancePolicyStore = defineStore('attendancePolicy', () => {
       applyPolicyData({ ...locationPayload, ...(result?.data ?? {}) })
       return result
     } catch (err) {
-      error.value = err.response?.data?.message || err.message || 'فشل حفظ موقع البصمة.'
+      error.value = err.response?.data?.message || err.message || t('policies.saveLocationFailed')
       throw err
     } finally {
       savingLocation.value = false

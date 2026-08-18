@@ -65,46 +65,38 @@ async function handleUpload() {
 <template>
   <div class="space-y-6 max-w-3xl">
     <div>
-      <h3 class="text-lg font-bold text-khubrat-blue dark:text-white">Bulk Employee Import</h3>
+      <h3 class="text-lg font-bold text-khubrat-blue dark:text-white">{{ $t('staff.bulkTitle') }}</h3>
       <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-        Import multiple employees at once using the official Excel template.
+        {{ $t('staff.bulkSubtitle') }}
       </p>
     </div>
 
     <BaseAlert variant="info">
       <div class="space-y-2 text-sm leading-relaxed">
-        <p>
-          Download the template, fill in employee rows, then upload the completed file. Required columns
-          match the single-employee form (name, email, department, job title, base salary, hire date).
-        </p>
-        <p>
-          Optional columns are also supported: phone, education, employment type, gender, marital status,
-          nationality, and residence. Profile photos and identity documents are not imported from Excel.
-        </p>
-        <p class="font-semibold">
-          This is an all-or-nothing import — if any row fails validation, no employees will be created.
-        </p>
+        <p>{{ $t('staff.bulkHint') }}</p>
+        <p>{{ $t('staff.bulkOptional') }}</p>
+        <p class="font-semibold">{{ $t('staff.bulkAllOrNothing') }}</p>
       </div>
     </BaseAlert>
 
     <BaseAlert v-if="staffStore.importSuccess" variant="success">
-      Import completed successfully.
+      {{ $t('staff.importSuccess') }}
       <span v-if="importedCount !== null">
-        {{ importedCount }} employee{{ importedCount === 1 ? '' : 's' }} were added.
+        {{ $t('staff.importAdded', { n: importedCount }) }}
       </span>
-      <button class="ml-2 underline text-xs" @click="staffStore.clearImportFeedback()">Dismiss</button>
+      <button class="ms-2 underline text-xs" @click="staffStore.clearImportFeedback()">{{ $t('common.dismiss') }}</button>
     </BaseAlert>
 
     <BaseAlert v-if="staffStore.importError" variant="error">
       {{ staffStore.importError }}
-      <button class="ml-2 underline text-xs" @click="staffStore.clearImportFeedback()">Dismiss</button>
+      <button class="ms-2 underline text-xs" @click="staffStore.clearImportFeedback()">{{ $t('common.dismiss') }}</button>
     </BaseAlert>
 
     <div
       v-if="rowErrorEntries.length"
       class="rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/20 p-4 space-y-2"
     >
-      <p class="text-sm font-bold text-rose-700 dark:text-rose-300">Row validation errors</p>
+      <p class="text-sm font-bold text-rose-700 dark:text-rose-300">{{ $t('staff.rowErrors') }}</p>
       <ul class="text-xs text-rose-700 dark:text-rose-300 space-y-1 max-h-48 overflow-y-auto">
         <li v-for="(entry, index) in rowErrorEntries" :key="`${entry.key}-${index}`">
           <span class="font-semibold">{{ entry.key }}:</span> {{ entry.message }}
@@ -117,22 +109,22 @@ async function handleUpload() {
     >
       <div class="space-y-3">
         <div>
-          <p class="text-sm font-bold text-khubrat-blue dark:text-white">Step 1 — Download Template</p>
+          <p class="text-sm font-bold text-khubrat-blue dark:text-white">{{ $t('staff.step1') }}</p>
           <p class="text-xs text-slate-500 mt-0.5">
-            Use the official template to ensure column names and formats match the backend contract.
+            {{ $t('staff.step1Hint') }}
           </p>
         </div>
         <BaseButton variant="blue" :loading="staffStore.templateLoading" @click="handleDownloadTemplate">
           <i class="fa-solid fa-file-arrow-down"></i>
-          Download Excel Template
+          {{ $t('staff.downloadTemplate') }}
         </BaseButton>
       </div>
 
       <div class="border-t border-slate-200 dark:border-slate-700 pt-6 space-y-4">
         <div>
-          <p class="text-sm font-bold text-khubrat-blue dark:text-white">Step 2 — Upload Completed File</p>
+          <p class="text-sm font-bold text-khubrat-blue dark:text-white">{{ $t('staff.step2') }}</p>
           <p class="text-xs text-slate-500 mt-0.5">
-            Accepted formats: {{ acceptedExtensions.join(', ') }}
+            {{ $t('staff.acceptedFormats') }}
           </p>
         </div>
 
@@ -157,16 +149,16 @@ async function handleUpload() {
               {{ (selectedFile.size / 1024).toFixed(1) }} KB
             </p>
             <div class="flex flex-wrap justify-center gap-2">
-              <BaseButton variant="ghost" @click="triggerFilePicker">Choose Different File</BaseButton>
-              <BaseButton variant="ghost" @click="clearSelectedFile">Remove</BaseButton>
+              <BaseButton variant="ghost" @click="triggerFilePicker">{{ $t('staff.chooseDifferent') }}</BaseButton>
+              <BaseButton variant="ghost" @click="clearSelectedFile">{{ $t('staff.remove') }}</BaseButton>
             </div>
           </template>
 
           <template v-else>
-            <p class="text-sm text-slate-500">No file selected yet.</p>
+            <p class="text-sm text-slate-500">{{ $t('staff.noFileYet') }}</p>
             <BaseButton variant="ghost" @click="triggerFilePicker">
               <i class="fa-solid fa-folder-open"></i>
-              Choose File
+              {{ $t('staff.chooseFile') }}
             </BaseButton>
           </template>
         </div>
@@ -178,7 +170,7 @@ async function handleUpload() {
           @click="handleUpload"
         >
           <i class="fa-solid fa-file-arrow-up"></i>
-          Upload and Import
+          {{ $t('staff.uploadImport') }}
         </BaseButton>
       </div>
     </div>

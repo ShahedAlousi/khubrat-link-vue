@@ -1,12 +1,14 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import AuthLayout from '@/components/layout/AuthLayout.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useOnboardingStore } from '@/stores/onboarding.store'
 import { clearPendingCheckout, readPendingCheckout } from '@/utils/paymentSession'
 
+const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 const onboardingStore = useOnboardingStore()
@@ -15,7 +17,9 @@ const pending = readPendingCheckout()
 const email = ref(pending?.email || onboardingStore.workspace.email || '')
 const isRenew = computed(() => pending?.context === 'renew')
 
-const title = computed(() => (isRenew.value ? 'Subscription Payment' : 'Complete Your Payment'))
+const title = computed(() =>
+  isRenew.value ? t('onboarding.paymentSuccessRenew') : t('onboarding.paymentSuccessSignup')
+)
 
 function goToLogin() {
   clearPendingCheckout()
@@ -57,11 +61,11 @@ function retryPayment() {
   <AuthLayout :title="title" max-width="max-w-lg">
     <div class="space-y-6">
       <p class="text-center text-slate-600 text-sm leading-relaxed">
-        Checkout was opened in a separate tab. Once you are done there, tell us how it went.
+        {{ $t('onboarding.checkoutOpened') }}
       </p>
 
       <div v-if="email" class="bg-blue-50/50 rounded-xl p-4 border border-blue-100 text-center">
-        <p class="text-sm text-slate-600 mb-1">Registered email:</p>
+        <p class="text-sm text-slate-600 mb-1">{{ $t('onboarding.registeredEmail') }}</p>
         <p class="font-bold text-khubrat-blue text-lg break-all">{{ email }}</p>
       </div>
 
@@ -72,18 +76,14 @@ function retryPayment() {
             <i class="fa-solid fa-triangle-exclamation"></i>
           </span>
           <div>
-            <p class="font-bold text-slate-800">Did you face a problem with the payment?</p>
+            <p class="font-bold text-slate-800">{{ $t('onboarding.paymentProblem') }}</p>
             <p class="text-sm text-slate-600 mt-1">
-              {{
-                isRenew
-                  ? 'No charge was completed. You can pick a plan and pay again.'
-                  : 'No workspace was activated. You can start the registration again.'
-              }}
+              {{ isRenew ? $t('onboarding.noChargeRenew') : $t('onboarding.noWorkspaceActivated') }}
             </p>
           </div>
         </div>
         <BaseButton variant="ghost" full-width @click="retryPayment">
-          {{ isRenew ? 'Choose a plan again' : 'Register again' }}
+          {{ isRenew ? $t('onboarding.choosePlanAgain') : $t('onboarding.registerAgain') }}
         </BaseButton>
       </div>
 
@@ -95,23 +95,15 @@ function retryPayment() {
           </span>
           <div>
             <p class="font-bold text-slate-800">
-              {{
-                isRenew
-                  ? 'Was the payment completed successfully?'
-                  : 'Payment done and you received the temporary password email?'
-              }}
+              {{ isRenew ? $t('onboarding.paymentCompletedRenew') : $t('onboarding.paymentCompletedSignup') }}
             </p>
             <p class="text-sm text-slate-600 mt-1">
-              {{
-                isRenew
-                  ? 'Your workspace access has been updated.'
-                  : 'Sign in with the temporary password, then you will be asked to set a new one.'
-              }}
+              {{ isRenew ? $t('onboarding.accessUpdated') : $t('onboarding.tempPasswordHint') }}
             </p>
           </div>
         </div>
         <BaseButton variant="gold" full-width @click="paymentDone">
-          {{ isRenew && authStore.isAuthenticated ? 'Back to settings' : 'Go to the login page' }}
+          {{ isRenew && authStore.isAuthenticated ? $t('onboarding.backToSettings') : $t('onboarding.goLogin') }}
         </BaseButton>
       </div>
     </div>

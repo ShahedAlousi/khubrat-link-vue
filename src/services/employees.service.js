@@ -1,4 +1,5 @@
 import api from './api'
+import { t } from '@/i18n/helpers'
 
 /** Normalize list payloads that may be a bare array or a Laravel paginator. */
 function unwrapList(payload) {
@@ -14,7 +15,7 @@ async function parseApiError(err) {
       const json = JSON.parse(await data.text())
       return {
         status: err.status,
-        message: json.message || err.message || 'Something went wrong. Please try again.',
+        message: json.message || err.message || t('common.tryAgain'),
         errors: json.errors || null,
         raw: err.raw
       }
@@ -101,7 +102,7 @@ export const employeesService = {
             const json = JSON.parse(text)
             return Promise.reject({
               status: res.status,
-              message: json.message || 'Failed to download the import template.',
+              message: json.message || t('staff.downloadTemplateFailed'),
               errors: json.errors || null
             })
           })

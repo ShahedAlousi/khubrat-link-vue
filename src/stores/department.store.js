@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { departmentsService } from '@/services/departments.service'
+import { t } from '@/i18n/helpers'
 
 /**
  * Normalize a department API row for table/form display.
@@ -35,7 +36,7 @@ export function normalizeDepartment(row) {
 
 function employeeLabel(row) {
   const user = row?.user ?? {}
-  const name = user.full_name ?? row.full_name ?? 'Unknown'
+  const name = user.full_name ?? row.full_name ?? t('common.notSpecified')
   const title = row.job_title ? ` — ${row.job_title}` : ''
   return `${name}${title}`
 }
@@ -72,7 +73,7 @@ export const useDepartmentsStore = defineStore('departments', () => {
       departments.value = (Array.isArray(data) ? data : []).map(normalizeDepartment)
       return departments.value
     } catch (err) {
-      error.value = err.message || 'Failed to load departments.'
+      error.value = err.message || t('staff.loadDepartmentsFailed')
       throw err
     } finally {
       loading.value = false
@@ -87,7 +88,7 @@ export const useDepartmentsStore = defineStore('departments', () => {
       currentDepartment.value = normalizeDepartment(data)
       return currentDepartment.value
     } catch (err) {
-      error.value = err.message || 'Failed to load department details.'
+      error.value = err.message || t('staff.loadDepartmentDetailsFailed')
       throw err
     } finally {
       loading.value = false
@@ -113,7 +114,7 @@ export const useDepartmentsStore = defineStore('departments', () => {
       departmentEmployees.value = Array.isArray(data) ? data : []
       return departmentEmployees.value
     } catch (err) {
-      error.value = err.message || 'Failed to load department employees.'
+      error.value = err.message || t('staff.loadDepartmentEmployeesFailed')
       departmentEmployees.value = []
       throw err
     } finally {
@@ -134,7 +135,7 @@ export const useDepartmentsStore = defineStore('departments', () => {
       await fetchDepartments()
       return normalizeDepartment(created)
     } catch (err) {
-      error.value = err.message || 'Failed to create department.'
+      error.value = err.message || t('staff.createDepartmentFailed')
       throw err
     } finally {
       saving.value = false
@@ -163,7 +164,7 @@ export const useDepartmentsStore = defineStore('departments', () => {
       }
       return normalizeDepartment(updated)
     } catch (err) {
-      error.value = err.message || 'Failed to update department.'
+      error.value = err.message || t('staff.updateDepartmentFailed')
       throw err
     } finally {
       saving.value = false
@@ -187,10 +188,10 @@ export const useDepartmentsStore = defineStore('departments', () => {
           status: 'blocked',
           message:
             err.message ||
-            'The department must be free of employees before deletion. Reassign employees via Employee Management first.'
+            t('staff.mustBeEmpty')
         }
       }
-      error.value = err.message || 'Failed to delete department.'
+      error.value = err.message || t('staff.deleteDepartmentFailed')
       throw err
     } finally {
       deleting.value = false
