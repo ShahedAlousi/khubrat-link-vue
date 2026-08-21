@@ -13,8 +13,8 @@ const { t } = useI18n()
 const loadError = ref('')
 
 onMounted(async () => {
-  if (companiesStore.subscriptionUsage) return
-  try {
+  loadError.value = ''
+    try {
     await companiesStore.fetchSubscriptionUsage()
   } catch (err) {
     loadError.value = err.message || t('subscription.loadFailed')

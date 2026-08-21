@@ -146,7 +146,7 @@ export const useCompaniesStore = defineStore('companies', () => {
    */
   const isCompanyFrozen = computed(() => {
     if (isInactiveStatus(subscriptionUsage.value?.company_status)) return true
-
+  
     const company = useAuthStore().company
     if (!company) return false
     if (company.is_active === false) return true

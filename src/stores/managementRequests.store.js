@@ -58,11 +58,12 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
   }
 
   const canActOnRequests = computed(() => Boolean(resolveRoleContext()))
-  // Salary advances skip the department manager stage — HR only.
-  const canViewAdvances = computed(() => resolveRoleContext() === 'hr')
-  const canActOnAdvances = computed(() => resolveRoleContext() === 'hr')
+  // Salary advances: HR and department managers can view/approve/reject.
+  // Installment payment stays HR-only (see payAdvanceInstallment).
+  const canViewAdvances = computed(() => Boolean(resolveRoleContext()))
+  const canActOnAdvances = computed(() => Boolean(resolveRoleContext()))
   const canActOnOvertime = computed(() => Boolean(resolveRoleContext()))
-
+  
   async function fetchInbox() {
     loading.value = true
     error.value = null
@@ -203,8 +204,9 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
   }
 
   async function runAdvanceAction(id, payload, failureMessage) {
-    if (!canActOnAdvances.value) {
-      const err = { message: t('requests.onlyHrAdvances') }
+    const roleContext = resolveRoleContext()
+    if (!roleContext) {
+      const err = { message: t('requests.notAuthorizedAdvances') }
       error.value = err.message
       throw err
     }
@@ -214,7 +216,7 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
     try {
       await managementRequestsService.executeAdvanceAction(id, {
         ...payload,
-        role_context: 'hr'
+        role_context: roleContext
       })
 
       const index = advances.value.findIndex((row) => row.id === id)
@@ -255,7 +257,8 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
 
   /** HR-only: mark one installment of an approved advance as paid. */
   async function payAdvanceInstallment(advanceId, installmentId) {
-    if (!canActOnAdvances.value) {
+    // دفع الأقساط يبقى حكراً على HR فقط حتى لو صار مدير القسم يقدر يوافق/يرفض السلفة
+    if (resolveRoleContext() !== 'hr') {
       const err = { message: t('requests.onlyHrInstallments') }
       error.value = err.message
       throw err
@@ -281,15 +284,17 @@ export const useManagementRequestsStore = defineStore('managementRequests', () =
   // -------------------------------------------------------------- Overtime
   async function fetchOvertime(params = {}) {
     overtimeLoading.value = true
-    error.value = null
     try {
       const { items, meta } = await managementRequestsService.listOvertime(params)
       overtime.value = items
       overtimeMeta.value = meta
       return overtime.value
     } catch (err) {
-      error.value = err.message || t('requests.loadOvertimeFailed')
-      throw err
+      // العمل الإضافي ممكن يكون معطل بسياسة الشركة، ما بدنا نظهر رسالة خطأ حمراء بالواجهة بسببه
+      console.error('fetchOvertime failed (may be disabled by company policy):', err)
+      overtime.value = []
+      overtimeMeta.value = { ...EMPTY_META }
+      return overtime.value
     } finally {
       overtimeLoading.value = false
     }

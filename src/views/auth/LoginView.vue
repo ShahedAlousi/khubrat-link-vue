@@ -116,9 +116,9 @@ async function handleSubmit() {
       </p>
     </form>
 
-    <template #footer>
+    <!-- <template #footer>
       <span class="text-slate-500">{{ $t('auth.encounteredProblem') }} </span>
       <a href="mailto:support@khubratlink.com" class="font-bold text-[#061c3f] underline hover:opacity-80">{{ $t('auth.contactSupport') }}</a>
-    </template>
+    </template> -->
   </AuthLayout>
 </template>
